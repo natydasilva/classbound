@@ -18,10 +18,10 @@ Imports:
     shiny,
     MASS,
     gridExtra,
-    MixSim
+    MixSim,
+    randomForest
 Suggests:
     rpart,
-    randomForest,
     RColorBrewer,
     roxygen2 (>= 7.3.0),
     PPtreeViz,

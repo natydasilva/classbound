@@ -126,7 +126,14 @@
      }
      
      if (meth == "RandomForest") {
-       rf.mod <- randomForest::randomForest(Sim ~ ., data = data, ntree = 500)
+       if (!requireNamespace("randomForest", quietly = TRUE)) {
+         stop(
+           "Package 'randomForest' is required for method 'RandomForest'. ",
+           "Please install it with: install.packages('randomForest')"
+         )
+       }
+       ntree_val <- getOption("ppbound.randomForest.ntree", 500)
+       rf.mod <- randomForest::randomForest(Sim ~ ., data = data, ntree = ntree_val)
        grilla$pred <- predict(rf.mod, newdata = grilla, type = "response")
        err <- round(1 - sum(diag(table(
          predict(rf.mod, newdata = test[, -1], type = "response"), test[, 1]
