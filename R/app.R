@@ -898,9 +898,9 @@
       d$Sim <- as.factor(d$Sim)
 
       if (shiny::isolate(input$drawModi) == "1") {
-        modpl <- ppbound(1, data=d, test=d, meth="Modified", entro=FALSE, title="PPtreeExt: Sub")
+        modpl <- ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Modified", entro=FALSE, title="PPtreeExt: Sub")
       } else {
-        modpl <- ppboundMOD(data=d, test=d, meth="MOD", entro=FALSE, entroindiv=TRUE, title="PPtreeExt: Mul", strule=NULL, tot=nrow(d))
+        modpl <- ppboundMOD(data=d, test=d, meth="MOD", entro=FALSE, entroindiv=TRUE, title="PPtreeExt: Mul", strule=as.numeric(shiny::isolate(input$drawRule)), tot=nrow(d))
       }
 
       gridExtra::grid.arrange(
