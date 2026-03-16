@@ -21,6 +21,7 @@ Imports:
     MixSim
 Suggests:
     rpart,
+    randomForest,
     RColorBrewer,
     roxygen2 (>= 7.3.0),
     PPtreeViz,

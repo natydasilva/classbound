@@ -125,6 +125,14 @@
        
      }
      
+     if (meth == "RandomForest") {
+       rf.mod <- randomForest::randomForest(Sim ~ ., data = data, ntree = 500)
+       grilla$pred <- predict(rf.mod, newdata = grilla, type = "response")
+       err <- round(1 - sum(diag(table(
+         predict(rf.mod, newdata = test[, -1], type = "response"), test[, 1]
+       ))) / nrow(test[, -1]), 3) * 100
+     }
+     
      #ruleid <- pptree$splitCutoff.node[,ru]
      if (simM) {
        pl.pp  <-
@@ -572,7 +580,15 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest"
+           ),
+           ncol = 4
          )
        }
      })
@@ -680,7 +696,15 @@
            
            # ppbound(ru =  as.numeric(input$rule2), FALSE, data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule2),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest"
+           ),
+           ncol = 4
          )
          
          
@@ -799,7 +823,16 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule3),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest",
+             simM = TRUE
+           ),
+           ncol = 4
          )
        }
      })
