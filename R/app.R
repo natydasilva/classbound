@@ -496,6 +496,25 @@
          shiny::fluidRow(shiny::plotOutput("plotsmaitra"))
          ##
          
+       ),
+       shiny::tabPanel(
+         "Draw Data",
+         shiny::fluidRow(
+           shiny::column(4, shiny::radioButtons("drawClass", "Select class:", choices = c("sim1", "sim2", "sim3"), inline = TRUE)),
+           shiny::column(2, shiny::selectInput("drawRule", "Rule", choices = 1:8, selected = 1)),
+           shiny::column(3, shiny::selectInput("drawModi", "Modification", choices = c("Subsetting" = "1", "Multiple splits" = "3"), selected = 3))
+         ),
+         shiny::fluidRow(
+           shiny::column(2, shiny::actionButton("drawUndo", "Undo Last")),
+           shiny::column(2, shiny::actionButton("drawClear", "Clear All")),
+           shiny::column(2, shiny::actionButton("drawRun", "Run Classifiers"))
+         ),
+         shiny::fluidRow(
+           shiny::column(12, shiny::textOutput("drawCount"))
+         ),
+         shiny::tags$hr(),
+         shiny::fluidRow(shiny::plotOutput("drawCanvas", click = "canvas_click", height = "380px")),
+         shiny::fluidRow(style = "margin-top: -8px;", shiny::uiOutput("drawBoundariesUi"))
        )
      )
    ))
@@ -802,6 +821,95 @@
            ncol = 3
          )
        }
+     })
+     
+    # Keep track of points
+    drawn_data <- shiny::reactiveVal(data.frame(Sim=character(), X1=numeric(), X2=numeric()))
+    draw_run <- shiny::reactiveVal(0)
+     
+     # Catch clicks
+     shiny::observeEvent(input$canvas_click, {
+       click <- input$canvas_click
+       if (!is.null(click)) {
+         drawn_data(rbind(drawn_data(), data.frame(Sim = input$drawClass, X1 = click$x, X2 = click$y)))
+       }
+     })
+     
+     shiny::observeEvent(input$drawUndo, {
+       d <- drawn_data()
+       if (nrow(d) > 0) drawn_data(d[-nrow(d), , drop = FALSE])
+     })
+     
+     shiny::observeEvent(input$drawClear, {
+       drawn_data(data.frame(Sim=character(), X1=numeric(), X2=numeric()))
+      draw_run(0)
+     })
+
+    shiny::observeEvent(input$drawRun, {
+      draw_run(draw_run() + 1)
+    })
+     
+     output$drawCount <- shiny::renderText({ paste("Points:", nrow(drawn_data())) })
+     
+     output$drawCanvas <- shiny::renderPlot({
+       d <- drawn_data()
+       legend_levels <- c("sim1", "sim2", "sim3")
+       legend_df <- data.frame(
+         X1 = rep(0, length(legend_levels)),
+         X2 = rep(0, length(legend_levels)),
+         Sim = factor(legend_levels, levels = legend_levels)
+       )
+       p <- ggplot2::ggplot() + ggplot2::theme_bw() +
+            ggplot2::labs(title = "Click to place points") +
+            ggplot2::geom_point(
+              data = legend_df,
+              ggplot2::aes(x = X1, y = X2, color = Sim, shape = Sim),
+              alpha = 0
+            ) +
+            ggplot2::scale_colour_brewer(
+              palette = "Dark2",
+              drop = FALSE,
+              guide = ggplot2::guide_legend(override.aes = list(alpha = 1, size = 3))
+            ) +
+            ggplot2::scale_shape_discrete(drop = FALSE) +
+            ggplot2::coord_fixed(ratio = 1, xlim = c(-5, 5), ylim = c(-5, 5), expand = FALSE) +
+            ggplot2::theme(
+              legend.position = "right",
+              plot.margin = ggplot2::margin(5.5, 5.5, 5.5, 5.5)
+            )
+
+       if (nrow(d) > 0) {
+         p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x=X1, y=X2, color=Sim, shape=Sim), size=3)
+       }
+       p
+     })
+
+     output$drawBoundariesUi <- shiny::renderUI({
+      if (draw_run() == 0) return(NULL)
+      shiny::plotOutput("drawBoundaries", height = "460px")
+     })
+     
+     output$drawBoundaries <- shiny::renderPlot({
+      shiny::req(draw_run() > 0)
+
+      d <- shiny::isolate(drawn_data())
+      if (nrow(d) < 5 || length(unique(d$Sim)) < 2) return(plot(0, main = "Need 5 points & 2+ classes"))
+
+      d$Sim <- as.factor(d$Sim)
+
+      if (shiny::isolate(input$drawModi) == "1") {
+        modpl <- ppbound(1, data=d, test=d, meth="Modified", entro=FALSE, title="PPtreeExt: Sub")
+      } else {
+        modpl <- ppboundMOD(data=d, test=d, meth="MOD", entro=FALSE, entroindiv=TRUE, title="PPtreeExt: Mul", strule=NULL, tot=nrow(d))
+      }
+
+      gridExtra::grid.arrange(
+        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Rpart", entro=FALSE, title="Rpart"),
+        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Original", entro=FALSE, title="PPtree"),
+        modpl,
+        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="RandomForest", entro=FALSE, title="Random Forest"),
+         ncol = 4
+      )
      })
      
    }
