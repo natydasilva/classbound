@@ -496,6 +496,25 @@
          shiny::fluidRow(shiny::plotOutput("plotsmaitra"))
          ##
          
+       ),
+       shiny::tabPanel(
+         "Draw Data",
+         shiny::fluidRow(
+           shiny::column(4, shiny::radioButtons("drawClass", "Select class:", choices = c("sim1", "sim2", "sim3"), inline = TRUE)),
+           shiny::column(2, shiny::selectInput("drawRule", "Rule", choices = 1:8, selected = 1)),
+           shiny::column(3, shiny::selectInput("drawModi", "Modification", choices = c("Subsetting" = "1", "Multiple splits" = "3"), selected = 3))
+         ),
+         shiny::fluidRow(
+           shiny::column(2, shiny::actionButton("drawUndo", "Undo Last")),
+           shiny::column(2, shiny::actionButton("drawClear", "Clear All")),
+           shiny::column(2, shiny::actionButton("drawRun", "Run Classifiers"))
+         ),
+         shiny::fluidRow(
+           shiny::column(12, shiny::textOutput("drawCount"))
+         ),
+         shiny::tags$hr(),
+         shiny::fluidRow(shiny::plotOutput("drawCanvas", click = "canvas_click", height = "380px")),
+         shiny::fluidRow(style = "margin-top: -8px;", shiny::uiOutput("drawBoundariesUi"))
        )
      )
    ))
@@ -802,6 +821,156 @@
            ncol = 3
          )
        }
+     })
+     
+    # Keep track of points
+    drawn_data <- shiny::reactiveVal(data.frame(Sim=character(), X1=numeric(), X2=numeric()))
+    draw_run <- shiny::reactiveVal(0)
+     
+     # Catch clicks
+     shiny::observeEvent(input$canvas_click, {
+       click <- input$canvas_click
+       if (!is.null(click)) {
+         drawn_data(rbind(drawn_data(), data.frame(Sim = input$drawClass, X1 = click$x, X2 = click$y)))
+       }
+     })
+     
+     shiny::observeEvent(input$drawUndo, {
+       d <- drawn_data()
+       if (nrow(d) > 0) drawn_data(d[-nrow(d), , drop = FALSE])
+     })
+     
+     shiny::observeEvent(input$drawClear, {
+       drawn_data(data.frame(Sim=character(), X1=numeric(), X2=numeric()))
+      draw_run(0)
+     })
+
+    shiny::observeEvent(input$drawRun, {
+      draw_run(draw_run() + 1)
+    })
+     
+     output$drawCount <- shiny::renderText({ paste("Points:", nrow(drawn_data())) })
+     
+     output$drawCanvas <- shiny::renderPlot({
+       d <- drawn_data()
+       legend_levels <- c("sim1", "sim2", "sim3")
+       legend_df <- data.frame(
+         X1 = rep(0, length(legend_levels)),
+         X2 = rep(0, length(legend_levels)),
+         Sim = factor(legend_levels, levels = legend_levels)
+       )
+       p <- ggplot2::ggplot() + ggplot2::theme_bw() +
+            ggplot2::labs(title = "Click to place points") +
+            ggplot2::geom_point(
+              data = legend_df,
+              ggplot2::aes(x = X1, y = X2, color = Sim, shape = Sim),
+              alpha = 0
+            ) +
+            ggplot2::scale_colour_brewer(
+              palette = "Dark2",
+              drop = FALSE,
+              guide = ggplot2::guide_legend(override.aes = list(alpha = 1, size = 3))
+            ) +
+            ggplot2::scale_shape_discrete(drop = FALSE) +
+            ggplot2::coord_fixed(ratio = 1, xlim = c(-5, 5), ylim = c(-5, 5), expand = FALSE) +
+            ggplot2::theme(
+              legend.position = "right",
+              plot.margin = ggplot2::margin(5.5, 5.5, 5.5, 5.5)
+            )
+
+       if (nrow(d) > 0) {
+         p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x=X1, y=X2, color=Sim, shape=Sim), size=3)
+       }
+       p
+     })
+
+     output$drawBoundariesUi <- shiny::renderUI({
+      if (draw_run() == 0) return(NULL)
+      shiny::plotOutput("drawBoundaries", height = "460px")
+     })
+     
+     output$drawBoundaries <- shiny::renderPlot({
+       shiny::req(draw_run() > 0)
+
+       d <- shiny::isolate(drawn_data())
+       
+       # Validation
+       if (nrow(d) < 5) return(plot(0, main = "Need at least 5 points"))
+       if (length(unique(d$Sim)) < 2) return(plot(0, main = "Need at least 2 different classes"))
+
+       # FIX 1: Explicitly set all factor levels (sim1, sim2, sim3)
+       d$Sim <- factor(d$Sim, levels = c("sim1", "sim2", "sim3"))
+       
+       # FIX 2: Ensure numeric columns are actually numeric
+       d$X1 <- as.numeric(d$X1)
+       d$X2 <- as.numeric(d$X2)
+       
+       # FIX 3: Expand data range slightly to avoid grid collapse
+       expand_range <- function(x, pct = 0.1) {
+         r <- range(x, na.rm = TRUE)
+         w <- max(abs(r)) * pct
+         c(r[1] - w, r[2] + w)
+       }
+       
+       # Create test data with expanded range for grid generation
+       test_data <- data.frame(
+         Sim = d$Sim[1],
+         X1 = seq(expand_range(d$X1)[1], expand_range(d$X1)[2], length.out = 10),
+         X2 = seq(expand_range(d$X2)[1], expand_range(d$X2)[2], length.out = 10)
+       )
+       
+       tryCatch({
+         # Build plots with error handling
+         rule <- as.numeric(shiny::isolate(input$drawRule))
+         
+         # Helper function to create error ggplot
+         error_plot <- function(msg) {
+           ggplot2::ggplot() + 
+             ggplot2::annotate("text", x = 0.5, y = 0.5, label = msg, size = 5) +
+             ggplot2::theme_void() +
+             ggplot2::labs(title = msg)
+         }
+         
+         # RandomForest specifically fails if any factor level has 0 points
+         # So we need to drop empty levels just for the data we feed to it, or it throws
+         # "Can't have empty classes in y."
+         
+         p1 <- tryCatch(
+           ppbound(rule, data = d, test = d, meth = "Rpart", entro = FALSE, title = "Rpart"),
+           error = function(e) error_plot("Rpart failed")
+         )
+         
+         p2 <- tryCatch(
+           ppbound(rule, data = d, test = d, meth = "Original", entro = FALSE, title = "PPtree"),
+           error = function(e) error_plot("PPtree failed")
+         )
+         
+         if (shiny::isolate(input$drawModi) == "1") {
+           p3 <- tryCatch(
+             ppbound(rule, data = d, test = d, meth = "Modified", entro = FALSE, title = "PPtreeExt: Sub"),
+             error = function(e) error_plot("PPtreeExt Sub failed")
+           )
+         } else {
+           p3 <- tryCatch(
+             ppboundMOD(data = d, test = d, meth = "MOD", entro = FALSE, entroindiv = TRUE, 
+                        title = "PPtreeExt: Mul", strule = rule, tot = nrow(d)),
+             error = function(e) error_plot("PPtreeExt Mul failed")
+           )
+         }
+         
+         p4 <- tryCatch({
+           # Random forest needs dropping empty levels or it fails
+           d_rf <- d
+           d_rf$Sim <- droplevels(d_rf$Sim)
+           ppbound(rule, data = d_rf, test = d_rf, meth = "RandomForest", entro = FALSE, title = "Random Forest")
+         }, error = function(e) error_plot("RandomForest failed")
+         )
+         
+         gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 4)
+         
+       }, error = function(e) {
+         plot(0, main = paste("Error:", e$message))
+       })
      })
      
    }
