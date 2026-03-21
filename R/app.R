@@ -890,26 +890,87 @@
      })
      
      output$drawBoundaries <- shiny::renderPlot({
-      shiny::req(draw_run() > 0)
+       shiny::req(draw_run() > 0)
 
-      d <- shiny::isolate(drawn_data())
-      if (nrow(d) < 5 || length(unique(d$Sim)) < 2) return(plot(0, main = "Need 5 points & 2+ classes"))
+       d <- shiny::isolate(drawn_data())
+       
+       # Validation
+       if (nrow(d) < 5) return(plot(0, main = "Need at least 5 points"))
+       if (length(unique(d$Sim)) < 2) return(plot(0, main = "Need at least 2 different classes"))
 
-      d$Sim <- as.factor(d$Sim)
-
-      if (shiny::isolate(input$drawModi) == "1") {
-        modpl <- ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Modified", entro=FALSE, title="PPtreeExt: Sub")
-      } else {
-        modpl <- ppboundMOD(data=d, test=d, meth="MOD", entro=FALSE, entroindiv=TRUE, title="PPtreeExt: Mul", strule=as.numeric(shiny::isolate(input$drawRule)), tot=nrow(d))
-      }
-
-      gridExtra::grid.arrange(
-        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Rpart", entro=FALSE, title="Rpart"),
-        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="Original", entro=FALSE, title="PPtree"),
-        modpl,
-        ppbound(as.numeric(shiny::isolate(input$drawRule)), data=d, test=d, meth="RandomForest", entro=FALSE, title="Random Forest"),
-         ncol = 4
-      )
+       # FIX 1: Explicitly set all factor levels (sim1, sim2, sim3)
+       d$Sim <- factor(d$Sim, levels = c("sim1", "sim2", "sim3"))
+       
+       # FIX 2: Ensure numeric columns are actually numeric
+       d$X1 <- as.numeric(d$X1)
+       d$X2 <- as.numeric(d$X2)
+       
+       # FIX 3: Expand data range slightly to avoid grid collapse
+       expand_range <- function(x, pct = 0.1) {
+         r <- range(x, na.rm = TRUE)
+         w <- max(abs(r)) * pct
+         c(r[1] - w, r[2] + w)
+       }
+       
+       # Create test data with expanded range for grid generation
+       test_data <- data.frame(
+         Sim = d$Sim[1],
+         X1 = seq(expand_range(d$X1)[1], expand_range(d$X1)[2], length.out = 10),
+         X2 = seq(expand_range(d$X2)[1], expand_range(d$X2)[2], length.out = 10)
+       )
+       
+       tryCatch({
+         # Build plots with error handling
+         rule <- as.numeric(shiny::isolate(input$drawRule))
+         
+         # Helper function to create error ggplot
+         error_plot <- function(msg) {
+           ggplot2::ggplot() + 
+             ggplot2::annotate("text", x = 0.5, y = 0.5, label = msg, size = 5) +
+             ggplot2::theme_void() +
+             ggplot2::labs(title = msg)
+         }
+         
+         # RandomForest specifically fails if any factor level has 0 points
+         # So we need to drop empty levels just for the data we feed to it, or it throws
+         # "Can't have empty classes in y."
+         
+         p1 <- tryCatch(
+           ppbound(rule, data = d, test = d, meth = "Rpart", entro = FALSE, title = "Rpart"),
+           error = function(e) error_plot("Rpart failed")
+         )
+         
+         p2 <- tryCatch(
+           ppbound(rule, data = d, test = d, meth = "Original", entro = FALSE, title = "PPtree"),
+           error = function(e) error_plot("PPtree failed")
+         )
+         
+         if (shiny::isolate(input$drawModi) == "1") {
+           p3 <- tryCatch(
+             ppbound(rule, data = d, test = d, meth = "Modified", entro = FALSE, title = "PPtreeExt: Sub"),
+             error = function(e) error_plot("PPtreeExt Sub failed")
+           )
+         } else {
+           p3 <- tryCatch(
+             ppboundMOD(data = d, test = d, meth = "MOD", entro = FALSE, entroindiv = TRUE, 
+                        title = "PPtreeExt: Mul", strule = rule, tot = nrow(d)),
+             error = function(e) error_plot("PPtreeExt Mul failed")
+           )
+         }
+         
+         p4 <- tryCatch({
+           # Random forest needs dropping empty levels or it fails
+           d_rf <- d
+           d_rf$Sim <- droplevels(d_rf$Sim)
+           ppbound(rule, data = d_rf, test = d_rf, meth = "RandomForest", entro = FALSE, title = "Random Forest")
+         }, error = function(e) error_plot("RandomForest failed")
+         )
+         
+         gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 4)
+         
+       }, error = function(e) {
+         plot(0, main = paste("Error:", e$message))
+       })
      })
      
    }
