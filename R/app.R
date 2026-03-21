@@ -166,7 +166,7 @@
          ggplot2::labs(
            x = " ",
            y = "",
-           title = paste(title, "(test error", err, "%)", sep = '')
+           title = paste(title, "\n(test error: ", err, "%)", sep = '')
          )
      } else{
        pl.pp  <-
@@ -196,7 +196,7 @@
          ggplot2::labs(
            x = " ",
            y = "",
-           title = paste(title, "(test error", err, "%)", sep = '')
+           title = paste(title, "\n(test error: ", err, "%)", sep = '')
          )
      }
      
@@ -275,7 +275,7 @@
            ggplot2::labs(
              x = " ",
              y = "",
-             title = paste(title, "(test error", err, "%)", sep = '')
+             title = paste(title, "\n(test error: ", err, "%)", sep = '')
            )
          
        } else {
@@ -309,7 +309,7 @@
            ggplot2::labs(
              x = " ",
              y = "",
-             title = paste(title, "(test error", err, "%)", sep = '')
+             title = paste(title, "\n(test error: ", err, "%)", sep = '')
            )
          
        }
