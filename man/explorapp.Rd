@@ -2,7 +2,7 @@
 % Please edit documentation in R/app.R
 \name{explorapp}
 \alias{explorapp}
-\title{Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios}
+\title{Shiny app to compare PPtree, PPtreeExt, rpart and C5.0 boundaries in 2D with different simulation scenarios}
 \usage{
 explorapp(ui, server)
 }
@@ -15,7 +15,7 @@ explorapp(ui, server)
 No return value, called for side effects. Shinyapp is launched.
 }
 \description{
-Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
+Shiny app to compare PPtree, PPtreeExt, rpart and C5.0 boundaries in 2D with different simulation scenarios
 }
 \examples{
 if(interactive()){
