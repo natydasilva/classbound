@@ -496,6 +496,50 @@
          shiny::fluidRow(shiny::plotOutput("plotsmaitra"))
          ##
          
+       ),
+       # --- Tab 4: Draw-Data ---
+       shiny::tabPanel(
+         "Draw-Data",
+         shiny::fluidRow(
+           shiny::column(
+             3,
+             shiny::selectInput(
+               inputId = "draw_class",
+               label = "Select class to draw",
+               choices = c("sim1" = "sim1", "sim2" = "sim2", "sim3" = "sim3"),
+               selected = "sim1"
+             )
+           ),
+           shiny::column(
+             3,
+             shiny::selectInput(
+               inputId = "rule4",
+               label = "Rule",
+               choices = 1:8,
+               selected = 1
+             )
+           ),
+           shiny::column(
+             3,
+             shiny::selectInput(
+               inputId = "modi4",
+               label = "Modification",
+               choices = c("Subsetting clases" = "1",
+                           "Multiple splits"   = "3"),
+               selected = 3
+             )
+           )
+         ),
+         shiny::fluidRow(
+           shiny::column(2, shiny::actionButton("draw_classify", label = "Classify")),
+           shiny::column(2, shiny::actionButton("draw_clear", label = "Clear")),
+           shiny::column(6, shiny::helpText("Click on the canvas below to add points. Select class first."))
+         ),
+         shiny::fluidRow(
+           shiny::plotOutput("drawCanvas", click = "draw_click",
+                             height = "400px", width = "400px")
+         ),
+         shiny::fluidRow(shiny::plotOutput("drawBoundaries"))
        )
      )
    ))
@@ -802,11 +846,129 @@
            ncol = 3
          )
        }
-     })
-     
-   }
-   
-   shiny::shinyApp(ui = ui, server = server)
- }
- 
- 
+    })
+      
+      
+    # --- Draw-Data ---
+    drawn_pts <- shiny::reactiveValues(
+      data = data.frame(Sim = character(0), X1 = numeric(0), X2 = numeric(0))
+    )
+    
+    # Handle clicks on the canvas
+    shiny::observeEvent(input$draw_click, {
+      new_point <- data.frame(
+        Sim = input$draw_class,
+        X1  = input$draw_click$x,
+        X2  = input$draw_click$y
+      )
+      drawn_pts$data <- rbind(drawn_pts$data, new_point)
+    })
+    
+    # Clear button
+    shiny::observeEvent(input$draw_clear, {
+      drawn_pts$data <- data.frame(Sim = character(0), X1 = numeric(0), X2 = numeric(0))
+    })
+    
+    # Render the drawing canvas
+    output$drawCanvas <- shiny::renderPlot({
+      dat <- drawn_pts$data
+      p <- ggplot2::ggplot() +
+        ggplot2::xlim(-5, 5) + ggplot2::ylim(-5, 5) +
+        ggplot2::theme_bw() +
+        ggplot2::theme(aspect.ratio = 1) +
+        ggplot2::labs(x = "X1", y = "X2", title = "Click to draw points")
+      if (nrow(dat) > 0) {
+        dat$Sim <- as.factor(dat$Sim)
+        p <- p +
+          ggplot2::geom_point(
+            data = dat,
+            ggplot2::aes(x = X1, y = X2, color = Sim, shape = Sim),
+            size = 3
+          ) +
+          ggplot2::scale_colour_brewer(name = "Class", type = "qual", palette = "Dark2")
+      }
+      p
+    })
+    
+    # Classify drawn data and show boundaries
+    output$drawBoundaries <- shiny::renderPlot({
+      if (input$draw_classify) {
+        dat <- shiny::isolate(drawn_pts$data)
+        if (nrow(dat) < 6) return(NULL)
+        
+        # Check we have at least 2 classes
+        n_classes <- length(unique(dat$Sim))
+        if (n_classes < 2) return(NULL)
+        
+        dat$Sim <- as.factor(dat$Sim)
+        
+        # Generate test data by jittering the drawn points
+        n_test <- max(round(nrow(dat) * 0.25), n_classes)
+        idx <- sample(nrow(dat), n_test, replace = TRUE)
+        dat_test <- dat[idx, ]
+        dat_test$X1 <- dat_test$X1 + stats::rnorm(n_test, sd = 0.1)
+        dat_test$X2 <- dat_test$X2 + stats::rnorm(n_test, sd = 0.1)
+        
+        x4 <- shiny::isolate(as.numeric(input$stop4))
+        
+        # Helper: create an error placeholder plot
+        error_plot <- function(title, msg) {
+          ggplot2::ggplot() +
+            ggplot2::annotate("text", x = 0.5, y = 0.5, label = msg, size = 4) +
+            ggplot2::theme_void() +
+            ggplot2::labs(title = title)
+        }
+        
+        # Build plots using existing ppbound function (with tryCatch for robustness)
+        pl_rpart <- tryCatch(
+          ppbound(
+            ru = as.numeric(input$rule4),
+            data = dat, test = dat_test,
+            meth = "Rpart", entro = FALSE, title = "Rpart"
+          ),
+          error = function(e) error_plot("Rpart", paste("Error:", e$message))
+        )
+        
+        pl_pptree <- tryCatch(
+          ppbound(
+            ru = as.numeric(input$rule4),
+            data = dat, test = dat_test,
+            meth = "Original", entro = FALSE, title = "PPtree"
+          ),
+          error = function(e) error_plot("PPtree", paste("Error:", e$message))
+        )
+        
+        modpl <- error_plot("PPtreeExt", "Not computed")
+        if (input$modi4 == 1) {
+          modpl <- tryCatch(
+            ppbound(
+              ru = 1, data = dat, test = dat_test,
+              meth = "Modified", entro = FALSE,
+              title = "PPtreeExt: Subsetting clases"
+            ),
+            error = function(e) error_plot("PPtreeExt", paste("Error:", e$message))
+          )
+        }
+        if (input$modi4 == 3) {
+          modpl <- tryCatch(
+            ppboundMOD(
+              data = dat, test = dat_test,
+              meth = "MOD", entro = FALSE, entroindiv = TRUE,
+              title = "PPtreeExt: Multiple splits",
+              strule = x4, tot = nrow(dat)
+            ),
+            error = function(e) error_plot("PPtreeExt", paste("Error:", e$message))
+          )
+        }
+        
+        gridExtra::grid.arrange(
+          pl_rpart, pl_pptree, modpl,
+          ncol = 3
+        )
+      }
+    })
+    
+  }
+    
+    shiny::shinyApp(ui = ui, server = server)
+  }
