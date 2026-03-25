@@ -1,4 +1,4 @@
-#' Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
+#' Shiny app to compare PPtree, PPtreeExt, rpart and C5.0 boundaries in 2D with different simulation scenarios
  #' 
  #' @usage explorapp(ui, server) 
  #' @param ui user interface
@@ -67,7 +67,7 @@
    # data data frame with the simulated dataset 
    # test data frame simulated test data 
    # entro logical; if TRUE use entropy in the modified PPtreeExt
-   # meth character; method to use "Original" for PPtree, "Rpart" for rpart, "Modified" for PPtreeExt with subsetting classes
+   # meth character; method to use "Original" for PPtree, "Rpart" for rpart, "Modified" for PPtreeExt with subsetting classes, "C50" for C5.0
    # title character; title for the plot
    # simM logical; if TRUE use shapes and colors for classes, if FALSE use only colors
    
@@ -105,6 +105,16 @@
            predict(rpart.mod, newdata = test[, -1], type = "class") , test[, 1]
          ))) / nrow(test[, -1]), 3) * 100
        
+     }
+     
+     if (meth == "C50") {
+       c50.mod <- C50::C5.0(Sim ~ ., data = data)
+       grilla$pred <-
+         predict(c50.mod, newdata = grilla, type = "class")
+       err <-
+         round(1 - sum(diag(table(
+           predict(c50.mod, newdata = test[, -1], type = "class") , test[, 1]
+         ))) / nrow(test[, -1]), 3) * 100
      }
      
      if (meth == "Modified") {
@@ -572,7 +582,15 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru =  as.numeric(input$rule),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "C50",
+             entro = FALSE,
+             title = "C5.0"
+           ),
+           ncol = 4
          )
        }
      })
@@ -680,7 +698,15 @@
            
            # ppbound(ru =  as.numeric(input$rule2), FALSE, data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru =  as.numeric(input$rule2),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "C50",
+             entro = FALSE,
+             title = "C5.0"
+           ),
+           ncol = 4
          )
          
          
@@ -799,7 +825,16 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule3),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "C50",
+             entro = FALSE,
+             title = "C5.0",
+             simM = TRUE
+           ),
+           ncol = 4
          )
        }
      })
