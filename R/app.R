@@ -125,6 +125,21 @@
        
      }
      
+     if (meth == "RandomForest") {
+       if (!requireNamespace("randomForest", quietly = TRUE)) {
+         stop(
+           "Package 'randomForest' is required for method 'RandomForest'. ",
+           "Please install it with: install.packages('randomForest')"
+         )
+       }
+       ntree_val <- getOption("ppbound.randomForest.ntree", 500)
+       rf.mod <- randomForest::randomForest(Sim ~ ., data = data, ntree = ntree_val)
+       grilla$pred <- predict(rf.mod, newdata = grilla, type = "response")
+       err <- round(1 - sum(diag(table(
+         predict(rf.mod, newdata = test[, -1], type = "response"), test[, 1]
+       ))) / nrow(test[, -1]), 3) * 100
+     }
+     
      #ruleid <- pptree$splitCutoff.node[,ru]
      if (simM) {
        pl.pp  <-
@@ -151,7 +166,7 @@
          ggplot2::labs(
            x = " ",
            y = "",
-           title = paste(title, "(test error", err, "%)", sep = '')
+           title = paste(title, "\n(test error: ", err, "%)", sep = '')
          )
      } else{
        pl.pp  <-
@@ -181,7 +196,7 @@
          ggplot2::labs(
            x = " ",
            y = "",
-           title = paste(title, "(test error", err, "%)", sep = '')
+           title = paste(title, "\n(test error: ", err, "%)", sep = '')
          )
      }
      
@@ -260,7 +275,7 @@
            ggplot2::labs(
              x = " ",
              y = "",
-             title = paste(title, "(test error", err, "%)", sep = '')
+             title = paste(title, "\n(test error: ", err, "%)", sep = '')
            )
          
        } else {
@@ -294,7 +309,7 @@
            ggplot2::labs(
              x = " ",
              y = "",
-             title = paste(title, "(test error", err, "%)", sep = '')
+             title = paste(title, "\n(test error: ", err, "%)", sep = '')
            )
          
        }
@@ -591,7 +606,15 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest"
+           ),
+           ncol = 4
          )
        }
      })
@@ -699,7 +722,15 @@
            
            # ppbound(ru =  as.numeric(input$rule2), FALSE, data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule2),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest"
+           ),
+           ncol = 4
          )
          
          
@@ -818,7 +849,16 @@
            ),
            #ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
            modpl,
-           ncol = 3
+           ppbound(
+             ru = as.numeric(input$rule3),
+             data = dat.pl2,
+             test = dat.test,
+             meth = "RandomForest",
+             entro = FALSE,
+             title = "Random Forest",
+             simM = TRUE
+           ),
+           ncol = 4
          )
        }
      })
