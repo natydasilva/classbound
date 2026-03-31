@@ -80,6 +80,15 @@
      
      data$Sim <- as.factor(data$Sim)
      
+     # Default error rate fallback (prevents crash if method block fails)
+     err <- NA
+     
+     # Validate method
+     valid_methods <- c("Rpart", "Original", "Modified", "RandomForest")
+     if (!meth %in% valid_methods) {
+       stop(paste("Unknown method:", meth, "- must be one of:", paste(valid_methods, collapse = ", ")))
+     }
+     
      if (meth == "Original") {
        pptree <- PPtreeViz::PPTreeclass(Sim ~ ., data = data, "LDA")
        ppred.sim <-
