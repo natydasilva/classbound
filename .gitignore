@@ -1,4 +1,26 @@
+# R package ignores
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# Build artifacts
+inst/doc
+docs
+*.tar.gz
+*.zip
+
+# IDE
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# pkgdown
+_pkgdown/
+docs/
+
+# Testing
+.coverage
+.testthat/
