@@ -1,0 +1,25 @@
+# classbound
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-"
+)
+```
+
+An R package for exploring classification decision boundaries.
+
+## Installation
+
+```{r, eval = FALSE}
+devtools::install_github("natydasilva/classbound")
+```
+
+## Quick Start
+
+```{r, eval = FALSE}
+library(classbound)
+data(data69_1)
+# Explore classification boundaries
+```

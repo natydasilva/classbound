@@ -9,6 +9,8 @@ inst/doc
 docs
 *.tar.gz
 *.zip
+README.html
+README.knit.md
 
 # IDE
 .vscode/
