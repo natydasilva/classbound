@@ -4,18 +4,34 @@
 \alias{plot_boundary}
 \title{Visualize the classification decision boundary}
 \usage{
-plot_boundary(boundary, type = "2D", ...)
+plot_boundary(
+  boundary,
+  obs_data = NULL,
+  x_col = NULL,
+  y_col = NULL,
+  true_label = NULL,
+  type = "2D",
+  ...
+)
 }
 \arguments{
-\item{boundary}{The boundary data object returned by \code{boundary_compute()}.}
+\item{boundary}{The boundary data frame returned by \code{boundary_compute()}.}
 
-\item{type}{The type of visualization to generate ('2D', 'tour').}
+\item{obs_data}{Optional data frame of training observations to overlay.}
 
-\item{...}{Additional visualization parameters (e.g. colors, aesthetics).}
+\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Required if \code{obs_data} is provided.}
+
+\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Required if \code{obs_data} is provided.}
+
+\item{true_label}{Column name in \code{obs_data} representing the true class labels. Required if \code{obs_data} is provided.}
+
+\item{type}{The type of visualization to generate. Only '2D' is supported.}
+
+\item{...}{Additional visualization parameters.}
 }
 \value{
-A \code{ggplot2} object or a \code{tourr} projection object.
+A \code{ggplot2} object.
 }
 \description{
-Renders a 2D plot or prepares a tour projection for high-dimensional boundary exploration.
+Renders a 2D plot for boundary exploration.
 }

@@ -4,19 +4,19 @@
 \alias{boundary_compute}
 \title{Compute the classification decision boundary}
 \usage{
-boundary_compute(model, range, resolution, ...)
+boundary_compute(model, range, resolution = 100, ...)
 }
 \arguments{
-\item{model}{A fitted model object.}
+\item{model}{A fitted model object of class \code{classbound_model}.}
 
-\item{range}{A list or data frame defining the feature ranges.}
+\item{range}{A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
 
 \item{resolution}{An integer specifying the grid resolution.}
 
 \item{...}{Additional computation parameters.}
 }
 \value{
-A data structure representing the decision boundary.
+A data frame containing the grid points (\code{x}, \code{y}), predicted \code{prediction}, and probabilities.
 }
 \description{
 Computes the decision boundary for a fitted classifier over a specified feature space.
