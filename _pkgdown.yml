@@ -2,3 +2,13 @@ url: https://natydasilva.github.io/classbound/
 template:
   bootstrap: 5
 
+reference:
+  - title: "Datasets"
+    desc: "Included datasets."
+    contents:
+      - has_keyword("datasets")
+  - title: "Functions"
+    desc: "All package functions."
+    contents:
+      - matches(".")
+      - -has_keyword("datasets")
