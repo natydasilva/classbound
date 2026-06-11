@@ -12,13 +12,14 @@ This R package allows to explore decision boundaries for existing classification
 Useful links:
 \itemize{
   \item \url{https://github.com/natydasilva/classbound}
+  \item \url{https://natydasilva.github.io/classbound/}
 }
 
 }
 \author{
 \strong{Maintainer}: Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})
 
-Other contributors:
+Authors:
 \itemize{
   \item Vaibhav Manihar \email{vaibhav.manihar@gmail.com} [contributor]
 }

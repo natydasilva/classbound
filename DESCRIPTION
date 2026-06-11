@@ -1,6 +1,6 @@
 Package: classbound
 Title: Visualization for classification decision boundaries
-Version: 0.0.0.1
+Version: 0.1.0
 Authors@R: c(
     person(given = "Natalia",
            family = "da Silva",
@@ -9,12 +9,12 @@ Authors@R: c(
            comment = c(ORCID = "https://orcid.org/0000-0002-6031-7451")),
     person(given = "Vaibhav",
            family = "Manihar",
-           role = "ctb",
+           role = c("aut", "ctb"),
            email = "vaibhav.manihar@gmail.com")
     )
 Description: This R package allows to explore decision boundaries for existing classification methods and also for new methods.
 License: GPL (>= 2)
-URL: https://github.com/natydasilva/classbound
+URL: https://github.com/natydasilva/classbound, https://natydasilva.github.io/classbound/
 LazyData: yes
 Depends:
     R (>= 4.3.0)

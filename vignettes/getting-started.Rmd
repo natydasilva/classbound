@@ -14,6 +14,74 @@ knitr::opts_chunk$set(
 )
 ```
 
+## Introduction
+
+The **classbound** package provides a streamlined interface for computing, visualizing, and interactively exploring classification decision boundaries in R. Whether you are teaching machine learning concepts, evaluating model performance, or debugging complex classifiers, `classbound` helps you understand how your models partition the feature space.
+
 ```{r setup}
 library(classbound)
 ```
+
+## Fitting a Model
+
+`classbound` provides a unified `fit_model()` function that wraps various underlying algorithms. For example, to fit a decision tree:
+
+```{r fit-model}
+# Load the included example dataset
+data(data69_1)
+
+# Convert the target to a factor for classification
+data69_1$Y <- as.factor(data69_1$Y)
+
+# Fit an rpart decision tree model
+model <- fit_model(
+  data = data69_1[, c("V1", "V2")], 
+  labels = data69_1$Y, 
+  method = "rpart"
+)
+```
+
+## Computing the Decision Boundary
+
+Once a model is fitted, you can compute the boundary over a specified grid. Define the range for your features and the grid resolution:
+
+```{r compute-boundary}
+# Define the range for the grid
+feature_range <- list(
+  V1 = c(min(data69_1$V1), max(data69_1$V1)),
+  V2 = c(min(data69_1$V2), max(data69_1$V2))
+)
+
+# Compute predictions over the grid
+grid_data <- boundary_compute(
+  model = model, 
+  range = feature_range, 
+  resolution = 100
+)
+
+head(grid_data)
+```
+
+## Visualizing the Boundary
+
+To visualize the resulting boundary, pass the computed grid data to `plot_boundary()`. You can also overlay the original training observations to see how well the regions match the true classes.
+
+```{r plot-boundary, fig.width=6, fig.height=4}
+plot_boundary(
+  boundary = grid_data, 
+  obs_data = data69_1, 
+  x_col = "V1", 
+  y_col = "V2", 
+  true_label = "Y"
+)
+```
+
+## Interactive Exploration
+
+For interactive exploration of data and models, you can launch the built-in Shiny application:
+
+```r
+explorapp()
+```
+
+This app allows you to upload data, select features, train models, and visualize boundaries on the fly.

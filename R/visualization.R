@@ -11,6 +11,13 @@
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
+#' @examples
+#' \donttest{
+#' data(data69_1)
+#' model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+#' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+#' plot_boundary(grid, data69_1, "V1", "V2", "Y")
+#' }
 #' @export
 plot_boundary <- function(boundary, obs_data = NULL, x_col = NULL, y_col = NULL, true_label = NULL, type = "2D", ...) {
   if (type != "2D") {

@@ -8,6 +8,12 @@
 #' @param ... Additional computation parameters.
 #'
 #' @return A data frame containing the grid points (`x`, `y`), predicted `prediction`, and probabilities.
+#' @examples
+#' \donttest{
+#' data(data69_1)
+#' model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+#' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+#' }
 #' @export
 boundary_compute <- function(model, range, resolution = 100, ...) {
   if (!inherits(model, "classbound_model")) {

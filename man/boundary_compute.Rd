@@ -21,3 +21,10 @@ A data frame containing the grid points (\code{x}, \code{y}), predicted \code{pr
 \description{
 Computes the decision boundary for a fitted classifier over a specified feature space.
 }
+\examples{
+\donttest{
+data(data69_1)
+model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+}
+}
