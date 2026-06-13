@@ -17,6 +17,7 @@ predict_model <- function(model, newdata, ...) {
   preds <- switch(
     model$method,
     "rpart" = predict_rpart(model$model, newdata, ...),
+    "pptree" = predict_pptree(model$model, newdata, ...),
     stop(sprintf("Prediction for method '%s' is not supported.", model$method), call. = FALSE)
   )
 

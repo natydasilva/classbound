@@ -18,6 +18,7 @@ fit_model <- function(data, labels, method, ...) {
   model_fit <- switch(
     method,
     "rpart" = fit_rpart(data, labels, ...),
+    "pptree" = fit_pptree(data, labels, ...),
     stop(sprintf("Classifier method '%s' is not supported.", method), call. = FALSE)
   )
 
