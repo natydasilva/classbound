@@ -18,6 +18,7 @@ predict_model <- function(model, newdata, ...) {
     model$method,
     "rpart" = predict_rpart(model$model, newdata, ...),
     "pptree" = predict_pptree(model$model, newdata, ...),
+    "randomForest" = predict_randomForest(model$model, newdata, ...),
     stop(sprintf("Prediction for method '%s' is not supported.", model$method), call. = FALSE)
   )
 

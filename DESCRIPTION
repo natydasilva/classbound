@@ -30,6 +30,7 @@ Suggests:
     roxygen2 (>= 7.3.0),
     PPtreeViz,
     PPtreeExt,
+    randomForest,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
