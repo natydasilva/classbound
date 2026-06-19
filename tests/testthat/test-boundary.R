@@ -1,7 +1,9 @@
 test_that("boundary_compute works correctly with rpart model", {
-  # Use a 2D subset of iris to avoid missing columns in predict
-  train_data <- iris[, c("Sepal.Length", "Sepal.Width")]
-  train_labels <- iris$Species
+  # Use a 2D subset of penguins to avoid missing columns in predict
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
+  train_labels <- penguins$species
   
   model <- fit_model(
     data = train_data,
@@ -11,8 +13,8 @@ test_that("boundary_compute works correctly with rpart model", {
   
   # Define range
   feature_range <- list(
-    Sepal.Length = c(4.0, 8.0),
-    Sepal.Width = c(2.0, 5.0)
+    bill_length_mm = c(30.0, 60.0),
+    bill_depth_mm = c(10.0, 25.0)
   )
   
   # Compute boundary
@@ -27,17 +29,19 @@ test_that("boundary_compute works correctly with rpart model", {
   expect_true(is.factor(res$prediction))
   
   # Check probabilities exist (rpart provides them)
-  # levels of Species are setosa, versicolor, virginica
-  expect_true(all(c("setosa", "versicolor", "virginica") %in% colnames(res)))
+  # levels of species are Adelie, Chinstrap, Gentoo
+  expect_true(all(c("Adelie", "Chinstrap", "Gentoo") %in% colnames(res)))
   
   # Check probabilities sum to 1 row-wise
-  probs_sum <- rowSums(res[, c("setosa", "versicolor", "virginica")])
+  probs_sum <- rowSums(res[, c("Adelie", "Chinstrap", "Gentoo")])
   expect_true(all(abs(probs_sum - 1) < 1e-6))
 })
 
 test_that("boundary_compute handles errors gracefully", {
-  train_data <- iris[, c("Sepal.Length", "Sepal.Width")]
-  train_labels <- iris$Species
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
+  train_labels <- penguins$species
   model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
   
   # Not a classbound_model

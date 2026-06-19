@@ -1,7 +1,9 @@
 test_that("fit_model and predict_model work end-to-end with rpart", {
-  # Simple Iris dataset subset
-  train_data <- iris[, 1:4]
-  train_labels <- iris$Species
+  # Simple penguins dataset subset
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  train_data <- penguins[, 2:5]
+  train_labels <- penguins$species
 
   # 1. Fit Phase
   model <- fit_model(

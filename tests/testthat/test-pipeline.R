@@ -1,7 +1,9 @@
 
 test_that("fit_model handles invalid inputs and unsupported methods gracefully", {
-  train_data <- iris[, 1:4]
-  train_labels <- iris$Species
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  train_data <- penguins[, 2:5]
+  train_labels <- penguins$species
 
   # Missing method
   expect_error(
@@ -17,11 +19,12 @@ test_that("fit_model handles invalid inputs and unsupported methods gracefully",
 })
 
 test_that("predict_model correctly enforces structural constraints", {
-  # Unwrapped model passed directly
-  raw_rpart <- rpart::rpart(Species ~ ., data = iris)
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  raw_rpart <- rpart::rpart(species ~ ., data = penguins)
   
   expect_error(
-    predict_model(raw_rpart, newdata = iris),
+    predict_model(raw_rpart, newdata = penguins),
     "must be a 'classbound_model'"
   )
 })
