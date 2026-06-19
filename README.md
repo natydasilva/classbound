@@ -32,30 +32,36 @@ boundary:
 
 ``` r
 library(classbound)
+library(palmerpenguins)
 
-# 1. Load sample dataset
-data(data69_1)
+# 1. Load and prepare sample dataset
+penguins <- na.omit(penguins[, -c(2, 7, 8)])
 
-# Convert the target to a factor for classification
-data69_1$Y <- as.factor(data69_1$Y)
-
-# 2. Fit a decision tree (rpart)
-model <- fit_model(data = data69_1[, c("V1", "V2")], labels = data69_1$Y, method = "rpart")
+# 2. Fit a decision tree (rpart) predicting species
+model <- fit_model(
+  data = penguins[, c("bill_length_mm", "bill_depth_mm")], 
+  labels = penguins$species, 
+  method = "rpart"
+)
 
 # 3. Compute the boundary
-feature_range <- list(V1 = c(min(data69_1$V1), max(data69_1$V1)),
-                      V2 = c(min(data69_1$V2), max(data69_1$V2)))
+feature_range <- list(
+  bill_length_mm = c(30.0, 60.0),
+  bill_depth_mm = c(10.0, 25.0)
+)
 grid_data <- boundary_compute(model, range = feature_range, resolution = 100)
 
 # 4. Plot the decision boundary
 plot_boundary(
   boundary = grid_data, 
-  obs_data = data69_1, 
-  x_col = "V1", 
-  y_col = "V2", 
-  true_label = "Y"
+  obs_data = penguins, 
+  x_col = "bill_length_mm", 
+  y_col = "bill_depth_mm", 
+  true_label = "species"
 )
 ```
+
+<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="100%" />
 
 ### Interactive Exploration
 

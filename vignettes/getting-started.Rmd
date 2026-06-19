@@ -26,17 +26,15 @@ library(classbound)
 
 `classbound` provides a unified `fit_model()` function that wraps various underlying algorithms. For example, to fit a decision tree:
 
-```{r fit-model}
-# Load the included example dataset
-data(data69_1)
+```{r message=FALSE, warning=FALSE}
+# Load and prepare palmerpenguins dataset
+library(palmerpenguins)
+penguins <- na.omit(penguins[, -c(2, 7, 8)])
 
-# Convert the target to a factor for classification
-data69_1$Y <- as.factor(data69_1$Y)
-
-# Fit an rpart decision tree model
+# Fit an rpart decision tree model predicting species
 model <- fit_model(
-  data = data69_1[, c("V1", "V2")], 
-  labels = data69_1$Y, 
+  data = penguins[, c("bill_length_mm", "bill_depth_mm")], 
+  labels = penguins$species, 
   method = "rpart"
 )
 ```
@@ -45,11 +43,11 @@ model <- fit_model(
 
 Once a model is fitted, you can compute the boundary over a specified grid. Define the range for your features and the grid resolution:
 
-```{r compute-boundary}
+```{r}
 # Define the range for the grid
 feature_range <- list(
-  V1 = c(min(data69_1$V1), max(data69_1$V1)),
-  V2 = c(min(data69_1$V2), max(data69_1$V2))
+  bill_length_mm = c(30.0, 60.0),
+  bill_depth_mm = c(10.0, 25.0)
 )
 
 # Compute predictions over the grid
@@ -66,13 +64,13 @@ head(grid_data)
 
 To visualize the resulting boundary, pass the computed grid data to `plot_boundary()`. You can also overlay the original training observations to see how well the regions match the true classes.
 
-```{r plot-boundary, fig.width=6, fig.height=4}
+```{r}
 plot_boundary(
   boundary = grid_data, 
-  obs_data = data69_1, 
-  x_col = "V1", 
-  y_col = "V2", 
-  true_label = "Y"
+  obs_data = penguins, 
+  x_col = "bill_length_mm", 
+  y_col = "bill_depth_mm", 
+  true_label = "species"
 )
 ```
 
@@ -80,7 +78,7 @@ plot_boundary(
 
 For interactive exploration of data and models, you can launch the built-in Shiny application:
 
-```r
+```{r eval=FALSE}
 explorapp()
 ```
 
