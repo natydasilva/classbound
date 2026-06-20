@@ -20,6 +20,8 @@ fit_model <- function(data, labels, method, ...) {
     "rpart" = fit_rpart(data, labels, ...),
     "pptree" = fit_pptree(data, labels, ...),
     "randomForest" = fit_randomForest(data, labels, ...),
+    "PPforest" = fit_PPforest(data, labels, ...),
+    "PPtreeViz" = fit_PPtreeViz(data, labels, ...),
     stop(sprintf("Classifier method '%s' is not supported.", method), call. = FALSE)
   )
 

@@ -61,7 +61,7 @@ plot_boundary(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="70%" style="display: block; margin: auto;" />
 
 ### Interactive Exploration
 
