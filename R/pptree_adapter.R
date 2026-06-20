@@ -2,13 +2,14 @@
 #'
 #' @description Adapter function to fit a Projection Pursuit classification tree.
 #'
+#' @param object An S3 method spec object.
 #' @param data A data frame containing the training features.
 #' @param labels A vector (usually a factor) of target labels.
 #' @param ... Additional arguments passed to `PPtreeExt::PPtreeExtclass()`.
 #'
 #' @return A fitted `PPtreeExtclass` object.
 #' @export
-fit_pptree <- function(data, labels, ...) {
+fit_adapter.classbound_pptree <- function(object, data, labels, ...) {
   if (!requireNamespace("PPtreeExt", quietly = TRUE)) {
     stop("Package 'PPtreeExt' must be installed to use method = 'pptree'.", call. = FALSE)
   }
@@ -32,13 +33,14 @@ fit_pptree <- function(data, labels, ...) {
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities, NULL for pptree).
 #' @importFrom stats predict
 #' @export
-predict_pptree <- function(model, newdata, ...) {
-  if (!inherits(model, "PPtreeExtclass")) {
+predict_model.classbound_pptree <- function(model, newdata, ...) {
+  raw_model <- model$model
+  if (!inherits(raw_model, "PPtreeExtclass")) {
     stop("Model must be a 'PPtreeExtclass' object.", call. = FALSE)
   }
 
   # Predict classes
-  preds_raw <- predict(model, newdata, ...)
+  preds_raw <- predict(raw_model, newdata, ...)
   preds <- as.factor(preds_raw$predict.class)
 
   # Probability output is typically not provided natively by PPtreeExtclass

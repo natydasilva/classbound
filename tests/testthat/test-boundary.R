@@ -4,34 +4,34 @@ test_that("boundary_compute works correctly with rpart model", {
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
   train_labels <- penguins$species
-  
+
   model <- fit_model(
     data = train_data,
     labels = train_labels,
     method = "rpart"
   )
-  
+
   # Define range
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),
     bill_depth_mm = c(10.0, 25.0)
   )
-  
+
   # Compute boundary
   res <- boundary_compute(model, range = feature_range, resolution = 10)
-  
+
   # Check structure
   expect_s3_class(res, "data.frame")
   expect_true(all(c("x", "y", "prediction") %in% colnames(res)))
-  
+
   # 10 * 10 grid = 100 points
   expect_equal(nrow(res), 100)
   expect_true(is.factor(res$prediction))
-  
+
   # Check probabilities exist (rpart provides them)
   # levels of species are Adelie, Chinstrap, Gentoo
   expect_true(all(c("Adelie", "Chinstrap", "Gentoo") %in% colnames(res)))
-  
+
   # Check probabilities sum to 1 row-wise
   probs_sum <- rowSums(res[, c("Adelie", "Chinstrap", "Gentoo")])
   expect_true(all(abs(probs_sum - 1) < 1e-6))
@@ -43,22 +43,22 @@ test_that("boundary_compute handles errors gracefully", {
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
   train_labels <- penguins$species
   model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
-  
+
   # Not a classbound_model
   expect_error(
-    boundary_compute(model$model, range = list(x=c(1,2), y=c(1,2)), resolution = 10),
+    boundary_compute(model$model, range = list(x = c(1, 2), y = c(1, 2)), resolution = 10),
     "model must be a 'classbound_model' object"
   )
-  
+
   # Invalid range
   expect_error(
-    boundary_compute(model, range = c(1,2,3), resolution = 10),
+    boundary_compute(model, range = c(1, 2, 3), resolution = 10),
     "range must be a named list of length 2"
   )
-  
+
   # Unnamed list
   expect_error(
-    boundary_compute(model, range = list(c(1,2), c(1,2)), resolution = 10),
+    boundary_compute(model, range = list(c(1, 2), c(1, 2)), resolution = 10),
     "range must be a named list of length 2"
   )
 })

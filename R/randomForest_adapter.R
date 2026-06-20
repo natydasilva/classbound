@@ -2,13 +2,14 @@
 #'
 #' @description Adapter function to fit a random forest model.
 #'
+#' @param object An S3 method spec object.
 #' @param data A data frame containing the training features.
 #' @param labels A vector (usually a factor) of target labels.
 #' @param ... Additional arguments passed to `randomForest::randomForest()`.
 #'
 #' @return A fitted `randomForest` object.
 #' @export
-fit_randomForest <- function(data, labels, ...) {
+fit_adapter.classbound_randomForest <- function(object, data, labels, ...) {
   if (!requireNamespace("randomForest", quietly = TRUE)) {
     stop("Package 'randomForest' must be installed to use method = 'randomForest'.", call. = FALSE)
   }
@@ -30,13 +31,14 @@ fit_randomForest <- function(data, labels, ...) {
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities).
 #' @importFrom stats predict
 #' @export
-predict_randomForest <- function(model, newdata, ...) {
-  if (!inherits(model, "randomForest")) {
+predict_model.classbound_randomForest <- function(model, newdata, ...) {
+  raw_model <- model$model
+  if (!inherits(raw_model, "randomForest")) {
     stop("Model must be a 'randomForest' object.", call. = FALSE)
   }
 
-  preds <- predict(model, newdata, type = "response", ...)
-  probs <- predict(model, newdata, type = "prob", ...)
+  preds <- predict(raw_model, newdata, type = "response", ...)
+  probs <- predict(raw_model, newdata, type = "prob", ...)
 
   list(
     class = preds,

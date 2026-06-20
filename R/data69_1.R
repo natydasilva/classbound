@@ -1,9 +1,9 @@
 #' data69-1
-#' 
+#'
 #' @format  There are 5000 observations, 21 features and 3 classes
 #'
 #' \describe{
-#' \item{Y}{} 
+#' \item{Y}{}
 #' \item{V1}{}
 #' \item{V2}{}
 #' \item{V3}{}

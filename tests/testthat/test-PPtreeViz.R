@@ -19,9 +19,9 @@ test_that("fit_model and predict_model work with PPtreeViz", {
   expect_type(preds, "list")
   expect_true("class" %in% names(preds))
   expect_true("probs" %in% names(preds))
-  
+
   expect_s3_class(preds$class, "factor")
   expect_null(preds$probs)
-  
+
   expect_length(preds$class, nrow(train_data))
 })

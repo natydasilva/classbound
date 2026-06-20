@@ -9,3 +9,10 @@ Each adapter must implement its own \verb{fit_*} and \verb{predict_*} functions
 to map specific classifier package implementations (e.g. randomForest, e1071)
 into the unified \code{classbound} structure.
 }
+\details{
+The \verb{predict_*} function must return a list with two elements:
+\itemize{
+\item \code{class}: A factor vector of predicted class labels.
+\item \code{probs}: A probability matrix, or \code{NULL} if the classifier does not support probabilities.
+}
+}

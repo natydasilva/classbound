@@ -25,11 +25,11 @@ test_that("fit_model and predict_model work end-to-end with rpart", {
   # Output structure guarantees
   expect_type(preds, "list")
   expect_named(preds, c("class", "probs"))
-  
+
   # Predictions output expectations
   expect_equal(length(preds$class), nrow(train_data))
   expect_true(is.factor(preds$class))
-  
+
   # Probabilities output expectations
   expect_equal(nrow(preds$probs), nrow(train_data))
   expect_equal(ncol(preds$probs), length(levels(train_labels)))

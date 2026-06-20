@@ -19,10 +19,10 @@ test_that("fit_model and predict_model work with randomForest", {
   expect_type(preds, "list")
   expect_true("class" %in% names(preds))
   expect_true("probs" %in% names(preds))
-  
+
   expect_s3_class(preds$class, "factor")
   expect_true(is.matrix(preds$probs))
-  
+
   expect_length(preds$class, nrow(train_data))
   expect_equal(nrow(preds$probs), nrow(train_data))
 })

@@ -23,9 +23,9 @@ NULL
 #
 # predict_rf_adapter <- function(model, newdata, ...) {
 #   preds <- predict(model, newdata, type = "response")
-#   
+#
 #   # probs must be either a probability matrix or NULL if unsupported
 #   probs <- predict(model, newdata, type = "prob")
-#   
+#
 #   list(class = preds, probs = probs)
 # }

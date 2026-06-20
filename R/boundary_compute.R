@@ -19,34 +19,34 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
   if (!inherits(model, "classbound_model")) {
     stop("model must be a 'classbound_model' object.", call. = FALSE)
   }
-  
+
   if (!is.list(range) || length(range) != 2 || is.null(names(range))) {
     stop("range must be a named list of length 2 specifying feature ranges.", call. = FALSE)
   }
-  
+
   var_names <- names(range)
-  
+
   # Generate grid points for each dimension
   seq_x <- seq(from = min(range[[1]]), to = max(range[[1]]), length.out = resolution)
   seq_y <- seq(from = min(range[[2]]), to = max(range[[2]]), length.out = resolution)
-  
+
   # Create grid
   grid_df <- expand.grid(seq_x, seq_y)
   colnames(grid_df) <- var_names
-  
+
   # Predict using the standardized predict_model function
   preds <- predict_model(model, newdata = grid_df, ...)
-  
+
   # Combine grid and predictions
   res <- data.frame(
     x = grid_df[[1]],
     y = grid_df[[2]],
     prediction = preds$class
   )
-  
+
   if (!is.null(preds$probs)) {
     res <- cbind(res, as.data.frame(preds$probs))
   }
-  
+
   res
 }

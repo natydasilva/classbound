@@ -14,16 +14,11 @@ fit_model <- function(data, labels, method, ...) {
     stop("Please specify a classification method.", call. = FALSE)
   }
 
-  # Route fitting to specific adapter based on method
-  model_fit <- switch(
-    method,
-    "rpart" = fit_rpart(data, labels, ...),
-    "pptree" = fit_pptree(data, labels, ...),
-    "randomForest" = fit_randomForest(data, labels, ...),
-    "PPforest" = fit_PPforest(data, labels, ...),
-    "PPtreeViz" = fit_PPtreeViz(data, labels, ...),
-    stop(sprintf("Classifier method '%s' is not supported.", method), call. = FALSE)
-  )
+  # Convert method string into an S3 method spec for dispatch
+  method_spec <- structure(method, class = c(paste0("classbound_", method), "classbound_method"))
+
+  # Route fitting to specific adapter using S3 dispatch
+  model_fit <- fit_adapter(method_spec, data, labels, ...)
 
   # Wrap the fitted model and metadata to maintain context for prediction
   structure(
@@ -31,6 +26,24 @@ fit_model <- function(data, labels, method, ...) {
       model = model_fit,
       method = method
     ),
-    class = "classbound_model"
+    class = c(paste0("classbound_", method), "classbound_model")
   )
+}
+
+#' Internal generic for fitting classifier adapters
+#'
+#' @param object An S3 object defining the method spec.
+#' @param data A data frame containing the training features.
+#' @param labels A vector of target labels.
+#' @param ... Additional arguments.
+#'
+#' @keywords internal
+#' @export
+fit_adapter <- function(object, data, labels, ...) {
+  UseMethod("fit_adapter")
+}
+
+#' @export
+fit_adapter.default <- function(object, data, labels, ...) {
+  stop(sprintf("Classifier method '%s' is not supported.", as.character(object)), call. = FALSE)
 }
