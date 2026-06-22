@@ -17,3 +17,17 @@ The \verb{predict_*} function must return a list with two elements:
 Downstream pipeline functions (e.g., \code{boundary_compute()}) will handle \code{probs = NULL} natively.
 }
 }
+\section{Data Validation Contract}{
+
+Prior to calling an adapter's \verb{fit_*} method, the core pipeline (via \code{preprocess_data()})
+guarantees that the inputs are fully validated. Specifically:
+\itemize{
+\item \code{data} is a valid data frame with no missing values.
+\item \code{labels} is a valid factor vector with no missing values and no unused levels.
+\item All categorical predictors (character columns) in \code{data} have been converted to factors with unused levels dropped.
+}
+Because of this strict contract, individual adapter implementations should \strong{assume validated inputs}
+and should \strong{not duplicate basic validation logic} (e.g., checking for NAs, coercing characters to factors, or dropping levels).
+Adapters should focus solely on the model-specific logic required to fit and predict.
+}
+

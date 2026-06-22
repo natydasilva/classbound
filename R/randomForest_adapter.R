@@ -15,7 +15,7 @@ fit_adapter.classbound_randomForest <- function(object, data, labels, ...) {
   }
 
   train_data <- data
-  train_data$.label. <- as.factor(labels)
+  train_data$.label. <- labels
 
   randomForest::randomForest(.label. ~ ., data = train_data, ...)
 }

@@ -53,6 +53,14 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
     }
     stop(msg, call. = FALSE)
   }
+
+  # Ensure requested boundary features are numeric
+  feature_types <- model$features$types[var_names]
+  is_numeric <- vapply(feature_types, function(x) any(c("numeric", "integer") %in% x), logical(1))
+  
+  if (any(!is_numeric)) {
+    stop("Boundary generation requires numeric features. Categorical ranges are not supported.", call. = FALSE)
+  }
   # Generate grid points for each dimension
   seq_x <- seq(from = min(range[[1]]), to = max(range[[1]]), length.out = resolution)
   seq_y <- seq(from = min(range[[2]]), to = max(range[[2]]), length.out = resolution)

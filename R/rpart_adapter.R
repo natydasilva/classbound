@@ -16,7 +16,7 @@ fit_adapter.classbound_rpart <- function(object, data, labels, ...) {
 
   # Combine data and labels into a single formula for rpart
   train_data <- data
-  train_data$.label. <- as.factor(labels)
+  train_data$.label. <- labels
 
   # Fit the model
   rpart::rpart(.label. ~ ., data = train_data, ...)

@@ -14,8 +14,8 @@ fit_adapter.classbound_PPforest <- function(object, data, labels, ...) {
     stop("Package 'PPforest' must be installed to use method = 'PPforest'.", call. = FALSE)
   }
 
-  train_data <- as.data.frame(data)
-  train_data$.label. <- as.factor(labels)
+  train_data <- data
+  train_data$.label. <- labels
 
 
   # Extract dot args

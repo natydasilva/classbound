@@ -97,3 +97,18 @@ test_that("boundary_compute handles metadata validation gracefully", {
   )
 })
 
+test_that("boundary_compute rejects categorical features", {
+  library(palmerpenguins)
+  penguins <- na.omit(penguins)
+  
+  # Train model on a numeric and a character/factor column
+  train_data <- penguins[, c("bill_length_mm", "island")]
+  train_labels <- penguins$species
+  model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
+  
+  expect_error(
+    boundary_compute(model, range = list(bill_length_mm = c(30, 60), island = c(1, 2)), resolution = 10),
+    "Boundary generation requires numeric features. Categorical ranges are not supported."
+  )
+})
+

@@ -15,6 +15,10 @@ preprocess_data <- function(data, labels = NULL, scale = FALSE, ...) {
   if (!is.data.frame(data)) {
     stop("`data` must be a data.frame.", call. = FALSE)
   }
+  
+  # Coerce to a standard data.frame to remove tibble or other sub-classes
+  # This prevents indexing bugs in older packages that expect df[, col] to return a vector
+  data <- as.data.frame(data)
 
   if (!is.null(labels)) {
     if (length(labels) != nrow(data)) {

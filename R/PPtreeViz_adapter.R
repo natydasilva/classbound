@@ -14,8 +14,9 @@ fit_adapter.classbound_PPtreeViz <- function(object, data, labels, ...) {
     stop("Package 'PPtreeViz' must be installed to use method = 'PPtreeViz'.", call. = FALSE)
   }
 
-  train_data <- as.data.frame(data)
-  train_data$.label. <- as.factor(labels)
+  # Combine data and labels into a single formula for PPtreeViz
+  train_data <- data
+  train_data$.label. <- labels
 
   # Fit the model
   PPtreeViz::PPTreeclass(.label. ~ ., data = train_data, ...)
