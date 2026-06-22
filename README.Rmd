@@ -38,7 +38,7 @@ devtools::install_github("natydasilva/classbound")
 
 Here is a basic example of how to fit a model and visualize its decision boundary:
 
-```{r message=FALSE, warning=FALSE}
+```{r visualisation, message=FALSE, warning=FALSE}
 library(classbound)
 library(palmerpenguins)
 

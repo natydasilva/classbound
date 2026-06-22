@@ -25,20 +25,29 @@
 #' and should **not duplicate basic validation logic** (e.g., checking for NAs, coercing characters to factors, or dropping levels).
 #' Adapters should focus solely on the model-specific logic required to fit and predict.
 #'
+#' @section Implementation Convention:
+#' Adapters that use the formula interface combine features and labels via a reserved
+#' column name \code{.label.}: \code{train_data$.label. <- labels}. The core pipeline
+#' validates that user data does not contain a column with this reserved name.
+#'
+#' Example S3 adapter skeleton for a custom classifier "mymodel":
+#' ```R
+#' fit_adapter.classbound_mymodel <- function(object, data, labels, ...) {
+#'   train_data <- data
+#'   train_data$.label. <- labels
+#'   mypackage::myfit(.label. ~ ., data = train_data, ...)
+#' }
+#' 
+#' predict_model.classbound_mymodel <- function(model, newdata, ...) {
+#'   raw_model <- model$model
+#'   preds <- as.factor(predict(raw_model, newdata, ...))
+#' 
+#'   # probs must be either a probability matrix or NULL if unsupported
+#'   probs <- NULL
+#' 
+#'   list(class = preds, probs = probs)
+#' }
+#' ```
+#'
 #' @name adapter_interface
 NULL
-
-# Example adapter skeleton:
-#
-# fit_rf_adapter <- function(data, labels, ...) {
-#   randomForest::randomForest(x = data, y = labels, ...)
-# }
-#
-# predict_rf_adapter <- function(model, newdata, ...) {
-#   preds <- predict(model, newdata, type = "response")
-#
-#   # probs must be either a probability matrix or NULL if unsupported
-#   probs <- predict(model, newdata, type = "prob")
-#
-#   list(class = preds, probs = probs)
-# }

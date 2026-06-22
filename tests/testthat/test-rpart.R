@@ -1,4 +1,5 @@
 test_that("fit_model and predict_model work end-to-end with rpart", {
+  skip_if_not_installed("rpart")
   # Simple penguins dataset subset
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])

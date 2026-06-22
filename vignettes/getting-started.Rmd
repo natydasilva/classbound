@@ -76,10 +76,10 @@ plot_boundary(
 
 ## Interactive Exploration
 
-For interactive exploration of data and models, you can launch the built-in Shiny application:
+For interactive exploration using simulated datasets, you can launch the built-in Shiny application:
 
 ```{r eval=FALSE}
 explorapp()
 ```
 
-This app allows you to upload data, select features, train models, and visualize boundaries on the fly.
+This app allows you to simulate classification datasets and compare decision boundaries across PPtree, PPtreeExt, and rpart models.

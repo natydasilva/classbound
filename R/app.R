@@ -1,16 +1,27 @@
 #' Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
 #'
-#' @usage explorapp(ui, server)
-#' @param ui user interface
-#' @param server server function
+#' @usage explorapp()
 #' @return No return value, called for side effects. Shinyapp is launched.
 #' @export
 #' @examples
 #' if (interactive()) {
-#'   explorapp(ui, server)
+#'   explorapp()
 #' }
 #'
-explorapp <- function(ui, server) {
+explorapp <- function() {
+  if (!requireNamespace("shiny", quietly = TRUE)) {
+    stop("Package 'shiny' must be installed to use explorapp().", call. = FALSE)
+  }
+  if (!requireNamespace("MASS", quietly = TRUE)) {
+    stop("Package 'MASS' must be installed to use explorapp().", call. = FALSE)
+  }
+  if (!requireNamespace("gridExtra", quietly = TRUE)) {
+    stop("Package 'gridExtra' must be installed to use explorapp().", call. = FALSE)
+  }
+  if (!requireNamespace("MixSim", quietly = TRUE)) {
+    stop("Package 'MixSim' must be installed to use explorapp().", call. = FALSE)
+  }
+
   X1 <- NULL
   X2 <- NULL
   ppred <- NULL

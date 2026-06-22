@@ -41,6 +41,9 @@ predict_model.classbound_pptree <- function(model, newdata, ...) {
 
   # Predict classes
   preds_raw <- predict(raw_model, newdata, ...)
+  if (is.null(preds_raw$predict.class)) {
+    stop("Unexpected prediction output from PPtreeExt model: 'predict.class' not found.", call. = FALSE)
+  }
   preds <- as.factor(preds_raw$predict.class)
 
   # Probability output is typically not provided natively by PPtreeExtclass

@@ -4,12 +4,7 @@
 \alias{explorapp}
 \title{Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios}
 \usage{
-explorapp(ui, server)
-}
-\arguments{
-\item{ui}{user interface}
-
-\item{server}{server function}
+explorapp()
 }
 \value{
 No return value, called for side effects. Shinyapp is launched.
@@ -19,7 +14,7 @@ Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different
 }
 \examples{
 if (interactive()) {
-  explorapp(ui, server)
+  explorapp()
 }
 
 }

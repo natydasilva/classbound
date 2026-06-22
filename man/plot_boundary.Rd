@@ -15,13 +15,14 @@ plot_boundary(
 )
 }
 \arguments{
-\item{boundary}{The boundary data frame returned by \code{boundary_compute()}.}
+\item{boundary}{The boundary data frame returned by \code{boundary_compute()}.
+Must contain columns named \code{x}, \code{y}, and \code{prediction}.}
 
 \item{obs_data}{Optional data frame of training observations to overlay.}
 
-\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Required if \code{obs_data} is provided.}
+\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Also used as the x-axis label. Required if \code{obs_data} is provided.}
 
-\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Required if \code{obs_data} is provided.}
+\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Also used as the y-axis label. Required if \code{obs_data} is provided.}
 
 \item{true_label}{Column name in \code{obs_data} representing the true class labels. Required if \code{obs_data} is provided.}
 

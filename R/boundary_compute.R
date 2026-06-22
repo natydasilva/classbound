@@ -72,6 +72,11 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
   # Predict using the standardized predict_model function
   preds <- predict_model(model, newdata = grid_df, ...)
 
+  # Ensure class predictions are factors (defensive per adapter contract)
+  if (!is.factor(preds$class)) {
+    preds$class <- as.factor(preds$class)
+  }
+
   # Combine grid and predictions
   res <- data.frame(
     x = grid_df[[1]],

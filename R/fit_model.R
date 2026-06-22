@@ -14,6 +14,14 @@ fit_model <- function(data, labels, method, ...) {
     stop("Please specify a classification method.", call. = FALSE)
   }
 
+  if (is.null(labels)) {
+    stop("Please provide classification labels.", call. = FALSE)
+  }
+
+  if (is.data.frame(data) && ".label." %in% colnames(data)) {
+    stop("Column name '.label.' is reserved for internal use. Please rename this column.", call. = FALSE)
+  }
+
   # Convert method string into an S3 method spec for dispatch
   method_spec <- structure(method, class = c(paste0("classbound_", method), "classbound_method"))
 
@@ -44,6 +52,10 @@ fit_model <- function(data, labels, method, ...) {
 }
 
 #' Internal generic for fitting classifier adapters
+#'
+#' @description This generic is exported for S3 dispatch but is not intended for direct use.
+#' Use \code{\link{fit_model}} instead. Adapter authors should implement S3 methods
+#' for this generic (e.g., \code{fit_adapter.classbound_mymodel}).
 #'
 #' @param object An S3 object defining the method spec.
 #' @param data A data frame containing the training features.

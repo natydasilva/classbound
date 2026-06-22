@@ -41,13 +41,8 @@ predict_model.classbound_PPtreeViz <- function(model, newdata, ...) {
 
   newdata_df <- as.data.frame(newdata)
 
-  # PPtreeViz predict requires only the feature columns. We drop non-numeric columns.
-  # Assuming the prediction grid features are all numeric.
-  numeric_cols <- vapply(newdata_df, is.numeric, logical(1))
-  newdata_numeric <- newdata_df[, numeric_cols, drop = FALSE]
-
   # Predict classes
-  preds <- predict(raw_model, newdata = newdata_numeric, ...)
+  preds <- as.factor(predict(raw_model, newdata = newdata_df, ...))
 
   # PPtreeViz does not support probability predictions natively
   probs <- NULL

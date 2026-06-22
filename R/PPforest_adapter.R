@@ -67,6 +67,11 @@ predict_model.classbound_PPforest <- function(model, newdata, ...) {
     }
   )
 
+  # Validate prediction output structure
+  if (!is.list(preds_raw) || length(preds_raw) < 3) {
+    stop("Unexpected prediction output from PPforest model.", call. = FALSE)
+  }
+
   # The predicted classes are in the 3rd element of the list
   preds <- as.factor(preds_raw[[3]])
 

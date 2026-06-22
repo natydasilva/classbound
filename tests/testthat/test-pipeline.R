@@ -18,6 +18,7 @@ test_that("fit_model handles invalid inputs and unsupported methods gracefully",
 })
 
 test_that("predict_model correctly enforces structural constraints", {
+  skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
   raw_rpart <- rpart::rpart(species ~ ., data = penguins)
@@ -63,4 +64,21 @@ test_that("boundary_compute handles classifiers with probs = NULL gracefully", {
   
   # Ensure no probability columns exist
   expect_false(any(c("A", "B") %in% colnames(grid)))
+})
+
+test_that("fit_model rejects NULL labels", {
+  data <- data.frame(x = 1:3, y = 4:6)
+  expect_error(
+    fit_model(data, NULL, "rpart"),
+    "Please provide classification labels"
+  )
+})
+
+test_that("fit_model rejects reserved .label. column name", {
+  data <- data.frame(.label. = 1:3, x = 4:6, check.names = FALSE)
+  labels <- factor(c("A", "B", "A"))
+  expect_error(
+    fit_model(data, labels, "rpart"),
+    "reserved for internal use"
+  )
 })

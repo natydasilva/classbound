@@ -7,7 +7,7 @@
 #' @param ... Additional arguments for simulation parameters.
 #'
 #' @return A data frame containing simulated features and a 'class' label column.
-#' @export
+#' @keywords internal
 generate_simulation <- function(n, type, ...) {
   # TODO: Implement data simulation functions
   stop("generate_simulation() is not yet implemented.")

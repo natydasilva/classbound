@@ -69,3 +69,25 @@ test_that("preprocess_data handles scaling correctly", {
   # character column should be factor but unaffected by scaling
   expect_true(is.factor(processed$data$char))
 })
+
+test_that("preprocess_data rejects empty data frames", {
+  expect_error(
+    preprocess_data(data.frame()),
+    "must have at least one row"
+  )
+
+  # Also test a data.frame with columns but 0 rows
+  expect_error(
+    preprocess_data(data.frame(x = numeric(0), y = numeric(0))),
+    "must have at least one row"
+  )
+})
+
+test_that("preprocess_data rejects duplicate column names", {
+  df <- data.frame(a = 1:3, b = 4:6)
+  colnames(df) <- c("x", "x")
+  expect_error(
+    preprocess_data(df),
+    "Duplicate column names"
+  )
+})

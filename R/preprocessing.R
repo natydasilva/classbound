@@ -20,6 +20,14 @@ preprocess_data <- function(data, labels = NULL, scale = FALSE, ...) {
   # This prevents indexing bugs in older packages that expect df[, col] to return a vector
   data <- as.data.frame(data)
 
+  if (nrow(data) == 0) {
+    stop("`data` must have at least one row.", call. = FALSE)
+  }
+
+  if (any(duplicated(colnames(data)))) {
+    stop("Duplicate column names found in `data`.", call. = FALSE)
+  }
+
   if (!is.null(labels)) {
     if (length(labels) != nrow(data)) {
       stop("Length of `labels` must match the number of rows in `data`.", call. = FALSE)

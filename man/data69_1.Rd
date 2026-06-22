@@ -5,20 +5,31 @@
 \alias{data69_1}
 \title{data69-1}
 \format{
-There are 5000 observations, 21 features and 3 classes
-
+A data frame with 5000 rows and 22 columns:
 \describe{
-\item{Y}{}
-\item{V1}{}
-\item{V2}{}
-\item{V3}{}
-\item{V4}{}
-\item{V5}{}
-\item{V6}{}
-\item{...}{}
+\item{Y}{Class label (factor with 3 levels)}
+\item{V1}{Numeric feature variable}
+\item{V2}{Numeric feature variable}
+\item{V3}{Numeric feature variable}
+\item{V4}{Numeric feature variable}
+\item{V5}{Numeric feature variable}
+\item{V6}{Numeric feature variable}
+\item{V7}{Numeric feature variable}
+\item{V8}{Numeric feature variable}
+\item{V9}{Numeric feature variable}
+\item{V10}{Numeric feature variable}
+\item{V11}{Numeric feature variable}
+\item{V12}{Numeric feature variable}
+\item{V13}{Numeric feature variable}
+\item{V14}{Numeric feature variable}
+\item{V15}{Numeric feature variable}
+\item{V16}{Numeric feature variable}
+\item{V17}{Numeric feature variable}
+\item{V18}{Numeric feature variable}
+\item{V19}{Numeric feature variable}
+\item{V20}{Numeric feature variable}
+\item{V21}{Numeric feature variable}
 }
-
-A data frame with 5000 rows and 21 features and tree classes
 }
 \source{
 \url{https://archive.ics.uci.edu/dataset/107/waveform+database+generator+version+1}
@@ -27,6 +38,7 @@ A data frame with 5000 rows and 21 features and tree classes
 data(data69_1)
 }
 \description{
-data69-1
+Waveform Database Generator dataset. Contains 5000 observations with 21
+numeric features and 3 classes, used for classification boundary exploration.
 }
 \keyword{datasets}

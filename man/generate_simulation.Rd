@@ -19,3 +19,4 @@ A data frame containing simulated features and a 'class' label column.
 \description{
 Generates reproducible synthetic data for testing and visualizing classification boundaries.
 }
+\keyword{internal}

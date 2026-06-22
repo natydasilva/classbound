@@ -16,6 +16,8 @@ fit_adapter(object, data, labels, ...)
 \item{...}{Additional arguments.}
 }
 \description{
-Internal generic for fitting classifier adapters
+This generic is exported for S3 dispatch but is not intended for direct use.
+Use \code{\link{fit_model}} instead. Adapter authors should implement S3 methods
+for this generic (e.g., \code{fit_adapter.classbound_mymodel}).
 }
 \keyword{internal}

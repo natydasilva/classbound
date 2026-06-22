@@ -31,3 +31,29 @@ and should \strong{not duplicate basic validation logic} (e.g., checking for NAs
 Adapters should focus solely on the model-specific logic required to fit and predict.
 }
 
+\section{Implementation Convention}{
+
+Adapters that use the formula interface combine features and labels via a reserved
+column name \code{.label.}: \code{train_data$.label. <- labels}. The core pipeline
+validates that user data does not contain a column with this reserved name.
+
+Example S3 adapter skeleton for a custom classifier "mymodel":
+
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{fit_adapter.classbound_mymodel <- function(object, data, labels, ...) \{
+  train_data <- data
+  train_data$.label. <- labels
+  mypackage::myfit(.label. ~ ., data = train_data, ...)
+\}
+
+predict_model.classbound_mymodel <- function(model, newdata, ...) \{
+  raw_model <- model$model
+  preds <- as.factor(predict(raw_model, newdata, ...))
+
+  # probs must be either a probability matrix or NULL if unsupported
+  probs <- NULL
+
+  list(class = preds, probs = probs)
+\}
+}\if{html}{\out{</div>}}
+}
+

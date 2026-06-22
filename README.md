@@ -39,8 +39,8 @@ penguins <- na.omit(penguins[, -c(2, 7, 8)])
 
 # 2. Fit a decision tree (rpart) predicting species
 model <- fit_model(
-  data = penguins[, c("bill_length_mm", "bill_depth_mm")], 
-  labels = penguins$species, 
+  data = penguins[, c("bill_length_mm", "bill_depth_mm")],
+  labels = penguins$species,
   method = "rpart"
 )
 
@@ -53,15 +53,15 @@ grid_data <- boundary_compute(model, range = feature_range, resolution = 100)
 
 # 4. Plot the decision boundary
 plot_boundary(
-  boundary = grid_data, 
-  obs_data = penguins, 
-  x_col = "bill_length_mm", 
-  y_col = "bill_depth_mm", 
+  boundary = grid_data,
+  obs_data = penguins,
+  x_col = "bill_length_mm",
+  y_col = "bill_depth_mm",
   true_label = "species"
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="70%" style="display: block; margin: auto;" />
+<img src="man/figures/README-visualisation-1.png" alt="" width="70%" style="display: block; margin: auto;" />
 
 ### Interactive Exploration
 

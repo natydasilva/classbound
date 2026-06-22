@@ -1,4 +1,5 @@
 test_that("boundary_compute works correctly with rpart model", {
+  skip_if_not_installed("rpart")
   # Use a 2D subset of penguins to avoid missing columns in predict
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
@@ -38,6 +39,7 @@ test_that("boundary_compute works correctly with rpart model", {
 })
 
 test_that("boundary_compute handles errors gracefully", {
+  skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
@@ -64,6 +66,7 @@ test_that("boundary_compute handles errors gracefully", {
 })
 
 test_that("boundary_compute handles metadata validation gracefully", {
+  skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
@@ -98,6 +101,7 @@ test_that("boundary_compute handles metadata validation gracefully", {
 })
 
 test_that("boundary_compute rejects categorical features", {
+  skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins)
   
