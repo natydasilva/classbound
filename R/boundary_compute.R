@@ -26,6 +26,33 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
 
   var_names <- names(range)
 
+  if (any(duplicated(var_names))) {
+    stop("Duplicate feature names found in `range`.", call. = FALSE)
+  }
+
+  if (is.null(model$features)) {
+    stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
+  }
+
+  expected_names <- model$features$names
+  
+  if (length(var_names) != length(expected_names)) {
+    stop(sprintf("Expected %d boundary variables, but got %d.", length(expected_names), length(var_names)), call. = FALSE)
+  }
+  
+  missing_names <- setdiff(expected_names, var_names)
+  invalid_names <- setdiff(var_names, expected_names)
+  
+  if (length(missing_names) > 0 || length(invalid_names) > 0) {
+    msg <- "Names in `range` do not match the training features."
+    if (length(missing_names) > 0) {
+      msg <- paste0(msg, "\nMissing features: ", paste(missing_names, collapse = ", "))
+    }
+    if (length(invalid_names) > 0) {
+      msg <- paste0(msg, "\nInvalid features: ", paste(invalid_names, collapse = ", "))
+    }
+    stop(msg, call. = FALSE)
+  }
   # Generate grid points for each dimension
   seq_x <- seq(from = min(range[[1]]), to = max(range[[1]]), length.out = resolution)
   seq_y <- seq(from = min(range[[2]]), to = max(range[[2]]), length.out = resolution)

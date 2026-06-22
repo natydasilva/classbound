@@ -7,7 +7,7 @@
 #' @param method A string specifying the classifier method (e.g., "rpart").
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
-#' @return A fitted model object with a normalized structure of class "classbound_model".
+#' @return A fitted model object with a normalized structure of class "classbound_model", containing the model, method, and extracted feature metadata.
 #' @export
 fit_model <- function(data, labels, method, ...) {
   if (missing(method)) {
@@ -20,11 +20,19 @@ fit_model <- function(data, labels, method, ...) {
   # Route fitting to specific adapter using S3 dispatch
   model_fit <- fit_adapter(method_spec, data, labels, ...)
 
+  # Extract feature metadata
+  feature_meta <- list(
+    names = colnames(data),
+    types = lapply(data, class),
+    levels = lapply(data, levels)
+  )
+
   # Wrap the fitted model and metadata to maintain context for prediction
   structure(
     list(
       model = model_fit,
-      method = method
+      method = method,
+      features = feature_meta
     ),
     class = c(paste0("classbound_", method), "classbound_model")
   )

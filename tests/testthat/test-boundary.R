@@ -62,3 +62,38 @@ test_that("boundary_compute handles errors gracefully", {
     "range must be a named list of length 2"
   )
 })
+
+test_that("boundary_compute handles metadata validation gracefully", {
+  library(palmerpenguins)
+  penguins <- na.omit(penguins[, -c(2, 7, 8)])
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
+  train_labels <- penguins$species
+  model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
+
+  # Duplicate range names
+  expect_error(
+    boundary_compute(model, range = list(bill_length_mm = c(1, 2), bill_length_mm = c(1, 2))),
+    "Duplicate feature names found in `range`."
+  )
+
+  # Invalid name & Missing name
+  expect_error(
+    boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
+    "Names in `range` do not match the training features."
+  )
+  
+  expect_error(
+    boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
+    "Invalid features: wrong_name"
+  )
+
+  # Model trained on 3 features, range provides 2
+  train_data_3 <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
+  model_3 <- fit_model(data = train_data_3, labels = train_labels, method = "rpart")
+  
+  expect_error(
+    boundary_compute(model_3, range = list(bill_length_mm = c(1, 2), bill_depth_mm = c(1, 2))),
+    "Expected 3 boundary variables, but got 2."
+  )
+})
+
