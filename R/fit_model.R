@@ -17,6 +17,11 @@ fit_model <- function(data, labels, method, ...) {
   # Convert method string into an S3 method spec for dispatch
   method_spec <- structure(method, class = c(paste0("classbound_", method), "classbound_method"))
 
+  # Centralized validation and preprocessing
+  processed <- preprocess_data(data, labels)
+  data <- processed$data
+  labels <- processed$labels
+
   # Route fitting to specific adapter using S3 dispatch
   model_fit <- fit_adapter(method_spec, data, labels, ...)
 

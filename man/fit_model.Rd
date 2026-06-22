@@ -16,7 +16,7 @@ fit_model(data, labels, method, ...)
 \item{...}{Additional arguments passed to the specific model adapter.}
 }
 \value{
-A fitted model object with a normalized structure of class "classbound_model".
+A fitted model object with a normalized structure of class "classbound_model", containing the model, method, and extracted feature metadata.
 }
 \description{
 Fits a machine learning classifier using a unified interface.

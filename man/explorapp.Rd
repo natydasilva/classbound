@@ -18,8 +18,8 @@ No return value, called for side effects. Shinyapp is launched.
 Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
 }
 \examples{
-if(interactive()){
-explorapp(ui,server)
+if (interactive()) {
+  explorapp(ui, server)
 }
 
 }

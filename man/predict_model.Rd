@@ -14,7 +14,9 @@ predict_model(model, newdata, ...)
 \item{...}{Additional arguments passed to the specific model adapter.}
 }
 \value{
-A list containing \code{class} (predicted labels) and \code{probs} (probabilities).
+A list containing \code{class} (a factor of predicted labels) and \code{probs}
+(a probability matrix, or strictly \code{NULL} if the classifier lacks probability support).
+Downstream functions like \code{boundary_compute()} are designed to handle \code{probs = NULL} gracefully.
 }
 \description{
 Generates predictions using a unified interface across all classifiers.

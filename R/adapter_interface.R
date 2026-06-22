@@ -9,7 +9,8 @@
 #' The `predict_*` function must return a list with two elements:
 #' \itemize{
 #'   \item \code{class}: A factor vector of predicted class labels.
-#'   \item \code{probs}: A probability matrix, or \code{NULL} if the classifier does not support probabilities.
+#'   \item \code{probs}: A probability matrix, or strictly \code{NULL} if the classifier does not support probabilities.
+#'   Downstream pipeline functions (e.g., \code{boundary_compute()}) will handle \code{probs = NULL} natively.
 #' }
 #'
 #' @name adapter_interface

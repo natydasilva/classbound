@@ -6,7 +6,9 @@
 #' @param newdata A data frame of new observations to predict on.
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
-#' @return A list containing `class` (predicted labels) and `probs` (probabilities).
+#' @return A list containing `class` (a factor of predicted labels) and `probs` 
+#' (a probability matrix, or strictly `NULL` if the classifier lacks probability support).
+#' Downstream functions like `boundary_compute()` are designed to handle `probs = NULL` gracefully.
 #' @export
 predict_model <- function(model, newdata, ...) {
   UseMethod("predict_model")
