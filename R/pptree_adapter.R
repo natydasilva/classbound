@@ -33,7 +33,7 @@ fit_adapter.classbound_pptree <- function(object, data, labels, ...) {
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities, NULL for pptree).
 #' @importFrom stats predict
 #' @export
-predict_model.classbound_pptree <- function(model, newdata, ...) {
+predict_adapter.classbound_pptree <- function(model, newdata, ...) {
   raw_model <- model$model
   if (!inherits(raw_model, "PPtreeExtclass")) {
     stop("Model must be a 'PPtreeExtclass' object.", call. = FALSE)

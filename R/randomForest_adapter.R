@@ -31,7 +31,7 @@ fit_adapter.classbound_randomForest <- function(object, data, labels, ...) {
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities).
 #' @importFrom stats predict
 #' @export
-predict_model.classbound_randomForest <- function(model, newdata, ...) {
+predict_adapter.classbound_randomForest <- function(model, newdata, ...) {
   raw_model <- model$model
   if (!inherits(raw_model, "randomForest")) {
     stop("Model must be a 'randomForest' object.", call. = FALSE)

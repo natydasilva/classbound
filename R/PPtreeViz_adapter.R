@@ -33,7 +33,7 @@ fit_adapter.classbound_PPtreeViz <- function(object, data, labels, ...) {
 #' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities, NULL for PPtreeViz).
 #' @importFrom stats predict
 #' @export
-predict_model.classbound_PPtreeViz <- function(model, newdata, ...) {
+predict_adapter.classbound_PPtreeViz <- function(model, newdata, ...) {
   raw_model <- model$model
   if (!inherits(raw_model, "PPtreeclass")) {
     stop("Model must be a 'PPtreeclass' object.", call. = FALSE)

@@ -35,7 +35,7 @@ test_that("boundary_compute handles classifiers with probs = NULL gracefully", {
     list(dummy_model = TRUE)
   }
   
-  predict_model.classbound_mock_noprobs <- function(model, newdata, ...) {
+  predict_adapter.classbound_mock_noprobs <- function(model, newdata, ...) {
     # Always predict the first level for simplicity
     class_preds <- factor(rep("A", nrow(newdata)), levels = c("A", "B"))
     list(class = class_preds, probs = NULL)
@@ -44,7 +44,7 @@ test_that("boundary_compute handles classifiers with probs = NULL gracefully", {
   # Register the S3 methods temporarily
   local({
     registerS3method("fit_adapter", "classbound_mock_noprobs", fit_adapter.classbound_mock_noprobs, envir = parent.frame())
-    registerS3method("predict_model", "classbound_mock_noprobs", predict_model.classbound_mock_noprobs, envir = parent.frame())
+    registerS3method("predict_adapter", "classbound_mock_noprobs", predict_adapter.classbound_mock_noprobs, envir = parent.frame())
   })
   
   # Create some dummy data

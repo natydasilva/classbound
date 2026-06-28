@@ -72,10 +72,8 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
   # Predict using the standardized predict_model function
   preds <- predict_model(model, newdata = grid_df, ...)
 
-  # Ensure class predictions are factors (defensive per adapter contract)
-  if (!is.factor(preds$class)) {
-    preds$class <- as.factor(preds$class)
-  }
+  # Class predictions are now strictly guaranteed to be correctly leveled factors 
+  # by the predict_model() contract, so we directly construct the frame.
 
   # Combine grid and predictions
   res <- data.frame(

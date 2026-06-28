@@ -42,7 +42,7 @@ fit_adapter.classbound_PPforest <- function(object, data, labels, ...) {
 #' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities, NULL for PPforest).
 #' @importFrom stats predict
 #' @export
-predict_model.classbound_PPforest <- function(model, newdata, ...) {
+predict_adapter.classbound_PPforest <- function(model, newdata, ...) {
   raw_model <- model$model
   if (!inherits(raw_model, "PPforest")) {
     stop("Model must be a 'PPforest' object.", call. = FALSE)

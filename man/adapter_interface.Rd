@@ -36,16 +36,26 @@ Adapters should focus solely on the model-specific logic required to fit and pre
 Adapters that use the formula interface combine features and labels via a reserved
 column name \code{.label.}: \code{train_data$.label. <- labels}. The core pipeline
 validates that user data does not contain a column with this reserved name.
+}
+
+\section{User-Defined Classifiers}{
+
+Because \code{classbound} uses S3 dispatch for routing, you can natively support
+any custom classifier without modifying the package source code. Simply
+define the two S3 methods (\code{fit_adapter} and \code{predict_adapter}) in your
+global environment for your custom method string.
 
 Example S3 adapter skeleton for a custom classifier "mymodel":
 
-\if{html}{\out{<div class="sourceCode R">}}\preformatted{fit_adapter.classbound_mymodel <- function(object, data, labels, ...) \{
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{# 1. Define the fitting logic
+fit_adapter.classbound_mymodel <- function(object, data, labels, ...) \{
   train_data <- data
   train_data$.label. <- labels
   mypackage::myfit(.label. ~ ., data = train_data, ...)
 \}
 
-predict_model.classbound_mymodel <- function(model, newdata, ...) \{
+# 2. Define the prediction logic
+predict_adapter.classbound_mymodel <- function(model, newdata, ...) \{
   raw_model <- model$model
   preds <- as.factor(predict(raw_model, newdata, ...))
 
@@ -54,6 +64,9 @@ predict_model.classbound_mymodel <- function(model, newdata, ...) \{
 
   list(class = preds, probs = probs)
 \}
+
+# 3. Use it natively in the pipeline
+# my_model <- fit_model(data, labels, method = "mymodel")
 }\if{html}{\out{</div>}}
 }
 
