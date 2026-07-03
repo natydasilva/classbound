@@ -1,0 +1,19 @@
+url: https://natydasilva.github.io/classbound/
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#0284c7"
+    bg: "#ffffff"
+    fg: "#334155"
+    base_font: {google: "Inter"}
+    heading_font: {google: "Lora"}
+reference:
+  - title: "Datasets"
+    desc: "Included datasets."
+    contents:
+      - has_keyword("datasets")
+  - title: "Functions"
+    desc: "All package functions."
+    contents:
+      - matches(".")
+      - -has_keyword("datasets")

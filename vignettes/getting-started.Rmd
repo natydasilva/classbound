@@ -1,0 +1,85 @@
+---
+title: "Getting Started with classbound"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with classbound}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+The **classbound** package provides a streamlined interface for computing, visualizing, and interactively exploring classification decision boundaries in R. Whether you are teaching machine learning concepts, evaluating model performance, or debugging complex classifiers, `classbound` helps you understand how your models partition the feature space.
+
+```{r setup}
+library(classbound)
+```
+
+## Fitting a Model
+
+`classbound` provides a unified `fit_model()` function that wraps various underlying algorithms. For example, to fit a decision tree:
+
+```{r message=FALSE, warning=FALSE}
+# Load and prepare palmerpenguins dataset
+library(palmerpenguins)
+penguins <- na.omit(penguins[, -c(2, 7, 8)])
+
+# Fit an rpart decision tree model predicting species
+model <- fit_model(
+  data = penguins[, c("bill_length_mm", "bill_depth_mm")],
+  labels = penguins$species,
+  method = "rpart"
+)
+```
+
+## Computing the Decision Boundary
+
+Once a model is fitted, you can compute the boundary over a specified grid. Define the range for your features and the grid resolution:
+
+```{r}
+# Define the range for the grid
+feature_range <- list(
+  bill_length_mm = c(30.0, 60.0),
+  bill_depth_mm = c(10.0, 25.0)
+)
+
+# Compute predictions over the grid
+grid_data <- boundary_compute(
+  model = model,
+  range = feature_range,
+  resolution = 100
+)
+
+head(grid_data)
+```
+
+## Visualizing the Boundary
+
+To visualize the resulting boundary, pass the computed grid data to `plot_boundary()`. You can also overlay the original training observations to see how well the regions match the true classes.
+
+```{r}
+plot_boundary(
+  boundary = grid_data,
+  obs_data = penguins,
+  x_col = "bill_length_mm",
+  y_col = "bill_depth_mm",
+  true_label = "species"
+)
+```
+
+## Interactive Exploration
+
+For interactive exploration using simulated datasets, you can launch the built-in Shiny application:
+
+```{r eval=FALSE}
+explorapp()
+```
+
+This app allows you to simulate classification datasets and compare decision boundaries across PPtree, PPtreeExt, and rpart models.
