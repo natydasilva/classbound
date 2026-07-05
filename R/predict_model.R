@@ -3,7 +3,7 @@
 #' @description Generates predictions using a unified interface across all classifiers.
 #' Dispatches natively on objects of class \code{"classbound"}.
 #'
-#' @param object A fitted model object returned by \code{fit_model} (of class \code{"classbound"}).
+#' @param object A fitted classbound model. This is the object returned by \code{fit_model()} or \code{classbound()}.
 #' @param newdata A data frame of new observations to predict on.
 #' @param predict_args A named list of additional arguments passed to \code{predict_adapter}.
 #' @param ... Additional arguments passed to the specific model adapter.
@@ -26,12 +26,12 @@ predict.classbound <- function(object, newdata, predict_args = list(), ...) {
   res
 }
 
-#' Predict using a fitted model (Compatibility Wrapper)
+#' Predict using a fitted classbound model
 #'
 #' @description Generates predictions using a unified interface across all classifiers.
-#' This is a compatibility wrapper around \code{\link{predict.classbound}}.
+#' This function is a compatibility wrapper around the standard \code{predict()} method for "classbound" objects.
 #'
-#' @param model A fitted model object typically returned by \code{fit_model} (of class \code{"classbound"}).
+#' @param model A fitted classbound model. This corresponds to the \code{object} argument used by the standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.
 #' @param newdata A data frame of new observations to predict on.
 #' @param predict_args A named list of additional arguments passed to \code{predict_adapter}.
 #' @param ... Additional arguments passed to the specific model adapter.

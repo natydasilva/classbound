@@ -2,12 +2,12 @@
 % Please edit documentation in R/predict_model.R
 \name{predict_model}
 \alias{predict_model}
-\title{Predict using a fitted model (Compatibility Wrapper)}
+\title{Predict using a fitted classbound model}
 \usage{
 predict_model(model, newdata, predict_args = list(), ...)
 }
 \arguments{
-\item{model}{A fitted model object typically returned by \code{fit_model} (of class \code{"classbound"}).}
+\item{model}{A fitted classbound model. This corresponds to the \code{object} argument used by the standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.}
 
 \item{newdata}{A data frame of new observations to predict on.}
 
@@ -21,5 +21,5 @@ A list containing \code{class} (a factor of predicted labels) and \code{probs}
 }
 \description{
 Generates predictions using a unified interface across all classifiers.
-This is a compatibility wrapper around \code{\link{predict.classbound}}.
+This function is a compatibility wrapper around the standard \code{predict()} method for "classbound" objects.
 }

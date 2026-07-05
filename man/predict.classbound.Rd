@@ -7,7 +7,7 @@
 \method{predict}{classbound}(object, newdata, predict_args = list(), ...)
 }
 \arguments{
-\item{object}{A fitted model object returned by \code{fit_model} (of class \code{"classbound"}).}
+\item{object}{A fitted classbound model. This is the object returned by \code{fit_model()} or \code{classbound()}.}
 
 \item{newdata}{A data frame of new observations to predict on.}
 
