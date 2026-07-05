@@ -1,78 +1,73 @@
 #' Fit a machine learning model
 #'
-#' @description Fits a machine learning classifier using a unified interface.
+#' @description Fits a machine learning classifier using a standard interface.
 #'
-#' @param data A data frame containing the training features.
-#' @param labels A vector of target labels corresponding to `data`.
-#' @param method A string specifying the classifier method (e.g., "rpart").
-#' @param ... Additional arguments passed to the specific model adapter.
+#' @param data A data frame containing the training features and response.
+#' @param formula A formula specifying the response and predictors.
+#' @param classifier The classification function to use (e.g., \code{rpart::rpart}).
+#' @param interface A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.
+#' @param fit_args A named list of additional arguments passed to the classifier during fitting.
 #'
-#' @return A fitted model object with a normalized structure of class "classbound_model", containing the model, method, and extracted feature metadata.
+#' @return A fitted model object with a normalized structure of class "classbound", containing the raw model and extracted feature metadata.
+#' @importFrom stats model.frame model.matrix model.response
 #' @export
-fit_model <- function(data, labels, method, ...) {
-  if (missing(method)) {
-    stop("Please specify a classification method.", call. = FALSE)
+fit_model <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list()) {
+  if (missing(classifier)) {
+    stop("Please specify a classifier function.", call. = FALSE)
+  }
+  if (missing(formula)) {
+    stop("Please specify a formula.", call. = FALSE)
   }
 
-  if (is.null(labels)) {
-    stop("Please provide classification labels.", call. = FALSE)
-  }
+  interface <- match.arg(interface)
 
-  if (is.data.frame(data) && ".label." %in% colnames(data)) {
-    stop("Column name '.label.' is reserved for internal use. Please rename this column.", call. = FALSE)
-  }
+  # Extract labels based on formula
+  # model.frame handles NAs implicitly, but our preprocess_data strictly rejects them.
+  mf <- model.frame(formula, data = data)
+  y <- model.response(mf)
 
-  # Convert method string into an S3 method spec for dispatch
-  method_spec <- structure(method, class = c(paste0("classbound_", method), "classbound_method"))
+  if (is.null(y)) {
+    stop("Could not extract response variable from formula.", call. = FALSE)
+  }
 
   # Capture original class levels before preprocessing drops unused levels
-  orig_class_levels <- if (is.factor(labels)) levels(labels) else sort(unique(as.character(labels)))
+  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
 
   # Centralized validation and preprocessing
-  processed <- preprocess_data(data, labels)
+  processed <- preprocess_data(data, y)
   data <- processed$data
-  labels <- processed$labels
+  y <- processed$labels
 
-  # Route fitting to specific adapter using S3 dispatch
-  model_fit <- fit_adapter(method_spec, data, labels, ...)
+  # Update mf with preprocessed data
+  mf <- model.frame(formula, data = data)
+  
+  # Route fitting based on selected interface
+  if (interface == "formula") {
+    model_fit <- do.call(classifier, c(list(formula = formula, data = mf), fit_args))
+  } else if (interface == "matrix") {
+    x_matrix <- model.matrix(formula, data = mf)[, -1, drop = FALSE] # remove intercept
+    model_fit <- do.call(classifier, c(list(x = x_matrix, y = y), fit_args))
+  } else if (interface == "custom") {
+    model_fit <- do.call(classifier, fit_args)
+  }
 
-  # Extract feature metadata
+  # Extract feature metadata using the processed model frame (excluding response)
+  response_var <- all.vars(formula[[2]])
+  predictors_df <- mf[, setdiff(colnames(mf), response_var), drop = FALSE]
+  
   feature_meta <- list(
-    names = colnames(data),
-    types = lapply(data, class),
-    levels = lapply(data, levels)
+    names = colnames(predictors_df),
+    types = lapply(predictors_df, class),
+    levels = lapply(predictors_df, levels)
   )
 
-  # Wrap the fitted model and metadata to maintain context for prediction
+  # Wrap the fitted model and metadata in the single public 'classbound' class
   structure(
     list(
-      model = model_fit,
-      method = method,
+      fit = model_fit,
       features = feature_meta,
       class_levels = orig_class_levels
     ),
-    class = c(paste0("classbound_", method), "classbound_model")
+    class = "classbound"
   )
-}
-
-#' Internal generic for fitting classifier adapters
-#'
-#' @description This generic is exported for S3 dispatch but is not intended for direct use.
-#' Use \code{\link{fit_model}} instead. Adapter authors should implement S3 methods
-#' for this generic (e.g., \code{fit_adapter.classbound_mymodel}).
-#'
-#' @param object An S3 object defining the method spec.
-#' @param data A data frame containing the training features.
-#' @param labels A vector of target labels.
-#' @param ... Additional arguments.
-#'
-#' @keywords internal
-#' @export
-fit_adapter <- function(object, data, labels, ...) {
-  UseMethod("fit_adapter")
-}
-
-#' @export
-fit_adapter.default <- function(object, data, labels, ...) {
-  stop(sprintf("Classifier method '%s' is not supported.", as.character(object)), call. = FALSE)
 }

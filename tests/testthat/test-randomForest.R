@@ -1,20 +1,19 @@
-test_that("fit_model and predict_model work with randomForest", {
+test_that("fit_model and predict work with randomForest", {
   skip_if_not_installed("randomForest")
 
   # Use penguins dataset
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, 2:5]
-  train_labels <- penguins$species
+  train_data <- penguins
 
   # Fit model
-  model <- fit_model(train_data, train_labels, method = "randomForest")
+  model <- fit_model(train_data, species ~ ., classifier = randomForest::randomForest)
 
-  expect_s3_class(model, "classbound_model")
-  expect_equal(model$method, "randomForest")
+  expect_s3_class(model, "classbound")
+  expect_s3_class(model$fit, "randomForest")
 
   # Predict
-  preds <- predict_model(model, train_data)
+  preds <- predict(model, train_data)
 
   expect_type(preds, "list")
   expect_true("class" %in% names(preds))

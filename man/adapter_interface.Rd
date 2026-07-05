@@ -5,12 +5,12 @@
 \title{Classifier Adapter Interface}
 \description{
 This file defines the contract for implementing a classifier adapter.
-Each adapter must implement its own \verb{fit_*} and \verb{predict_*} functions
+Each adapter must implement its own \code{predict_adapter} function
 to map specific classifier package implementations (e.g. randomForest, e1071)
 into the unified \code{classbound} structure.
 }
 \details{
-The \verb{predict_*} function must return a list with two elements:
+The \code{predict_adapter} function must return a list with two elements:
 \itemize{
 \item \code{class}: A factor vector of predicted class labels.
 \item \code{probs}: A probability matrix, or strictly \code{NULL} if the classifier does not support probabilities.
@@ -19,54 +19,37 @@ Downstream pipeline functions (e.g., \code{boundary_compute()}) will handle \cod
 }
 \section{Data Validation Contract}{
 
-Prior to calling an adapter's \verb{fit_*} method, the core pipeline (via \code{preprocess_data()})
+Prior to calling a classifier's fitting logic, the core pipeline (via \code{preprocess_data()})
 guarantees that the inputs are fully validated. Specifically:
 \itemize{
-\item \code{data} is a valid data frame with no missing values.
-\item \code{labels} is a valid factor vector with no missing values and no unused levels.
-\item All categorical predictors (character columns) in \code{data} have been converted to factors with unused levels dropped.
+\item The data is a valid data frame with no missing values.
+\item The labels are a valid factor vector with no missing values and no unused levels.
+\item All categorical predictors (character columns) in the data have been converted to factors with unused levels dropped.
 }
-Because of this strict contract, individual adapter implementations should \strong{assume validated inputs}
-and should \strong{not duplicate basic validation logic} (e.g., checking for NAs, coercing characters to factors, or dropping levels).
-Adapters should focus solely on the model-specific logic required to fit and predict.
-}
-
-\section{Implementation Convention}{
-
-Adapters that use the formula interface combine features and labels via a reserved
-column name \code{.label.}: \code{train_data$.label. <- labels}. The core pipeline
-validates that user data does not contain a column with this reserved name.
 }
 
 \section{User-Defined Classifiers}{
 
-Because \code{classbound} uses S3 dispatch for routing, you can natively support
-any custom classifier without modifying the package source code. Simply
-define the two S3 methods (\code{fit_adapter} and \code{predict_adapter}) in your
-global environment for your custom method string.
+Because \code{classbound} uses standard S3 dispatch for predictions, you can natively support
+any custom classifier without modifying the package source code. You only need to pass
+your classifier function to \code{fit_model()}, and then define a \code{predict_adapter}
+S3 method for your model's native class.
 
-Example S3 adapter skeleton for a custom classifier "mymodel":
+Example S3 adapter skeleton for a custom classifier that returns class "mymodel":
 
-\if{html}{\out{<div class="sourceCode R">}}\preformatted{# 1. Define the fitting logic
-fit_adapter.classbound_mymodel <- function(object, data, labels, ...) \{
-  train_data <- data
-  train_data$.label. <- labels
-  mypackage::myfit(.label. ~ ., data = train_data, ...)
-\}
-
-# 2. Define the prediction logic
-predict_adapter.classbound_mymodel <- function(model, newdata, ...) \{
-  raw_model <- model$model
-  preds <- as.factor(predict(raw_model, newdata, ...))
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{# 1. Define the prediction logic for the native model class
+predict_adapter.mymodel <- function(model, newdata, ...) \{
+  # Get predictions from the custom package
+  raw_preds <- mypackage::predict(model, newdata, ...)
 
   # probs must be either a probability matrix or NULL if unsupported
   probs <- NULL
 
-  list(class = preds, probs = probs)
+  list(class = as.factor(raw_preds), probs = probs)
 \}
 
-# 3. Use it natively in the pipeline
-# my_model <- fit_model(data, labels, method = "mymodel")
+# 2. Use it natively in the pipeline
+# my_model <- fit_model(data, formula, classifier = mypackage::myfit)
 }\if{html}{\out{</div>}}
 }
 

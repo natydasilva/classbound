@@ -2,7 +2,6 @@
 % Please edit documentation in R/classbound-package.R
 \docType{package}
 \name{classbound-package}
-\alias{classbound}
 \alias{classbound-package}
 \title{classbound: Visualization for classification decision boundaries}
 \description{

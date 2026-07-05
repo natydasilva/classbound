@@ -1,27 +1,25 @@
-test_that("fit_model and predict_model work end-to-end with rpart", {
+test_that("fit_model and predict work end-to-end with rpart", {
   skip_if_not_installed("rpart")
   # Simple penguins dataset subset
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, 2:5]
-  train_labels <- penguins$species
+  train_data <- penguins
 
   # 1. Fit Phase
   model <- fit_model(
     data = train_data,
-    labels = train_labels,
-    method = "rpart"
+    formula = species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g,
+    classifier = rpart::rpart
   )
 
   # Check standard wrapper class
-  expect_s3_class(model, "classbound_model")
-  expect_equal(model$method, "rpart")
+  expect_s3_class(model, "classbound")
 
   # Check that underlying model got built
-  expect_s3_class(model$model, "rpart")
+  expect_s3_class(model$fit, "rpart")
 
   # 2. Predict Phase
-  preds <- predict_model(model, newdata = train_data)
+  preds <- predict(model, newdata = train_data)
 
   # Output structure guarantees
   expect_type(preds, "list")
@@ -33,5 +31,5 @@ test_that("fit_model and predict_model work end-to-end with rpart", {
 
   # Probabilities output expectations
   expect_equal(nrow(preds$probs), nrow(train_data))
-  expect_equal(ncol(preds$probs), length(levels(train_labels)))
+  expect_equal(ncol(preds$probs), length(levels(train_data$species)))
 })

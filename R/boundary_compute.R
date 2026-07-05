@@ -2,7 +2,7 @@
 #'
 #' @description Computes the decision boundary for a fitted classifier over a specified feature space.
 #'
-#' @param model A fitted model object of class `classbound_model`.
+#' @param model A fitted model object of class `classbound`.
 #' @param range A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., `list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))`).
 #' @param resolution An integer specifying the grid resolution.
 #' @param ... Additional computation parameters.
@@ -11,13 +11,14 @@
 #' @examples
 #' \donttest{
 #' data(data69_1)
-#' model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+#' data69_1$Y <- as.factor(data69_1$Y)
+#' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
 #' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 #' }
 #' @export
 boundary_compute <- function(model, range, resolution = 100, ...) {
-  if (!inherits(model, "classbound_model")) {
-    stop("model must be a 'classbound_model' object.", call. = FALSE)
+  if (!inherits(model, "classbound")) {
+    stop("model must be a 'classbound' object.", call. = FALSE)
   }
 
   if (!is.list(range) || length(range) != 2 || is.null(names(range))) {

@@ -1,27 +1,3 @@
-#' Fit a PPtreeExt model
-#'
-#' @description Adapter function to fit a Projection Pursuit classification tree.
-#'
-#' @param object An S3 method spec object.
-#' @param data A data frame containing the training features.
-#' @param labels A vector (usually a factor) of target labels.
-#' @param ... Additional arguments passed to `PPtreeExt::PPtreeExtclass()`.
-#'
-#' @return A fitted `PPtreeExtclass` object.
-#' @export
-fit_adapter.classbound_pptree <- function(object, data, labels, ...) {
-  if (!requireNamespace("PPtreeExt", quietly = TRUE)) {
-    stop("Package 'PPtreeExt' must be installed to use method = 'pptree'.", call. = FALSE)
-  }
-
-  # Combine data and labels into a single formula for PPtreeExtclass
-  train_data <- data
-  train_data$.label. <- labels
-
-  # Fit the model
-  PPtreeExt::PPtreeExtclass(.label. ~ ., data = train_data, ...)
-}
-
 #' Predict using a fitted PPtreeExt model
 #'
 #' @description Adapter function to generate standardized predictions from a PPtreeExt model.
@@ -33,14 +9,9 @@ fit_adapter.classbound_pptree <- function(object, data, labels, ...) {
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities, NULL for pptree).
 #' @importFrom stats predict
 #' @export
-predict_adapter.classbound_pptree <- function(model, newdata, ...) {
-  raw_model <- model$model
-  if (!inherits(raw_model, "PPtreeExtclass")) {
-    stop("Model must be a 'PPtreeExtclass' object.", call. = FALSE)
-  }
-
+predict_adapter.PPtreeExtclass <- function(model, newdata, ...) {
   # Predict classes
-  preds_raw <- predict(raw_model, newdata, ...)
+  preds_raw <- predict(model, newdata, ...)
   if (is.null(preds_raw$predict.class)) {
     stop("Unexpected prediction output from PPtreeExt model: 'predict.class' not found.", call. = FALSE)
   }

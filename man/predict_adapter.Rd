@@ -7,7 +7,7 @@
 predict_adapter(model, newdata, ...)
 }
 \arguments{
-\item{model}{A fitted model object.}
+\item{model}{A fitted native model object.}
 
 \item{newdata}{A data frame of new observations.}
 
@@ -15,6 +15,6 @@ predict_adapter(model, newdata, ...)
 }
 \description{
 This generic is exported for S3 dispatch but is not intended for direct use.
-Use \code{\link{predict_model}} instead.
+Use \code{\link{predict.classbound}} or \code{\link{predict_model}} instead.
 }
 \keyword{internal}

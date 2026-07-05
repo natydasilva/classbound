@@ -1,42 +1,39 @@
 test_that("user-defined custom adapters are supported natively via S3 dispatch", {
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  # 1. Define a custom fitting adapter in the current environment
-  fit_adapter.classbound_my_custom_model <- function(object, data, labels, ...) {
-    # Store just the labels in a dummy model structure for validation
-    list(dummy_labels = labels, fitted = TRUE)
+  # 1. Define a custom classifier function
+  my_custom_classifier <- function(formula, data, ...) {
+    structure(list(formula = formula, dummy_labels = data[[all.vars(formula[[2]])]], fitted = TRUE), class = "my_custom_model")
   }
 
-  # 2. Define a custom prediction adapter in the current environment
-  predict_adapter.classbound_my_custom_model <- function(model, newdata, ...) {
+  # 2. Define a custom prediction adapter for that class
+  predict_adapter.my_custom_model <- function(model, newdata, ...) {
     # Just predict the first level for all rows
     n <- nrow(newdata)
-    level_1 <- levels(model$model$dummy_labels)[1]
-    preds <- factor(rep(level_1, n), levels = levels(model$model$dummy_labels))
+    level_1 <- levels(model$dummy_labels)[1]
+    preds <- factor(rep(level_1, n), levels = levels(model$dummy_labels))
     list(class = preds, probs = NULL)
   }
 
-  # 3. Register the S3 methods locally so testthat environment can see them
+  # 3. Register the S3 method locally so testthat environment can see them
   local({
-    registerS3method("fit_adapter", "classbound_my_custom_model", fit_adapter.classbound_my_custom_model, envir = parent.frame())
-    registerS3method("predict_adapter", "classbound_my_custom_model", predict_adapter.classbound_my_custom_model, envir = parent.frame())
+    registerS3method("predict_adapter", "my_custom_model", predict_adapter.my_custom_model, envir = parent.frame())
   })
 
-  # 4. Use the core pipeline to fit the model using the custom method string
-  my_model <- fit_model(train_data, train_labels, method = "my_custom_model")
+  # 4. Use the core pipeline to fit the model using the custom function
+  my_model <- fit_model(train_data, species ~ ., classifier = my_custom_classifier)
   
-  # Validate that the model object was properly constructed using the custom adapter
-  expect_s3_class(my_model, "classbound_my_custom_model")
-  expect_s3_class(my_model, "classbound_model")
-  expect_true(my_model$model$fitted)
+  # Validate that the model object was properly constructed
+  expect_s3_class(my_model, "classbound")
+  expect_s3_class(my_model$fit, "my_custom_model")
+  expect_true(my_model$fit$fitted)
   
-  # 5. Use the core pipeline to generate a boundary (which tests predict_model)
+  # 5. Use the core pipeline to generate a boundary (which tests predict)
   grid <- boundary_compute(my_model, list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 20)), resolution = 10)
   
-  # Validate that boundary generation succeeded using the custom adapter
+  # Validate that boundary generation succeeded using the custom predict adapter
   expect_s3_class(grid, "data.frame")
   expect_equal(nrow(grid), 100)
   expect_true("prediction" %in% colnames(grid))

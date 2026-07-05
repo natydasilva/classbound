@@ -3,13 +3,12 @@ test_that("boundary_compute works correctly with rpart model", {
   # Use a 2D subset of penguins to avoid missing columns in predict
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
   model <- fit_model(
     data = train_data,
-    labels = train_labels,
-    method = "rpart"
+    formula = species ~ .,
+    classifier = rpart::rpart
   )
 
   # Define range
@@ -42,14 +41,13 @@ test_that("boundary_compute handles errors gracefully", {
   skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
-  model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = rpart::rpart)
 
-  # Not a classbound_model
+  # Not a classbound object
   expect_error(
-    boundary_compute(model$model, range = list(x = c(1, 2), y = c(1, 2)), resolution = 10),
-    "model must be a 'classbound_model' object"
+    boundary_compute(model$fit, range = list(x = c(1, 2), y = c(1, 2)), resolution = 10),
+    "model must be a 'classbound' object"
   )
 
   # Invalid range
@@ -69,9 +67,8 @@ test_that("boundary_compute handles metadata validation gracefully", {
   skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
-  model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = rpart::rpart)
 
   # Duplicate range names
   expect_error(
@@ -91,8 +88,8 @@ test_that("boundary_compute handles metadata validation gracefully", {
   )
 
   # Model trained on 3 features, range provides 2
-  train_data_3 <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
-  model_3 <- fit_model(data = train_data_3, labels = train_labels, method = "rpart")
+  train_data_3 <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "species")]
+  model_3 <- fit_model(data = train_data_3, formula = species ~ ., classifier = rpart::rpart)
   
   expect_error(
     boundary_compute(model_3, range = list(bill_length_mm = c(1, 2), bill_depth_mm = c(1, 2))),
@@ -106,9 +103,8 @@ test_that("boundary_compute rejects categorical features", {
   penguins <- na.omit(penguins)
   
   # Train model on a numeric and a character/factor column
-  train_data <- penguins[, c("bill_length_mm", "island")]
-  train_labels <- penguins$species
-  model <- fit_model(data = train_data, labels = train_labels, method = "rpart")
+  train_data <- penguins[, c("bill_length_mm", "island", "species")]
+  model <- fit_model(data = train_data, formula = species ~ bill_length_mm + island, classifier = rpart::rpart)
   
   expect_error(
     boundary_compute(model, range = list(bill_length_mm = c(30, 60), island = c(1, 2)), resolution = 10),

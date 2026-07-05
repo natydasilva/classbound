@@ -7,24 +7,19 @@ test_that("comparison workflow enforces class levels and structures correctly", 
   penguins <- palmerpenguins::penguins
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
   
-  full_labels <- penguins$species
-  
   # Drop "Gentoo" entirely from the subset
   subset_idx <- penguins$species != "Gentoo"
-  subset_data <- penguins[subset_idx, ]
-  subset_labels <- full_labels[subset_idx] # Still a factor with 3 levels, 1 unused
+  subset_data <- penguins[subset_idx, c("bill_length_mm", "bill_depth_mm", "species")]
   
-  methods <- c("rpart", "randomForest")
-  models <- lapply(methods, function(m) {
-    fit_model(subset_data[, c("bill_length_mm", "bill_depth_mm")], subset_labels, m)
-  })
-  names(models) <- methods
+  models <- list(
+    rpart = fit_model(subset_data, species ~ ., classifier = rpart::rpart),
+    randomForest = fit_model(subset_data, species ~ ., classifier = randomForest::randomForest)
+  )
   
   # Validate list-of-models structure
   expect_type(models, "list")
-  expect_named(models, methods)
-  expect_s3_class(models$rpart, "classbound_model")
-  expect_s3_class(models$randomForest, "classbound_model")
+  expect_s3_class(models$rpart, "classbound")
+  expect_s3_class(models$randomForest, "classbound")
   
   # Validate that original global levels are preserved in metadata
   expect_equal(models$rpart$class_levels, c("Adelie", "Chinstrap", "Gentoo"))

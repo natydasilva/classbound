@@ -4,20 +4,28 @@
 \alias{fit_model}
 \title{Fit a machine learning model}
 \usage{
-fit_model(data, labels, method, ...)
+fit_model(
+  data,
+  formula,
+  classifier,
+  interface = c("formula", "matrix", "custom"),
+  fit_args = list()
+)
 }
 \arguments{
-\item{data}{A data frame containing the training features.}
+\item{data}{A data frame containing the training features and response.}
 
-\item{labels}{A vector of target labels corresponding to \code{data}.}
+\item{formula}{A formula specifying the response and predictors.}
 
-\item{method}{A string specifying the classifier method (e.g., "rpart").}
+\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
 
-\item{...}{Additional arguments passed to the specific model adapter.}
+\item{interface}{A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.}
+
+\item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
 }
 \value{
-A fitted model object with a normalized structure of class "classbound_model", containing the model, method, and extracted feature metadata.
+A fitted model object with a normalized structure of class "classbound", containing the raw model and extracted feature metadata.
 }
 \description{
-Fits a machine learning classifier using a unified interface.
+Fits a machine learning classifier using a standard interface.
 }

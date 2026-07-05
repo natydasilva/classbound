@@ -7,7 +7,7 @@
 boundary_compute(model, range, resolution = 100, ...)
 }
 \arguments{
-\item{model}{A fitted model object of class \code{classbound_model}.}
+\item{model}{A fitted model object of class \code{classbound}.}
 
 \item{range}{A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
 
@@ -24,7 +24,8 @@ Computes the decision boundary for a fitted classifier over a specified feature 
 \examples{
 \donttest{
 data(data69_1)
-model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+data69_1$Y <- as.factor(data69_1$Y)
+model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
 grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 }
 }

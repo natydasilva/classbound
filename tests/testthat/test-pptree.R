@@ -1,20 +1,20 @@
-test_that("fit_model and predict_model work with pptree", {
+test_that("fit_model and predict work with pptree", {
   skip_if_not_installed("PPtreeExt")
 
   # Use penguins dataset
   library(palmerpenguins)
   penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, 2:5]
-  train_labels <- penguins$species
+  train_data <- penguins
 
   # Fit model
-  model <- fit_model(train_data, train_labels, method = "pptree")
+  model <- fit_model(train_data, species ~ ., classifier = PPtreeExt::PPtreeExtclass)
 
-  expect_s3_class(model, "classbound_model")
-  expect_equal(model$method, "pptree")
+  expect_s3_class(model, "classbound")
+  expect_s3_class(model$fit, "PPtreeExtclass")
 
   # Predict
-  preds <- predict_model(model, train_data)
+  test_data <- train_data[, -which(names(train_data) == "species")]
+  preds <- predict(model, test_data)
 
   expect_type(preds, "list")
   expect_true("class" %in% names(preds))

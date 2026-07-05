@@ -15,7 +15,8 @@
 #' @examples
 #' \donttest{
 #' data(data69_1)
-#' model <- fit_model(data69_1[, c("V1", "V2")], as.factor(data69_1$Y), "rpart")
+#' data69_1$Y <- as.factor(data69_1$Y)
+#' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
 #' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 #' plot_boundary(grid, data69_1, "V1", "V2", "Y")
 #' }

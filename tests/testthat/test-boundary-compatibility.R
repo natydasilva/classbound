@@ -1,11 +1,10 @@
 test_that("boundary_compute works correctly with pptree model", {
   skip_if_not_installed("PPtreeExt")
   library(palmerpenguins)
-  penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
+  penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  model <- fit_model(data = train_data, labels = train_labels, method = "pptree")
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = PPtreeExt::PPtreeExtclass)
 
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),
@@ -26,11 +25,10 @@ test_that("boundary_compute works correctly with pptree model", {
 test_that("boundary_compute works correctly with randomForest model", {
   skip_if_not_installed("randomForest")
   library(palmerpenguins)
-  penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm")]
-  train_labels <- penguins$species
+  penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  model <- fit_model(data = train_data, labels = train_labels, method = "randomForest")
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = randomForest::randomForest)
 
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),
@@ -53,11 +51,10 @@ test_that("boundary_compute works correctly with randomForest model", {
 test_that("boundary_compute works correctly with PPforest model", {
   skip_if_not_installed("PPforest")
   library(palmerpenguins)
-  penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- as.data.frame(penguins[, c("bill_length_mm", "bill_depth_mm")])
-  train_labels <- penguins$species
+  penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  model <- fit_model(data = train_data, labels = train_labels, method = "PPforest", m = 10)
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = PPforest::PPforest, interface = "custom", fit_args = list(data = train_data, y = "species", m = 10, size.tr = 1, size.p = 1, PPmethod = "LDA"))
 
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),
@@ -78,11 +75,10 @@ test_that("boundary_compute works correctly with PPforest model", {
 test_that("boundary_compute works correctly with PPtreeViz model", {
   skip_if_not_installed("PPtreeViz")
   library(palmerpenguins)
-  penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- as.data.frame(penguins[, c("bill_length_mm", "bill_depth_mm")])
-  train_labels <- penguins$species
+  penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
+  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  model <- fit_model(data = train_data, labels = train_labels, method = "PPtreeViz")
+  model <- fit_model(data = train_data, formula = species ~ ., classifier = PPtreeViz::PPTreeclass)
 
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),

@@ -33,9 +33,10 @@ penguins <- na.omit(penguins[, -c(2, 7, 8)])
 
 # Fit an rpart decision tree model predicting species
 model <- fit_model(
-  data = penguins[, c("bill_length_mm", "bill_depth_mm")],
-  labels = penguins$species,
-  method = "rpart"
+  data = penguins,
+  formula = species ~ bill_length_mm + bill_depth_mm,
+  classifier = rpart::rpart,
+  interface = "formula"
 )
 ```
 
