@@ -3,7 +3,7 @@
 \docType{package}
 \name{classbound-package}
 \alias{classbound-package}
-\title{classbound: Visualization for classification decision boundaries}
+\title{classbound: Visualization for Classification Decision Boundaries}
 \description{
 This R package allows to explore decision boundaries for existing classification methods and also for new methods.
 }

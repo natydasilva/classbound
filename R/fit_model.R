@@ -5,7 +5,12 @@
 #' @param data A data frame containing the training features and response.
 #' @param formula A formula specifying the response and predictors.
 #' @param classifier The classification function to use (e.g., \code{rpart::rpart}).
-#' @param interface A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.
+#' @param interface A string specifying how to invoke the classifier.
+#' \itemize{
+#'   \item \code{"formula"} (default): For classifiers that accept a formula and data frame natively (verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
+#'   \item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y} (verified for \code{randomForest::randomForest} default method).
+#'   \item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args} (verified for \code{qeML::qeKNN}).
+#' }
 #' @param fit_args A named list of additional arguments passed to the classifier during fitting.
 #'
 #' @return A fitted model object with a normalized structure of class "classbound", containing the raw model and extracted feature metadata.
@@ -40,7 +45,6 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
 
   # Update mf with preprocessed data
   mf <- model.frame(formula, data = data)
-  
   # Route fitting based on selected interface
   if (interface == "formula") {
     model_fit <- do.call(classifier, c(list(formula = formula, data = mf), fit_args))
@@ -54,7 +58,6 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
   # Extract feature metadata using the processed model frame (excluding response)
   response_var <- all.vars(formula[[2]])
   predictors_df <- mf[, setdiff(colnames(mf), response_var), drop = FALSE]
-  
   feature_meta <- list(
     names = colnames(predictors_df),
     types = lapply(predictors_df, class),

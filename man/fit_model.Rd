@@ -19,7 +19,12 @@ fit_model(
 
 \item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
 
-\item{interface}{A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.}
+\item{interface}{A string specifying how to invoke the classifier.
+\itemize{
+\item \code{"formula"} (default): For classifiers that accept a formula and data frame natively (verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
+\item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y} (verified for \code{randomForest::randomForest} default method).
+\item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args} (verified for \code{qeML::qeKNN}).
+}}
 
 \item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
 }

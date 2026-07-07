@@ -38,10 +38,9 @@ test_that("predict defaults to error if native class lacks adapter", {
     ),
     class = "classbound"
   )
-  
   expect_error(
     predict(mock_model, newdata = data.frame()),
-    "Prediction adapter for native class 'unsupported_magic_model' is not implemented"
+    "Default prediction failed for native class"
   )
 })
 
@@ -52,8 +51,6 @@ test_that("predict ensures correct factor levels", {
   train_data <- penguins
 
   model <- fit_model(train_data, species ~ ., classifier = rpart::rpart)
-  
   preds <- predict(model, train_data)
   expect_equal(levels(preds$class), levels(train_data$species))
 })
-

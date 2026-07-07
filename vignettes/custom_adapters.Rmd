@@ -1,0 +1,49 @@
+---
+title: "Custom Predict Adapters"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Custom Predict Adapters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Do I Need a Custom Adapter?
+
+Most standard R classifiers return a vector or factor of predictions when `predict()` is called. `classbound` provides a "smart default" `predict_adapter.default()` that handles these out of the box. You **only** need to write a custom adapter if your model returns a complex object (like a list, matrix, or custom class) that the default generic cannot handle.
+
+## Adapter Contract
+
+If you do need a custom adapter, you must implement an S3 method for `predict_adapter`.
+The function must return a list with two elements:
+- `class`: A factor vector of predicted class labels.
+- `probs`: A probability matrix, or strictly `NULL` if the classifier does not support probabilities. Downstream pipeline functions handle `probs = NULL` natively.
+
+## Example: Custom S3 Adapter
+
+Here is a skeleton for a custom classifier that returns class `"mymodel"`:
+
+```{r setup, eval=FALSE}
+# 1. Define the prediction logic for the native model class
+predict_adapter.mymodel <- function(model, newdata, ...) {
+  # Get predictions from the custom package (assuming it returns a list)
+  raw_preds <- mypackage::predict(model, newdata, ...)
+  
+  # Extract the class vector
+  pred_class <- raw_preds$class
+  
+  # Extract the probs matrix (or set to NULL if unsupported)
+  probs <- raw_preds$probabilities
+
+  list(class = as.factor(pred_class), probs = probs)
+}
+
+# 2. Use it natively in the pipeline
+# my_model <- fit_model(data, formula, classifier = mypackage::myfit)
+```

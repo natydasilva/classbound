@@ -70,6 +70,37 @@ plot_boundary(
 )
 ```
 
+### The All-In-One Wrapper
+
+For convenience, you can perform fitting, boundary computation, and plotting in a single step using the `classbound()` wrapper:
+
+```{r classbound-wrapper, eval=FALSE}
+classbound(
+  data = penguins,
+  formula = species ~ bill_length_mm + bill_depth_mm,
+  classifier = rpart::rpart,
+  resolution = 100
+)
+```
+
+### Using Different Classifiers
+
+Because `classbound` uses standard R evaluation, you can easily plug in other models. The package supports different classifier interfaces (`formula`, `matrix`, `custom`):
+
+```{r classifiers, eval=FALSE}
+# Formula interface (e.g., SVM)
+model_svm <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
+
+# Custom interface (e.g., qeKNN from qeML where formula is not supported)
+model_knn <- fit_model(
+  data = penguins,
+  formula = species ~ bill_length_mm + bill_depth_mm,
+  classifier = qeML::qeKNN,
+  interface = "custom",
+  fit_args = list(data = penguins, yName = "species", k = 25)
+)
+```
+
 ### Interactive Exploration
 
 The package also includes a Shiny app to interactively explore models and boundaries. You can launch it using:

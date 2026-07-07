@@ -63,5 +63,26 @@ predict_adapter <- function(model, newdata, ...) {
 
 #' @export
 predict_adapter.default <- function(model, newdata, ...) {
-  stop(sprintf("Prediction adapter for native class '%s' is not implemented.", class(model)[1]), call. = FALSE)
+  # Standard R predict convention: predict(model) usually returns a vector or factor of classes
+  # We wrap this in a tryCatch to provide an informative error if it fails
+  preds <- tryCatch(
+    predict(model, newdata, ...),
+    error = function(e) {
+      stop(sprintf(
+        "Default prediction failed for native class '%s'. You may need to provide a custom predict_adapter.%s or pass additional predict_args.\nOriginal error: %s",
+        class(model)[1], class(model)[1], e$message
+      ), call. = FALSE)
+    }
+  )
+
+  # Explicitly guard against non-standard outputs (e.g. lists, data frames, matrices)
+  # that some models return. These require specific predict_adapter implementations.
+  if (is.list(preds) || is.matrix(preds) || is.data.frame(preds)) {
+    stop(sprintf(
+      "Prediction for class '%s' returned a complex object (list/matrix/data.frame). A custom predict_adapter.%s must be implemented to extract the class vector.",
+      class(model)[1], class(model)[1]
+    ), call. = FALSE)
+  }
+
+  list(class = as.factor(preds), probs = NULL)
 }
