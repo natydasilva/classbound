@@ -38,16 +38,16 @@ test_that("predict defaults to error on complex objects, but succeeds with predf
     ),
     class = "classbound"
   )
-  
+
   # Register a dummy predict method for this test that returns a list
-  predict.unsupported_magic_model <<- function(object, ...) list(a=1, b=2)
+  predict.unsupported_magic_model <<- function(object, ...) list(a = 1, b = 2)
   on.exit(rm("predict.unsupported_magic_model", envir = globalenv()))
-  
+
   expect_error(
     predict(mock_model, newdata = data.frame()),
     "Please supply `predfun` to extract the desired class predictions"
   )
-  
+
   # Now test that predfun fixes it
   preds <- predict(mock_model, newdata = data.frame(), predfun = function(m, nd, ...) c("A", "B"))
   expect_equal(as.character(preds$class), c("A", "B"))

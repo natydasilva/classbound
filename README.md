@@ -81,20 +81,26 @@ classbound(
 ### Using Different Classifiers
 
 Because `classbound` uses standard R evaluation, you can easily plug in
-other models. The package supports different classifier interfaces
-(`formula`, `matrix`, `custom`):
+other models. The package supports standard classifiers out of the box,
+and provides a `predfun` argument for models that return complex objects
+(like lists).
 
 ``` r
-# Formula interface (e.g., SVM)
-model_svm <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
+# Standard models (e.g., SVM) work automatically
+model_svm <- classbound(
+  data = penguins, 
+  formula = species ~ bill_length_mm + bill_depth_mm, 
+  classifier = e1071::svm
+)
 
-# Custom interface (e.g., qeKNN from qeML where formula is not supported)
-model_knn <- fit_model(
+# Models returning lists (e.g., MASS::qda) use the `predfun` fallback mechanism
+model_qda <- classbound(
   data = penguins,
   formula = species ~ bill_length_mm + bill_depth_mm,
-  classifier = qeML::qeKNN,
-  interface = "custom",
-  fit_args = list(data = penguins, yName = "species", k = 25)
+  classifier = MASS::qda,
+  predfun = function(model, newdata, ...) {
+    predict(model, newdata, ...)$class
+  }
 )
 ```
 

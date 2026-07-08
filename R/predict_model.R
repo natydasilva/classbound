@@ -9,7 +9,7 @@
 #' @param predfun A custom function to generate predictions for non-standard models.
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
-#' @return A list containing \code{class} (a factor of predicted labels) and \code{probs} 
+#' @return A list containing \code{class} (a factor of predicted labels) and \code{probs}
 #' (a probability matrix, or strictly \code{NULL} if the classifier lacks probability support).
 #' Downstream functions like \code{boundary_compute()} are designed to handle \code{probs = NULL} gracefully.
 #' @export
@@ -18,7 +18,7 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
     # Use the user-supplied custom prediction function
     args <- c(list(object$fit, newdata), predict_args, list(...))
     preds_raw <- do.call(predfun, args)
-    
+
     if (is.list(preds_raw) && !is.null(preds_raw$class)) {
       res <- preds_raw
     } else {
@@ -29,13 +29,13 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
     args <- c(list(model = object$fit, newdata = newdata), predict_args, list(...))
     res <- do.call(predict_adapter, args)
   }
-  
+
   if (!is.null(object$class_levels)) {
     res$class <- factor(res$class, levels = object$class_levels)
   } else if (!is.factor(res$class)) {
     res$class <- as.factor(res$class)
   }
-  
+
   res
 }
 
@@ -50,7 +50,7 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
 #' @param predfun A custom function to generate predictions for non-standard models.
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
-#' @return A list containing \code{class} (a factor of predicted labels) and \code{probs} 
+#' @return A list containing \code{class} (a factor of predicted labels) and \code{probs}
 #' (a probability matrix, or strictly \code{NULL} if the classifier lacks probability support).
 #' @export
 predict_model <- function(model, newdata, predict_args = list(), predfun = NULL, ...) {

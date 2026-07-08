@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 `classbound` is designed to be as simple as possible when dealing with different classifiers. Our prediction philosophy is:
+
 1. **Native R First:** Standard R prediction interfaces work automatically through our default path.
 2. **`predfun` Fallback Mechanism:** Models with non-standard documented prediction APIs can be handled directly via the `predfun` argument.
 3. **Minimal Built-ins:** Dedicated S3 adapters are only added for officially supported classifiers whose APIs genuinely require special handling.
@@ -26,8 +27,8 @@ If your model's `predict()` method returns a vector or factor of classes nativel
 ```{r setup_standard, eval=FALSE}
 # e1071::svm works out of the box
 my_model <- classbound(
-  data = my_data, 
-  formula = y ~ x1 + x2, 
+  data = my_data,
+  formula = y ~ x1 + x2,
   classifier = e1071::svm
 )
 ```
@@ -39,8 +40,8 @@ If your model returns a complex object (like a list, data frame, or matrix), the
 ```{r setup_predfun, eval=FALSE}
 # MASS::qda returns a list, so we supply a predfun
 my_model <- classbound(
-  data = my_data, 
-  formula = y ~ x1 + x2, 
+  data = my_data,
+  formula = y ~ x1 + x2,
   classifier = MASS::qda,
   predfun = function(model, newdata, ...) {
     predict(model, newdata, ...)$class
@@ -56,8 +57,8 @@ We maintain a very small set of built-in S3 adapters (e.g., `rpart`, `randomFore
 # PPforest requires model-specific handling for prediction warnings & list outputs,
 # but classbound provides a built-in adapter for it natively.
 my_model <- classbound(
-  data = my_data, 
-  formula = y ~ x1 + x2, 
+  data = my_data,
+  formula = y ~ x1 + x2,
   classifier = PPforest::PPforest
 )
 ```
