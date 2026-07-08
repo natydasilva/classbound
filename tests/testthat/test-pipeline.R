@@ -28,7 +28,7 @@ test_that("predict correctly enforces structural constraints", {
   )
 })
 
-test_that("predict defaults to error if native class lacks adapter", {
+test_that("predict defaults to error on complex objects, but succeeds with predfun", {
   # Mock a model with no predict_adapter
   mock_model <- structure(
     list(
@@ -38,10 +38,19 @@ test_that("predict defaults to error if native class lacks adapter", {
     ),
     class = "classbound"
   )
+  
+  # Register a dummy predict method for this test that returns a list
+  predict.unsupported_magic_model <<- function(object, ...) list(a=1, b=2)
+  on.exit(rm("predict.unsupported_magic_model", envir = globalenv()))
+  
   expect_error(
     predict(mock_model, newdata = data.frame()),
-    "Default prediction failed for native class"
+    "Please supply `predfun` to extract the desired class predictions"
   )
+  
+  # Now test that predfun fixes it
+  preds <- predict(mock_model, newdata = data.frame(), predfun = function(m, nd, ...) c("A", "B"))
+  expect_equal(as.character(preds$class), c("A", "B"))
 })
 
 test_that("predict ensures correct factor levels", {

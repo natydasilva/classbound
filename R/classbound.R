@@ -9,6 +9,7 @@
 #' @param interface A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.
 #' @param fit_args A named list of additional arguments passed to the classifier during fitting.
 #' @param predict_args A named list of additional arguments passed to \code{predict()} during boundary computation.
+#' @param predfun A custom function to generate predictions for non-standard models.
 #' @param resolution An integer specifying the grid resolution for the decision boundary.
 #' @param ... Additional arguments passed to \code{\link{plot_boundary}}.
 #'
@@ -20,6 +21,7 @@ classbound <- function(data,
                        interface = c("formula", "matrix", "custom"), 
                        fit_args = list(), 
                        predict_args = list(), 
+                       predfun = NULL,
                        resolution = 100, 
                        ...) {
   
@@ -55,6 +57,7 @@ classbound <- function(data,
     model = model, 
     range = feature_range, 
     resolution = resolution,
+    predfun = predfun,
     predict_args = predict_args
   )
   

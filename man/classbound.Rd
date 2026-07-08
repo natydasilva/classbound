@@ -11,6 +11,7 @@ classbound(
   interface = c("formula", "matrix", "custom"),
   fit_args = list(),
   predict_args = list(),
+  predfun = NULL,
   resolution = 100,
   ...
 )
@@ -27,6 +28,8 @@ classbound(
 \item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
 
 \item{predict_args}{A named list of additional arguments passed to \code{predict()} during boundary computation.}
+
+\item{predfun}{A custom function to generate predictions for non-standard models.}
 
 \item{resolution}{An integer specifying the grid resolution for the decision boundary.}
 

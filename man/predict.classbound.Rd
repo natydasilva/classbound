@@ -4,7 +4,7 @@
 \alias{predict.classbound}
 \title{Predict using a classbound model}
 \usage{
-\method{predict}{classbound}(object, newdata, predict_args = list(), ...)
+\method{predict}{classbound}(object, newdata, predict_args = list(), predfun = NULL, ...)
 }
 \arguments{
 \item{object}{A fitted classbound model. This is the object returned by \code{fit_model()} or \code{classbound()}.}
@@ -12,6 +12,8 @@
 \item{newdata}{A data frame of new observations to predict on.}
 
 \item{predict_args}{A named list of additional arguments passed to \code{predict_adapter}.}
+
+\item{predfun}{A custom function to generate predictions for non-standard models.}
 
 \item{...}{Additional arguments passed to the specific model adapter.}
 }

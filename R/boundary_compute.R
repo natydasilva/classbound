@@ -5,6 +5,7 @@
 #' @param model A fitted model object of class `classbound`.
 #' @param range A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., `list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))`).
 #' @param resolution An integer specifying the grid resolution.
+#' @param predfun A custom function to generate predictions for non-standard models.
 #' @param ... Additional computation parameters.
 #'
 #' @return A data frame containing the grid points (`x`, `y`), predicted `prediction`, and probabilities.
@@ -16,7 +17,7 @@
 #' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 #' }
 #' @export
-boundary_compute <- function(model, range, resolution = 100, ...) {
+boundary_compute <- function(model, range, resolution = 100, predfun = NULL, ...) {
   if (!inherits(model, "classbound")) {
     stop("model must be a 'classbound' object.", call. = FALSE)
   }
@@ -71,7 +72,7 @@ boundary_compute <- function(model, range, resolution = 100, ...) {
   colnames(grid_df) <- var_names
 
   # Predict using the standardized predict_model function
-  preds <- predict_model(model, newdata = grid_df, ...)
+  preds <- predict_model(model, newdata = grid_df, predfun = predfun, ...)
 
   # Class predictions are now strictly guaranteed to be correctly leveled factors 
   # by the predict_model() contract, so we directly construct the frame.

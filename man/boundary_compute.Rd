@@ -4,7 +4,7 @@
 \alias{boundary_compute}
 \title{Compute the classification decision boundary}
 \usage{
-boundary_compute(model, range, resolution = 100, ...)
+boundary_compute(model, range, resolution = 100, predfun = NULL, ...)
 }
 \arguments{
 \item{model}{A fitted model object of class \code{classbound}.}
@@ -12,6 +12,8 @@ boundary_compute(model, range, resolution = 100, ...)
 \item{range}{A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
 
 \item{resolution}{An integer specifying the grid resolution.}
+
+\item{predfun}{A custom function to generate predictions for non-standard models.}
 
 \item{...}{Additional computation parameters.}
 }

@@ -4,7 +4,7 @@
 \alias{predict_model}
 \title{Predict using a fitted classbound model}
 \usage{
-predict_model(model, newdata, predict_args = list(), ...)
+predict_model(model, newdata, predict_args = list(), predfun = NULL, ...)
 }
 \arguments{
 \item{model}{A fitted classbound model. This corresponds to the \code{object} argument used by the standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.}
@@ -12,6 +12,8 @@ predict_model(model, newdata, predict_args = list(), ...)
 \item{newdata}{A data frame of new observations to predict on.}
 
 \item{predict_args}{A named list of additional arguments passed to \code{predict_adapter}.}
+
+\item{predfun}{A custom function to generate predictions for non-standard models.}
 
 \item{...}{Additional arguments passed to the specific model adapter.}
 }

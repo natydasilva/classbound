@@ -26,3 +26,5 @@ docs/
 # Testing
 .coverage
 .testthat/
+/doc/
+/Meta/
