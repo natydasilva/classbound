@@ -1,21 +1,21 @@
 #' Preprocess data before model fitting
 #'
-#' @description Handles common preprocessing steps like validating inputs, converting factors, 
-#' handling missing values, and optional scaling. This centralizes validation so classifier 
+#' @description Handles common preprocessing steps like validating inputs, converting factors,
+#' handling missing values, and optional scaling. This centralizes validation so classifier
 #' adapters can assume validated inputs.
 #'
 #' @param data A data frame of raw training or prediction data.
-#' @param labels Optional. A vector of target labels corresponding to `data`. If provided, it is converted to a factor with unused levels dropped.
-#' @param scale Logical. If `TRUE`, scales numeric columns in `data` to mean 0 and standard deviation 1. Defaults to `FALSE`. Note that this scaling is not persisted for predictions; it is an isolated transformation.
+#' @param labels Optional. A vector of target labels corresponding to `data`.
+#'   If provided, it is converted to a factor with unused levels dropped.
 #' @param ... Additional processing arguments (currently unused).
 #'
 #' @return A list containing the validated and processed `data` and `labels`.
 #' @export
-preprocess_data <- function(data, labels = NULL, scale = FALSE, ...) {
+preprocess_data <- function(data, labels = NULL, ...) {
   if (!is.data.frame(data)) {
     stop("`data` must be a data.frame.", call. = FALSE)
   }
-  
+
   # Coerce to a standard data.frame to remove tibble or other sub-classes
   # This prevents indexing bugs in older packages that expect df[, col] to return a vector
   data <- as.data.frame(data)
@@ -56,13 +56,6 @@ preprocess_data <- function(data, labels = NULL, scale = FALSE, ...) {
     data[factor_cols] <- lapply(data[factor_cols], droplevels)
   }
 
-  # Optional scaling for numeric columns
-  if (scale) {
-    num_cols <- sapply(data, is.numeric)
-    if (any(num_cols)) {
-      data[num_cols] <- lapply(data[num_cols], function(x) as.numeric(scale(x)))
-    }
-  }
 
   list(data = data, labels = labels)
 }

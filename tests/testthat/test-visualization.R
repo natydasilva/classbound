@@ -52,7 +52,10 @@ test_that("plot_boundary handles errors gracefully", {
   expect_error(plot_boundary(bad_boundary), "boundary must contain 'x', 'y', and 'prediction' columns")
 
   # Missing obs_data columns mapping
-  expect_error(plot_boundary(boundary_data, obs_data = data.frame(a = 1, b = 2)), "you must also specify x_col, y_col, and true_label")
+  expect_error(
+    plot_boundary(boundary_data, obs_data = data.frame(a = 1, b = 2)),
+    "you must also specify x_col, y_col, and true_label"
+  )
 
   # Missing obs_data columns actual
   expect_error(

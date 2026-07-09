@@ -81,7 +81,7 @@ test_that("boundary_compute handles metadata validation gracefully", {
     boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
     "Names in `range` do not match the training features."
   )
-  
+
   expect_error(
     boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
     "Invalid features: wrong_name"
@@ -90,7 +90,7 @@ test_that("boundary_compute handles metadata validation gracefully", {
   # Model trained on 3 features, range provides 2
   train_data_3 <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "species")]
   model_3 <- fit_model(data = train_data_3, formula = species ~ ., classifier = rpart::rpart)
-  
+
   expect_error(
     boundary_compute(model_3, range = list(bill_length_mm = c(1, 2), bill_depth_mm = c(1, 2))),
     "Expected 3 boundary variables, but got 2."
@@ -101,14 +101,13 @@ test_that("boundary_compute rejects categorical features", {
   skip_if_not_installed("rpart")
   library(palmerpenguins)
   penguins <- na.omit(penguins)
-  
+
   # Train model on a numeric and a character/factor column
   train_data <- penguins[, c("bill_length_mm", "island", "species")]
   model <- fit_model(data = train_data, formula = species ~ bill_length_mm + island, classifier = rpart::rpart)
-  
+
   expect_error(
     boundary_compute(model, range = list(bill_length_mm = c(30, 60), island = c(1, 2)), resolution = 10),
     "Boundary generation requires numeric features. Categorical ranges are not supported."
   )
 })
-

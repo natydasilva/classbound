@@ -51,24 +51,6 @@ test_that("preprocess_data handles factors correctly", {
   expect_true(is.numeric(processed$data$num))
 })
 
-test_that("preprocess_data handles scaling correctly", {
-  df <- data.frame(
-    num1 = c(10, 20, 30),
-    num2 = c(100, 200, 300),
-    char = c("A", "B", "C")
-  )
-
-  processed <- preprocess_data(df, scale = TRUE)
-
-  # numeric columns should be scaled
-  expect_equal(mean(processed$data$num1), 0)
-  expect_equal(sd(processed$data$num1), 1)
-  expect_equal(mean(processed$data$num2), 0)
-  expect_equal(sd(processed$data$num2), 1)
-
-  # character column should be factor but unaffected by scaling
-  expect_true(is.factor(processed$data$char))
-})
 
 test_that("preprocess_data rejects empty data frames", {
   expect_error(

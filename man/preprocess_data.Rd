@@ -4,14 +4,12 @@
 \alias{preprocess_data}
 \title{Preprocess data before model fitting}
 \usage{
-preprocess_data(data, labels = NULL, scale = FALSE, ...)
+preprocess_data(data, labels = NULL, ...)
 }
 \arguments{
 \item{data}{A data frame of raw training or prediction data.}
 
 \item{labels}{Optional. A vector of target labels corresponding to \code{data}. If provided, it is converted to a factor with unused levels dropped.}
-
-\item{scale}{Logical. If \code{TRUE}, scales numeric columns in \code{data} to mean 0 and standard deviation 1. Defaults to \code{FALSE}. Note that this scaling is not persisted for predictions; it is an isolated transformation.}
 
 \item{...}{Additional processing arguments (currently unused).}
 }

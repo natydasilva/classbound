@@ -9,9 +9,9 @@ test_that("fit_model and predict work with PPforest", {
   # Fit model
   # For tests, we use small m to be fast
   model <- fit_model(
-    data = train_data, 
-    formula = species ~ ., 
-    classifier = PPforest::PPforest, 
+    data = train_data,
+    formula = species ~ .,
+    classifier = PPforest::PPforest,
     interface = "custom",
     fit_args = list(data = train_data, y = "species", m = 10, size.tr = 1, size.p = 1, PPmethod = "LDA")
   )

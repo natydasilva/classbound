@@ -7,13 +7,17 @@
 #' @param classifier The classification function to use (e.g., \code{rpart::rpart}).
 #' @param interface A string specifying how to invoke the classifier.
 #' \itemize{
-#'   \item \code{"formula"} (default): For classifiers that accept a formula and data frame natively (verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
-#'   \item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y} (verified for \code{randomForest::randomForest} default method).
-#'   \item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args} (verified for \code{qeML::qeKNN}).
+#'   \item \code{"formula"} (default): For classifiers that accept a formula and data frame natively
+#'     (verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
+#'   \item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y}
+#'     (verified for \code{randomForest::randomForest} default method).
+#'   \item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args}
+#'     (verified for \code{qeML::qeKNN}).
 #' }
 #' @param fit_args A named list of additional arguments passed to the classifier during fitting.
 #'
-#' @return A fitted model object with a normalized structure of class "classbound", containing the raw model and extracted feature metadata.
+#' @return A fitted model object with a normalized structure of class "classbound", containing the raw model
+#'   and extracted feature metadata.
 #' @importFrom stats model.frame model.matrix model.response
 #' @export
 fit_model <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list()) {

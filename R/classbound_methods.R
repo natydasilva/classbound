@@ -1,6 +1,7 @@
 #' Print a classbound model
 #'
-#' @description Prints a clean summary of a classbound model object, hiding the internal wrapper list structure, and delegates to the native model's print method.
+#' @description Prints a clean summary of a classbound model object, hiding the internal wrapper
+#'   structure, and delegates to the native model's print method.
 #'
 #' @param x A `classbound` object.
 #' @param ... Additional arguments passed to the native model's print method.

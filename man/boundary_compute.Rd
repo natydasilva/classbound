@@ -4,7 +4,14 @@
 \alias{boundary_compute}
 \title{Compute the classification decision boundary}
 \usage{
-boundary_compute(model, range, resolution = 100, predfun = NULL, ...)
+boundary_compute(
+  model,
+  range,
+  resolution = 100,
+  predfun = NULL,
+  projection = NULL,
+  ...
+)
 }
 \arguments{
 \item{model}{A fitted model object of class \code{classbound}.}
@@ -15,10 +22,18 @@ boundary_compute(model, range, resolution = 100, predfun = NULL, ...)
 
 \item{predfun}{A custom function to generate predictions for non-standard models.}
 
+\item{projection}{An optional list defining a high-dimensional projection.
+Must contain a numeric \code{basis} matrix (D x 2) where D is the number of
+training features, and an optional numeric \code{center} vector of length $D$.
+The basis is mathematically assumed to be orthonormal, and its rows must strictly
+match the feature ordering of the training data.
+If provided, \code{range} defines the limits of the 2D projected space, and the grid
+is inversely projected back to the original feature space before prediction.}
+
 \item{...}{Additional computation parameters.}
 }
 \value{
-A data frame containing the grid points (\code{x}, \code{y}), predicted \code{prediction}, and probabilities.
+A data frame containing the 2D grid points (\code{x}, \code{y}), predicted \code{prediction}, and probabilities.
 }
 \description{
 Computes the decision boundary for a fitted classifier over a specified feature space.

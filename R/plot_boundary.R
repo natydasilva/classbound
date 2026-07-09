@@ -5,8 +5,10 @@
 #' @param boundary The boundary data frame returned by `boundary_compute()`.
 #'   Must contain columns named `x`, `y`, and `prediction`.
 #' @param obs_data Optional data frame of training observations to overlay.
-#' @param x_col Column name in `obs_data` for the x-axis feature. Also used as the x-axis label. Required if `obs_data` is provided.
-#' @param y_col Column name in `obs_data` for the y-axis feature. Also used as the y-axis label. Required if `obs_data` is provided.
+#' @param x_col Column name in `obs_data` for the x-axis feature. Also used as the x-axis label.
+#'   Required if `obs_data` is provided.
+#' @param y_col Column name in `obs_data` for the y-axis feature. Also used as the y-axis label.
+#'   Required if `obs_data` is provided.
 #' @param true_label Column name in `obs_data` representing the true class labels. Required if `obs_data` is provided.
 #' @param type The type of visualization to generate. Only '2D' is supported.
 #' @param ... Additional visualization parameters.

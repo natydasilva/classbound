@@ -54,7 +54,13 @@ test_that("boundary_compute works correctly with PPforest model", {
   penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
-  model <- fit_model(data = train_data, formula = species ~ ., classifier = PPforest::PPforest, interface = "custom", fit_args = list(data = train_data, y = "species", m = 10, size.tr = 1, size.p = 1, PPmethod = "LDA"))
+  model <- fit_model(
+    data = train_data,
+    formula = species ~ .,
+    classifier = PPforest::PPforest,
+    interface = "custom",
+    fit_args = list(data = train_data, y = "species", m = 10, size.tr = 1, size.p = 1, PPmethod = "LDA")
+  )
 
   feature_range <- list(
     bill_length_mm = c(30.0, 60.0),

@@ -44,7 +44,8 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
 #' @description Generates predictions using a unified interface across all classifiers.
 #' This function is a compatibility wrapper around the standard \code{predict()} method for "classbound" objects.
 #'
-#' @param model A fitted classbound model. This corresponds to the \code{object} argument used by the standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.
+#' @param model A fitted classbound model. This corresponds to the \code{object} argument used by the
+#'   standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.
 #' @param newdata A data frame of new observations to predict on.
 #' @param predict_args A named list of additional arguments passed to \code{predict_adapter}.
 #' @param predfun A custom function to generate predictions for non-standard models.
@@ -92,10 +93,16 @@ predict_adapter.default <- function(model, newdata, ...) {
   # Explicitly guard against non-standard outputs (e.g. lists, data frames, matrices)
   # that some models return. These require specific predict_adapter implementations.
   if (is.list(preds) || is.matrix(preds) || is.data.frame(preds)) {
-    stop(sprintf(
-      "The model returned a non-standard prediction object (class '%s' returned %s). Please supply `predfun` to extract the desired class predictions.",
-      class(model)[1], class(preds)[1]
-    ), call. = FALSE)
+    stop(
+      sprintf(
+        paste0(
+          "The model returned a non-standard prediction object (class '%s' returned %s). ",
+          "Please supply `predfun` to extract the desired class predictions."
+        ),
+        class(model)[1], class(preds)[1]
+      ),
+      call. = FALSE
+    )
   }
 
   list(class = as.factor(preds), probs = NULL)
