@@ -93,7 +93,7 @@ test_that("boundary_compute handles metadata validation gracefully", {
 
   expect_error(
     boundary_compute(model_3, range = list(bill_length_mm = c(1, 2), bill_depth_mm = c(1, 2))),
-    "Expected 3 boundary variables, but got 2."
+    "Visualizing models with >2 features without a projection requires fixed-value slicing"
   )
 })
 

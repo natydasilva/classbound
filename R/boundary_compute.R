@@ -8,10 +8,9 @@
 #' @param resolution An integer specifying the grid resolution.
 #' @param predfun A custom function to generate predictions for non-standard models.
 #' @param projection An optional list defining a high-dimensional projection.
-#'   Must contain a numeric `basis` matrix (D x 2) where D is the number of
-#'   training features, and an optional numeric `center` vector of length $D$.
-#'   The basis is mathematically assumed to be orthonormal, and its rows must strictly
-#'   match the feature ordering of the training data.
+#'   Must contain `basis` (a numeric matrix defining the projection frame, which MUST be orthonormal).
+#'   Optionally contains `center` and `scale` (numeric vectors) to reverse visual normalization.
+#'   Projection is only supported for models trained exclusively on numeric features.
 #'   If provided, `range` defines the limits of the 2D projected space, and the grid
 #'   is inversely projected back to the original feature space before prediction.
 #' @param ... Additional computation parameters.
@@ -40,23 +39,32 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     stop("Duplicate feature names found in `range`.", call. = FALSE)
   }
 
-  if (is.null(model$features)) {
+  if (is.null(model$metadata$features)) {
     stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
   }
 
-  expected_names <- model$features$names
+  expected_names <- model$metadata$features$names
 
   if (is.null(projection)) {
-    if (length(var_names) != length(expected_names)) {
+    if (length(expected_names) > 2) {
       stop(
-        sprintf("Expected %d boundary variables, but got %d.", length(expected_names), length(var_names)),
+        paste0(
+          "Visualizing models with >2 features without a projection requires fixed-value slicing, ",
+          "which is currently unsupported. Please supply a projection."
+        ),
+        call. = FALSE
+      )
+    }
+    if (length(var_names) != 2) {
+      stop(
+        sprintf("Expected exactly 2 boundary variables, but got %d.", length(var_names)),
         call. = FALSE
       )
     }
   } else {
     if (length(var_names) != 2) {
       stop(
-        sprintf("Expected 2 boundary variables for the projection plane, but got %d.", length(var_names)),
+        sprintf("Expected exactly 2 boundary variables for the projection plane, but got %d.", length(var_names)),
         call. = FALSE
       )
     }
@@ -77,6 +85,11 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
       stop(msg, call. = FALSE)
     }
   } else {
+    # Validate that all features are numeric
+    if (!all(model$metadata$features$type %in% c("numeric", "integer", "double"))) {
+      stop("High-dimensional projection is only supported for models trained exclusively on numeric features.", call. = FALSE)
+    }
+
     # Validate projection object
     if (!is.list(projection) || is.null(projection$basis)) {
       stop("`projection` must be a list containing at least a `basis` matrix.", call. = FALSE)
@@ -90,6 +103,9 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
         sprintf("`projection$basis` must be a %d x 2 matrix to match training features.", length(expected_names)),
         call. = FALSE
       )
+    }
+    if (!isTRUE(all.equal(crossprod(basis), diag(2), check.attributes = FALSE, tolerance = 1e-6))) {
+      stop("The projection basis is not orthonormal. Reconstructing the grid requires an orthonormal basis.", call. = FALSE)
     }
     if (!is.null(rownames(basis)) && !identical(rownames(basis), expected_names)) {
       stop(
@@ -105,13 +121,21 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
         )
       }
     }
+    if (!is.null(projection$scale)) {
+      if (!is.numeric(projection$scale) || length(projection$scale) != length(expected_names) || anyNA(projection$scale)) {
+        stop(
+          sprintf("`scale` must be a numeric vector of length %d without missing values.", length(expected_names)),
+          call. = FALSE
+        )
+      }
+    }
   }
 
   # Ensure requested boundary features are numeric
   if (is.null(projection)) {
-    feature_types <- model$features$types[var_names]
+    feature_types <- model$metadata$features$types[var_names]
   } else {
-    feature_types <- model$features$types
+    feature_types <- model$metadata$features$types
   }
   is_numeric <- vapply(feature_types, function(x) any(c("numeric", "integer") %in% x), logical(1))
 
@@ -130,6 +154,9 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
   if (!is.null(projection)) {
     z_matrix <- as.matrix(grid_df)
     x_matrix <- z_matrix %*% t(projection$basis)
+    if (!is.null(projection$scale)) {
+      x_matrix <- sweep(x_matrix, 2, projection$scale, "*")
+    }
     if (!is.null(projection$center)) {
       x_matrix <- sweep(x_matrix, 2, projection$center, "+")
     }

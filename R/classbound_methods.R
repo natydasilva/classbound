@@ -9,8 +9,8 @@
 #' @export
 print.classbound <- function(x, ...) {
   cat("=== Classbound Model Pipeline ===\n")
-  cat("Features: ", paste(x$features$names, collapse = ", "), "\n")
-  cat("Classes:  ", paste(x$class_levels, collapse = ", "), "\n\n")
+  cat("Features: ", paste(x$metadata$features$names, collapse = ", "), "\n")
+  cat("Classes:  ", paste(x$metadata$class_levels, collapse = ", "), "\n\n")
   cat("-- Native Model --\n")
   print(x$fit, ...)
   invisible(x)

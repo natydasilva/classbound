@@ -1,3 +1,9 @@
 linters: linters_with_defaults(
-  line_length_linter = line_length_linter(120L, ignore_string_bodies = TRUE)
+    line_length_linter(
+      130L,
+      ignore_string_bodies = TRUE
+    )
+  )
+exclusions: list(
+    "tests/testthat"
   )

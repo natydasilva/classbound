@@ -29,7 +29,7 @@ test_that(
     expect_s3_class(models$randomForest, "classbound")
 
     # Validate that original global levels are preserved in metadata
-    expect_equal(models$rpart$class_levels, c("Adelie", "Chinstrap", "Gentoo"))
+    expect_equal(models$rpart$metadata$class_levels, c("Adelie", "Chinstrap", "Gentoo"))
 
     # Generate comparison multi-boundary grid
     range <- list(

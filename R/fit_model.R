@@ -32,7 +32,7 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
 
   # Extract labels based on formula
   # model.frame handles NAs implicitly, but our preprocess_data strictly rejects them.
-  mf <- model.frame(formula, data = data)
+  mf <- model.frame(formula, data = data, na.action = na.pass)
   y <- model.response(mf)
 
   if (is.null(y)) {
@@ -72,8 +72,10 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
   structure(
     list(
       fit = model_fit,
-      features = feature_meta,
-      class_levels = orig_class_levels
+      metadata = list(
+        features = feature_meta,
+        class_levels = orig_class_levels
+      )
     ),
     class = "classbound"
   )

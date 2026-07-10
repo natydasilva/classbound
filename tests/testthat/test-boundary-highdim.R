@@ -10,6 +10,20 @@ test_that("boundary_compute validates projection object correctly", {
   skip_if_not_installed("rpart")
   model <- fit_model(penguins_data, species ~ ., rpart::rpart)
 
+  # Missing projection for high-dimensional model
+  expect_error(
+    boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1))),
+    "Visualizing models with >2 features without a projection requires fixed-value slicing"
+  )
+
+  # Model with a factor feature
+  penguins_with_factor <- na.omit(palmerpenguins::penguins)[, c(features, "sex", "species")]
+  model_factor <- fit_model(penguins_with_factor, species ~ ., rpart::rpart)
+  expect_error(
+    boundary_compute(model_factor, list(z1 = c(-1, 1), z2 = c(-1, 1)), projection = list(basis = matrix(1))),
+    "High-dimensional projection is only supported for models trained exclusively on numeric features."
+  )
+
   # Invalid projection type
   expect_error(
     boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1)), projection = "not a list"),
@@ -32,17 +46,17 @@ test_that("boundary_compute validates projection object correctly", {
   bad_basis <- matrix(runif(6), nrow = 3, ncol = 2)
   expect_error(
     boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1)), projection = list(basis = bad_basis)),
-    "`projection\\$basis` must be a 4 x 2 matrix to match the training features"
+    "`projection\\$basis` must be a 4 x 2 matrix to match training features"
   )
 
   # Center wrong length
-  good_basis <- matrix(runif(8), nrow = 4, ncol = 2)
+  good_basis <- qr.Q(qr(matrix(runif(8), nrow = 4, ncol = 2)))
   expect_error(
     boundary_compute(
       model, list(z1 = c(-1, 1), z2 = c(-1, 1)),
       projection = list(basis = good_basis, center = c(1, 2, 3))
     ),
-    "`projection\\$center` must be a numeric vector of length 4"
+    "`center` must be a numeric vector of length 4"
   )
 
   # NAs in basis
@@ -59,7 +73,25 @@ test_that("boundary_compute validates projection object correctly", {
       model, list(z1 = c(-1, 1), z2 = c(-1, 1)),
       projection = list(basis = good_basis, center = c(1, 2, NA, 4))
     ),
-    "`projection\\$center` must be a numeric vector of length 4 without missing values"
+    "`center` must be a numeric vector of length 4 without missing values"
+  )
+
+  # Scale wrong length
+  expect_error(
+    boundary_compute(
+      model, list(z1 = c(-1, 1), z2 = c(-1, 1)),
+      projection = list(basis = good_basis, scale = c(1, 2, 3))
+    ),
+    "`scale` must be a numeric vector of length 4"
+  )
+
+  # NAs in scale
+  expect_error(
+    boundary_compute(
+      model, list(z1 = c(-1, 1), z2 = c(-1, 1)),
+      projection = list(basis = good_basis, scale = c(1, 2, NA, 4))
+    ),
+    "`scale` must be a numeric vector of length 4 without missing values"
   )
 
   # Incorrect rownames in basis
@@ -68,6 +100,12 @@ test_that("boundary_compute validates projection object correctly", {
   expect_error(
     boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1)), projection = list(basis = basis_wrong_names)),
     "Row names of `projection\\$basis` must match the exact feature names and ordering"
+  )
+  # Non-orthonormal basis error
+  non_ortho_basis <- matrix(runif(8), nrow = 4, ncol = 2)
+  expect_error(
+    boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1)), projection = list(basis = non_ortho_basis)),
+    "The projection basis is not orthonormal"
   )
 })
 

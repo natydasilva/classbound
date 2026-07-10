@@ -30,8 +30,8 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
     res <- do.call(predict_adapter, args)
   }
 
-  if (!is.null(object$class_levels)) {
-    res$class <- factor(res$class, levels = object$class_levels)
+  if (!is.null(object$metadata$class_levels)) {
+    res$class <- factor(res$class, levels = object$metadata$class_levels)
   } else if (!is.factor(res$class)) {
     res$class <- as.factor(res$class)
   }

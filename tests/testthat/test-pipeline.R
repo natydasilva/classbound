@@ -33,8 +33,10 @@ test_that("predict defaults to error on complex objects, but succeeds with predf
   mock_model <- structure(
     list(
       fit = structure(list(), class = "unsupported_magic_model"),
-      features = list(),
-      class_levels = c("A", "B")
+      metadata = list(
+        features = list(),
+        class_levels = c("A", "B")
+      )
     ),
     class = "classbound"
   )
