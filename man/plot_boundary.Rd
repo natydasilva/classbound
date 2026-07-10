@@ -10,6 +10,7 @@ plot_boundary(
   x_col = NULL,
   y_col = NULL,
   true_label = NULL,
+  facet_col = NULL,
   type = "2D",
   ...
 )
@@ -20,11 +21,16 @@ Must contain columns named \code{x}, \code{y}, and \code{prediction}.}
 
 \item{obs_data}{Optional data frame of training observations to overlay.}
 
-\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Also used as the x-axis label. Required if \code{obs_data} is provided.}
+\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Also used as the x-axis label.
+Required if \code{obs_data} is provided.}
 
-\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Also used as the y-axis label. Required if \code{obs_data} is provided.}
+\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Also used as the y-axis label.
+Required if \code{obs_data} is provided.}
 
 \item{true_label}{Column name in \code{obs_data} representing the true class labels. Required if \code{obs_data} is provided.}
+
+\item{facet_col}{Optional string naming a column in \code{boundary} to facet the plot by.
+Useful for comparing multiple models (e.g. from \code{boundary_workflow_set()}).}
 
 \item{type}{The type of visualization to generate. Only '2D' is supported.}
 

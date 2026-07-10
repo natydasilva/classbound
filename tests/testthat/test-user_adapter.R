@@ -1,7 +1,6 @@
 test_that("user-defined custom adapters are supported natively via S3 dispatch", {
   library(palmerpenguins)
-  penguins <- na.omit(penguins[, -c(2, 7, 8)])
-  train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
+  train_data <- na.omit(palmerpenguins::penguins[, c("bill_length_mm", "bill_depth_mm", "species")])
 
   # 1. Define a custom classifier function
   my_custom_classifier <- function(formula, data, ...) {

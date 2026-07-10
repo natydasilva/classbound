@@ -15,5 +15,6 @@
 The object, invisibly.
 }
 \description{
-Prints a clean summary of a classbound model object, hiding the internal wrapper list structure, and delegates to the native model's print method.
+Prints a clean summary of a classbound model object, hiding the internal wrapper
+structure, and delegates to the native model's print method.
 }

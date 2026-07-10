@@ -9,7 +9,8 @@ preprocess_data(data, labels = NULL, ...)
 \arguments{
 \item{data}{A data frame of raw training or prediction data.}
 
-\item{labels}{Optional. A vector of target labels corresponding to \code{data}. If provided, it is converted to a factor with unused levels dropped.}
+\item{labels}{Optional. A vector of target labels corresponding to \code{data}.
+If provided, it is converted to a factor with unused levels dropped.}
 
 \item{...}{Additional processing arguments (currently unused).}
 }

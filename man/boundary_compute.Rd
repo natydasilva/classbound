@@ -16,17 +16,17 @@ boundary_compute(
 \arguments{
 \item{model}{A fitted model object of class \code{classbound}.}
 
-\item{range}{A named list defining the feature ranges for a 2D space. Each element should be a numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
+\item{range}{A named list defining the feature ranges for a 2D space. Each element should be a
+numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
 
 \item{resolution}{An integer specifying the grid resolution.}
 
 \item{predfun}{A custom function to generate predictions for non-standard models.}
 
 \item{projection}{An optional list defining a high-dimensional projection.
-Must contain a numeric \code{basis} matrix (D x 2) where D is the number of
-training features, and an optional numeric \code{center} vector of length $D$.
-The basis is mathematically assumed to be orthonormal, and its rows must strictly
-match the feature ordering of the training data.
+Must contain \code{basis} (a numeric matrix defining the projection frame, which MUST be orthonormal).
+Optionally contains \code{center} and \code{scale} (numeric vectors) to reverse visual normalization.
+Projection is only supported for models trained exclusively on numeric features.
 If provided, \code{range} defines the limits of the 2D projected space, and the grid
 is inversely projected back to the original feature space before prediction.}
 

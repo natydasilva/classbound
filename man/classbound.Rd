@@ -23,7 +23,8 @@ classbound(
 
 \item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
 
-\item{interface}{A string specifying how to invoke the classifier: \code{"formula"}, \code{"matrix"}, or \code{"custom"}.}
+\item{interface}{A string specifying how to invoke the classifier: \code{"formula"},
+\code{"matrix"}, or \code{"custom"}.}
 
 \item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
 

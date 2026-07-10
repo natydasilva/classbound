@@ -7,7 +7,8 @@
 predict_model(model, newdata, predict_args = list(), predfun = NULL, ...)
 }
 \arguments{
-\item{model}{A fitted classbound model. This corresponds to the \code{object} argument used by the standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.}
+\item{model}{A fitted classbound model. This corresponds to the \code{object} argument used by the
+standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.}
 
 \item{newdata}{A data frame of new observations to predict on.}
 

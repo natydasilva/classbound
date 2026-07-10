@@ -18,7 +18,7 @@
 #'
 #' @return A fitted model object with a normalized structure of class "classbound", containing the raw model
 #'   and extracted feature metadata.
-#' @importFrom stats model.frame model.matrix model.response
+#' @importFrom stats model.frame model.matrix model.response na.pass
 #' @export
 fit_model <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list()) {
   if (missing(classifier)) {
@@ -62,11 +62,7 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
   # Extract feature metadata using the processed model frame (excluding response)
   response_var <- all.vars(formula[[2]])
   predictors_df <- mf[, setdiff(colnames(mf), response_var), drop = FALSE]
-  feature_meta <- list(
-    names = colnames(predictors_df),
-    types = lapply(predictors_df, class),
-    levels = lapply(predictors_df, levels)
-  )
+  feature_meta <- extract_feature_metadata(predictors_df)
 
   # Wrap the fitted model and metadata in the single public 'classbound' class
   structure(

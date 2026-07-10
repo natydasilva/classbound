@@ -10,6 +10,8 @@
 #' @param y_col Column name in `obs_data` for the y-axis feature. Also used as the y-axis label.
 #'   Required if `obs_data` is provided.
 #' @param true_label Column name in `obs_data` representing the true class labels. Required if `obs_data` is provided.
+#' @param facet_col Optional string naming a column in `boundary` to facet the plot by.
+#'   Useful for comparing multiple models (e.g. from `boundary_workflow_set()`).
 #' @param type The type of visualization to generate. Only '2D' is supported.
 #' @param ... Additional visualization parameters.
 #'
@@ -23,7 +25,8 @@
 #' plot_boundary(grid, data69_1, "V1", "V2", "Y")
 #' }
 #' @export
-plot_boundary <- function(boundary, obs_data = NULL, x_col = NULL, y_col = NULL, true_label = NULL, type = "2D", ...) {
+plot_boundary <- function(boundary, obs_data = NULL, x_col = NULL, y_col = NULL,
+                          true_label = NULL, facet_col = NULL, type = "2D", ...) {
   if (type != "2D") {
     stop("Only type='2D' is currently supported.", call. = FALSE)
   }
@@ -71,6 +74,13 @@ plot_boundary <- function(boundary, obs_data = NULL, x_col = NULL, y_col = NULL,
       size = 2, shape = 16
     ) +
       ggplot2::labs(color = "True Class")
+  }
+
+  if (!is.null(facet_col)) {
+    if (!facet_col %in% colnames(boundary)) {
+      stop(sprintf("facet_col '%s' not found in boundary data.", facet_col), call. = FALSE)
+    }
+    p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)))
   }
 
   p
