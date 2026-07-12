@@ -23,7 +23,8 @@ Imports:
     workflowsets,
     workflows,
     parsnip,
-    rlang
+    rlang,
+    ggnewscale
 Suggests:
     tidymodels,
     rpart,

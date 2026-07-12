@@ -42,6 +42,16 @@ A \code{ggplot2} object.
 \description{
 Renders a 2D plot for boundary exploration.
 }
+\details{
+If the \code{model} object contains a \code{projection} (e.g. from \code{tourr} or \code{prcomp}),
+\code{plot_boundary()} will automatically apply forward projection to any provided \code{obs_data}.
+It will mathematically map the high-dimensional points onto the 2D plane and calculate
+their orthogonal distances to the plane. Points exactly on the plane are rendered fully opaque
+(alpha = 1.0), while points further away gradually fade to greater transparency (alpha = 0.2).
+
+Any provided training observations (\code{obs_data}) are rendered with a white border
+to improve contrast against the underlying colored decision regions.
+}
 \examples{
 \donttest{
 data(data69_1)

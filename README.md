@@ -19,7 +19,7 @@ visualizations of their prediction surfaces.
 You can install the development version of classbound from GitHub with:
 
 ``` r
-# install.packages("devtools")
+install.packages("devtools")
 devtools::install_github("natydasilva/classbound")
 ```
 
@@ -50,11 +50,11 @@ feature_range <- list(
   bill_length_mm = c(30.0, 60.0),
   bill_depth_mm = c(10.0, 25.0)
 )
-grid_data <- boundary_compute(model, range = feature_range, resolution = 100)
+model <- boundary_compute(model, range = feature_range, resolution = 100)
 
 # 4. Plot the decision boundary
 plot_boundary(
-  boundary = grid_data,
+  model = model,
   obs_data = penguins,
   x_col = "bill_length_mm",
   y_col = "bill_depth_mm",
@@ -63,6 +63,33 @@ plot_boundary(
 ```
 
 <img src="man/figures/README-visualisation-1.png" alt="" width="70%" style="display: block; margin: auto;" />
+
+### Native Confidence Mapping (Gradients)
+
+If the specified classifier returns prediction probabilities (such as
+Random Forests or Logistic Regression), `classbound` automatically
+extracts these probabilities and maps them to the visual transparency
+(`alpha`) of the decision regions. Deep, saturated colors indicate high
+model confidence, while pale, faded regions indicate model uncertainty
+near the boundary edges. If a classifier does not return probabilities
+(e.g., standard SVMs), `classbound` gracefully falls back to drawing
+solid colors separated by sharp boundaries.
+
+### High-Dimensional Depth Fading (Projections)
+
+When visualizing models with \>2 dimensions via projection (using
+`boundary_compute(..., projection = proj)`), `plot_boundary()` applies
+mathematically rigorous forward projection to any overlaid training
+observations.
+
+To prevent visual crowding and provide a sense of spatial depth, it
+automatically calculates the orthogonal distance from each original
+high-dimensional point to the 2D projection plane. Points lying exactly
+on the plane are plotted entirely opaque (`alpha = 1.0`), while points
+further away in high-dimensional space gradually fade into the
+background (`alpha = 0.2`). This provides instant visual context on
+whether a point is genuinely near the boundary or simply an artifact of
+the viewing angle.
 
 ### The All-In-One Wrapper
 
@@ -88,8 +115,8 @@ and provides a `predfun` argument for models that return complex objects
 ``` r
 # Standard models (e.g., SVM) work automatically
 model_svm <- classbound(
-  data = penguins, 
-  formula = species ~ bill_length_mm + bill_depth_mm, 
+  data = penguins,
+  formula = species ~ bill_length_mm + bill_depth_mm,
   classifier = e1071::svm
 )
 

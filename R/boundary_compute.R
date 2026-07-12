@@ -184,5 +184,7 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
   }
 
   model$boundary_data <- res
+  model$projection <- projection
   model
 }
+

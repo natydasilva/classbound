@@ -70,6 +70,16 @@ plot_boundary(
 )
 ```
 
+### Native Confidence Mapping (Gradients)
+
+If the specified classifier returns prediction probabilities (such as Random Forests or Logistic Regression), `classbound` automatically extracts these probabilities and maps them to the visual transparency (`alpha`) of the decision regions. Deep, saturated colors indicate high model confidence, while pale, faded regions indicate model uncertainty near the boundary edges. If a classifier does not return probabilities (e.g., standard SVMs), `classbound` gracefully falls back to drawing solid colors separated by sharp boundaries.
+
+### High-Dimensional Depth Fading (Projections)
+
+When visualizing models with >2 dimensions via projection (using `boundary_compute(..., projection = proj)`), `plot_boundary()` applies mathematically rigorous forward projection to any overlaid training observations.
+
+To prevent visual crowding and provide a sense of spatial depth, it automatically calculates the orthogonal distance from each original high-dimensional point to the 2D projection plane. Points lying exactly on the plane are plotted entirely opaque (`alpha = 1.0`), while points further away in high-dimensional space gradually fade into the background (`alpha = 0.2`). This provides instant visual context on whether a point is genuinely near the boundary or simply an artifact of the viewing angle.
+
 ### The All-In-One Wrapper
 
 For convenience, you can perform fitting, boundary computation, and plotting in a single step using the `classbound()` wrapper:

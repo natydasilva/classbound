@@ -2,6 +2,18 @@
 #'
 #' @description Renders a 2D plot for boundary exploration.
 #'
+#' @importFrom rlang .data
+#'
+#' @details
+#' If the `model` object contains a `projection` (e.g. from `tourr` or `prcomp`),
+#' `plot_boundary()` will automatically apply forward projection to any provided `obs_data`.
+#' It will mathematically map the high-dimensional points onto the 2D plane and calculate
+#' their orthogonal distances to the plane. Points exactly on the plane are rendered fully opaque
+#' (alpha = 1.0), while points further away gradually fade to greater transparency (alpha = 0.2).
+#'
+#' Any provided training observations (`obs_data`) are rendered with a white border
+#' to improve contrast against the underlying colored decision regions.
+#'
 #' @param model A `classbound` model object returned by `boundary_compute()`.
 #'   Must contain boundary data in `$boundary_data`.
 #' @param obs_data Optional data frame of training observations to overlay.
@@ -45,44 +57,136 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     stop("boundary must contain 'x', 'y', and 'prediction' columns.", call. = FALSE)
   }
 
-  # Basic plot
-  p <- ggplot2::ggplot(boundary, ggplot2::aes(x = x, y = y)) +
-    ggplot2::geom_raster(ggplot2::aes(fill = prediction), alpha = 0.3) +
-    ggplot2::theme_minimal() +
-    ggplot2::labs(
-      x = if (!is.null(x_col)) x_col else "Feature 1",
-      y = if (!is.null(y_col)) y_col else "Feature 2",
-      fill = "Prediction"
-    )
+  # Check if probabilities exist for all class levels
+  class_levels <- levels(boundary$prediction)
+  has_probs <- !is.null(class_levels) && all(class_levels %in% colnames(boundary))
+
+  if (has_probs) {
+    # Extract the probability of the predicted class for each point
+    col_indices <- match(as.character(boundary$prediction), colnames(boundary))
+    boundary$probability <- as.numeric(boundary[cbind(seq_len(nrow(boundary)), col_indices)])
+
+    # Basic plot with alpha mapped to probability
+    p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
+      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability)) +
+      ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        x = if (!is.null(x_col)) x_col else "Feature 1",
+        y = if (!is.null(y_col)) y_col else "Feature 2",
+        fill = "Prediction"
+      )
+  } else {
+    # Basic plot with hardcoded alpha (no probabilities)
+    p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
+      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        x = if (!is.null(x_col)) x_col else "Feature 1",
+        y = if (!is.null(y_col)) y_col else "Feature 2",
+        fill = "Prediction"
+      )
+  }
 
   # Overlay training observations if provided
   if (!is.null(obs_data)) {
-    if (is.null(x_col) || is.null(y_col) || is.null(true_label)) {
-      stop("When providing obs_data, you must also specify x_col, y_col, and true_label.", call. = FALSE)
-    }
-
     if (!inherits(obs_data, "data.frame")) {
       stop("obs_data must be a data.frame.", call. = FALSE)
     }
 
-    if (!all(c(x_col, y_col, true_label) %in% colnames(obs_data))) {
-      stop(sprintf("obs_data must contain columns '%s', '%s', and '%s'.", x_col, y_col, true_label), call. = FALSE)
+    if (is.null(true_label)) {
+      stop("When providing obs_data, you must specify true_label.", call. = FALSE)
     }
 
-    # Map the dynamic columns to standard names for ggplot evaluation
-    obs_df <- obs_data[, c(x_col, y_col, true_label)]
-    colnames(obs_df) <- c("x_val", "y_val", "true_class")
+    if (!true_label %in% colnames(obs_data)) {
+      stop(sprintf("obs_data must contain column '%s'.", true_label), call. = FALSE)
+    }
 
-    p <- p + ggplot2::geom_point(
-      data = obs_df,
-      ggplot2::aes(x = x_val, y = y_val, color = true_class),
-      size = 2, shape = 16
-    ) +
-      ggplot2::labs(color = "True Class")
+    # Projection workflow
+    if (!is.null(model$projection)) {
+      proj <- model$projection
+      features <- rownames(proj$basis)
+
+      if (!all(features %in% colnames(obs_data))) {
+        stop("obs_data is missing features required for the projection basis.", call. = FALSE)
+      }
+
+      # Extract numeric matrix for projection
+      x_mat <- as.matrix(obs_data[, features])
+
+      # Apply standardization
+      if (!is.null(proj$scale)) {
+        x_mat <- sweep(x_mat, 2, proj$scale, "/")
+      }
+      if (!is.null(proj$center)) {
+        x_mat <- sweep(x_mat, 2, proj$center, "-")
+      }
+
+      # Forward project to 2D coordinates
+      z_mat <- x_mat %*% proj$basis
+
+      obs_df <- data.frame(
+        x_val = z_mat[, 1],
+        y_val = z_mat[, 2],
+        true_class = obs_data[[true_label]]
+      )
+
+      # Depth fading (opacity scaling)
+      # Reconstruct high-dimensional points from the 2D plane
+      x_recon <- z_mat %*% t(proj$basis)
+
+      # Calculate orthogonal distance from original points to the 2D plane
+      dists <- sqrt(rowSums((x_mat - x_recon)^2))
+      max_dist <- max(dists, na.rm = TRUE)
+
+      # Map distance to opacity (1.0 = on plane, fades to 0.2)
+      if (max_dist > 0) {
+        obs_df$alpha_val <- 1 - 0.8 * (dists / max_dist)
+      } else {
+        obs_df$alpha_val <- 1.0
+      }
+
+      p <- p +
+        ggnewscale::new_scale_fill() +
+        ggplot2::geom_point(
+          data = obs_df,
+          ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
+          size = 2.5, shape = 21, color = "white", stroke = 0.5
+        ) +
+        ggplot2::scale_alpha_identity() +
+        ggplot2::labs(fill = "True Class")
+    } else {
+      # Standard 2D workflow
+      if (is.null(x_col) || is.null(y_col)) {
+        stop("When providing obs_data without a projection, you must specify x_col and y_col.", call. = FALSE)
+      }
+
+      if (!all(c(x_col, y_col) %in% colnames(obs_data))) {
+        stop(sprintf("obs_data must contain columns '%s' and '%s'.", x_col, y_col), call. = FALSE)
+      }
+
+      obs_df <- obs_data[, c(x_col, y_col, true_label)]
+      colnames(obs_df) <- c("x_val", "y_val", "true_class")
+
+      p <- p +
+        ggnewscale::new_scale_fill() +
+        ggplot2::geom_point(
+          data = obs_df,
+          ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
+          size = 2.5, shape = 21, color = "white", stroke = 0.5
+        ) +
+        ggplot2::labs(fill = "True Class")
+    }
   }
 
   if (is.null(facet_col) && isTRUE(model$metadata$is_multimodel)) {
-    warning("This model contains multiple boundaries (workflow_set). Automatically setting facet_col = 'model' to prevent overlapping plots.", call. = FALSE)
+    warning(
+      paste0(
+        "This model contains multiple boundaries (workflow_set). ",
+        "Automatically setting facet_col = 'model' to prevent overlapping plots."
+      ),
+      call. = FALSE
+    )
     facet_col <- "model"
   }
 
