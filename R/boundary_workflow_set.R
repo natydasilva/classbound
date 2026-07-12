@@ -41,7 +41,8 @@ boundary_workflow_set <- function(wf_set, data, range, response = NULL, resoluti
     cb_model <- as_classbound(wf, data = data, response = response) # nolint: object_usage_linter.
 
     # Compute the grid
-    grid_preds <- boundary_compute(cb_model, range = range, resolution = resolution, ...)
+    grid_model <- boundary_compute(cb_model, range = range, resolution = resolution, ...)
+    grid_preds <- grid_model$boundary_data
 
     # Prepend the model identifier
     grid_preds$model <- id

@@ -53,7 +53,7 @@ classbound <- function(data,
   }
 
   # 2. Compute the decision boundary
-  grid_data <- boundary_compute(
+  model <- boundary_compute(
     model = model,
     range = feature_range,
     resolution = resolution,
@@ -63,7 +63,7 @@ classbound <- function(data,
 
   # 3. Plot the result
   plot_boundary(
-    boundary = grid_data,
+    model = model,
     obs_data = data,
     x_col = predictor_vars[1],
     y_col = predictor_vars[2],

@@ -33,7 +33,7 @@ is inversely projected back to the original feature space before prediction.}
 \item{...}{Additional computation parameters.}
 }
 \value{
-A data frame containing the 2D grid points (\code{x}, \code{y}), predicted \code{prediction}, and probabilities.
+A modified \code{classbound} model object containing the 2D grid points and predictions in \verb{$boundary_data}.
 }
 \description{
 Computes the decision boundary for a fitted classifier over a specified feature space.

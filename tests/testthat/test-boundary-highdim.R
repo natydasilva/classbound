@@ -124,7 +124,8 @@ test_that("boundary_compute works with a valid projection", {
   projection <- list(basis = basis, center = center)
   range_z <- list(z1 = c(-10, 10), z2 = c(-5, 5))
 
-  res <- boundary_compute(model, range = range_z, resolution = 10, projection = projection)
+  res_model <- boundary_compute(model, range = range_z, resolution = 10, projection = projection)
+  res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")
   expect_equal(nrow(res), 100) # 10x10 resolution
@@ -134,7 +135,8 @@ test_that("boundary_compute works with a valid projection", {
   expect_true(all(levels(penguins_data$species) %in% colnames(res)))
 
   # Test without center
-  res_no_center <- boundary_compute(model, range = range_z, resolution = 10, projection = list(basis = basis))
+  res_no_center_model <- boundary_compute(model, range = range_z, resolution = 10, projection = list(basis = basis))
+  res_no_center <- res_no_center_model$boundary_data
   expect_s3_class(res_no_center, "data.frame")
   expect_equal(nrow(res_no_center), 100)
 })
@@ -151,7 +153,8 @@ test_that("projection reduces mathematically to 2D workflow", {
   )
 
   # Compute standard 2D boundary
-  res_standard <- boundary_compute(model_2d, range = range_2d, resolution = 10)
+  res_standard_model <- boundary_compute(model_2d, range = range_2d, resolution = 10)
+  res_standard <- res_standard_model$boundary_data
 
   # Compute boundary via inverse projection identity mapping
   projection_identity <- list(
@@ -161,12 +164,13 @@ test_that("projection reduces mathematically to 2D workflow", {
   # Rownames must match exactly if provided, or be NULL
   rownames(projection_identity$basis) <- c("bill_length_mm", "bill_depth_mm")
 
-  res_projected <- boundary_compute(
+  res_projected_model <- boundary_compute(
     model_2d,
     range = range_2d,
     resolution = 10,
     projection = projection_identity
   )
+  res_projected <- res_projected_model$boundary_data
 
   # Ensure mathematically identical predictions (ignoring column names since projection outputs expected_names)
   # Actually, both should output a dataframe with columns (x, y, prediction, ...)

@@ -16,7 +16,8 @@ test_that("tidymodels adapter works", {
   expect_s3_class(cb_mf, "classbound")
   expect_equal(cb_mf$metadata$class_levels, c("0", "1", "2"))
 
-  grid_mf <- boundary_compute(cb_mf, list(V1 = c(-1, 1), V2 = c(-1, 1)), resolution = 10)
+  grid_mf_model <- boundary_compute(cb_mf, list(V1 = c(-1, 1), V2 = c(-1, 1)), resolution = 10)
+  grid_mf <- grid_mf_model$boundary_data
   expect_true(all(c("x", "y", "prediction") %in% colnames(grid_mf)))
 
   # 2. Test workflow natively
@@ -27,7 +28,8 @@ test_that("tidymodels adapter works", {
   wf_fit <- fit(wf, data = df)
 
   cb_wf <- as_classbound(wf_fit, data = df, response = "Y")
-  grid_wf <- boundary_compute(cb_wf, list(V1 = c(-1, 1), V2 = c(-1, 1)), resolution = 10)
+  grid_wf_model <- boundary_compute(cb_wf, list(V1 = c(-1, 1), V2 = c(-1, 1)), resolution = 10)
+  grid_wf <- grid_wf_model$boundary_data
   expect_true(all(c("x", "y", "prediction") %in% colnames(grid_wf)))
 
   # 3. Test workflow_set native helper

@@ -5,7 +5,7 @@
 \title{Visualize the classification decision boundary}
 \usage{
 plot_boundary(
-  boundary,
+  model,
   obs_data = NULL,
   x_col = NULL,
   y_col = NULL,
@@ -16,8 +16,8 @@ plot_boundary(
 )
 }
 \arguments{
-\item{boundary}{The boundary data frame returned by \code{boundary_compute()}.
-Must contain columns named \code{x}, \code{y}, and \code{prediction}.}
+\item{model}{A \code{classbound} model object returned by \code{boundary_compute()}.
+Must contain boundary data in \verb{$boundary_data}.}
 
 \item{obs_data}{Optional data frame of training observations to overlay.}
 

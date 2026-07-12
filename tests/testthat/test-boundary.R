@@ -18,7 +18,8 @@ test_that("boundary_compute works correctly with rpart model", {
   )
 
   # Compute boundary
-  res <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res <- res_model$boundary_data
 
   # Check structure
   expect_s3_class(res, "data.frame")

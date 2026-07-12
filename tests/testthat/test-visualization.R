@@ -5,7 +5,8 @@ test_that("plot_boundary works correctly with basic boundary", {
     prediction = factor(sample(c("A", "B"), 100, replace = TRUE))
   )
 
-  p <- plot_boundary(boundary_data)
+  mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
+  p <- plot_boundary(mock_model)
   expect_s3_class(p, "ggplot")
 
   # Check if geom_raster is present
@@ -26,8 +27,9 @@ test_that("plot_boundary works correctly with observations", {
     label = factor(sample(c("A", "B"), 10, replace = TRUE))
   )
 
+  mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
   p <- plot_boundary(
-    boundary_data,
+    mock_model,
     obs_data = obs_data,
     x_col = "feat1",
     y_col = "feat2",
@@ -44,22 +46,25 @@ test_that("plot_boundary works correctly with observations", {
 test_that("plot_boundary handles errors gracefully", {
   boundary_data <- data.frame(x = 1:5, y = 1:5, prediction = factor(1:5))
 
+  mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
+  
   # Type not 2D
-  expect_error(plot_boundary(boundary_data, type = "tour"), "Only type='2D' is currently supported")
+  expect_error(plot_boundary(mock_model, type = "tour"), "Only type='2D' is currently supported")
 
   # Missing prediction column
   bad_boundary <- data.frame(x = 1:5, y = 1:5)
-  expect_error(plot_boundary(bad_boundary), "boundary must contain 'x', 'y', and 'prediction' columns")
+  bad_model <- structure(list(boundary_data = bad_boundary), class = "classbound")
+  expect_error(plot_boundary(bad_model), "boundary must contain 'x', 'y', and 'prediction' columns")
 
   # Missing obs_data columns mapping
   expect_error(
-    plot_boundary(boundary_data, obs_data = data.frame(a = 1, b = 2)),
+    plot_boundary(mock_model, obs_data = data.frame(a = 1, b = 2)),
     "you must also specify x_col, y_col, and true_label"
   )
 
   # Missing obs_data columns actual
   expect_error(
-    plot_boundary(boundary_data, obs_data = data.frame(a = 1, b = 2), x_col = "x", y_col = "y", true_label = "z"),
+    plot_boundary(mock_model, obs_data = data.frame(a = 1, b = 2), x_col = "x", y_col = "y", true_label = "z"),
     "obs_data must contain columns"
   )
 })

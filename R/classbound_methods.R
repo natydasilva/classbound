@@ -10,10 +10,29 @@
 print.classbound <- function(x, ...) {
   cat("=== Classbound Model Pipeline ===\n")
   cat("Features: ", paste(x$metadata$features$names, collapse = ", "), "\n")
-  cat("Classes:  ", paste(x$metadata$class_levels, collapse = ", "), "\n\n")
+  cat("Classes:  ", paste(x$metadata$class_levels, collapse = ", "), "\n")
+  
+  if (!is.null(x$boundary_data)) {
+    cat("Boundary: Computed (", nrow(x$boundary_data), " grid points)\n\n", sep = "")
+  } else {
+    cat("Boundary: Not yet computed (Run `boundary_compute()`)\n\n")
+  }
+  
   cat("-- Native Model --\n")
   print(x$fit, ...)
   invisible(x)
+}
+
+#' Plot a classbound model boundary
+#'
+#' @description A standard S3 plot method that delegates to `plot_boundary()`.
+#'
+#' @param x A `classbound` model object.
+#' @param ... Additional arguments passed to `plot_boundary()`.
+#' @return A `ggplot2` object.
+#' @export
+plot.classbound <- function(x, ...) {
+  plot_boundary(model = x, ...)
 }
 
 #' Summarize a classbound model

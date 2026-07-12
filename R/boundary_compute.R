@@ -15,7 +15,7 @@
 #'   is inversely projected back to the original feature space before prediction.
 #' @param ... Additional computation parameters.
 #'
-#' @return A data frame containing the 2D grid points (`x`, `y`), predicted `prediction`, and probabilities.
+#' @return A modified `classbound` model object containing the 2D grid points and predictions in `$boundary_data`.
 #' @examples
 #' \donttest{
 #' data(data69_1)
@@ -183,5 +183,6 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     res <- cbind(res, as.data.frame(preds$probs))
   }
 
-  res
+  model$boundary_data <- res
+  model
 }

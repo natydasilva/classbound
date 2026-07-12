@@ -3,6 +3,7 @@
 S3method(as_classbound,default)
 S3method(as_classbound,model_fit)
 S3method(as_classbound,workflow)
+S3method(plot,classbound)
 S3method(predict,classbound)
 S3method(predict_adapter,PPforest)
 S3method(predict_adapter,PPtreeExtclass)

@@ -33,7 +33,8 @@ test_that("user-defined custom adapters are supported natively via S3 dispatch",
   expect_true(my_fit$fit$fitted)
 
   # 5. Use the core pipeline to generate a boundary (which tests predict)
-  grid <- boundary_compute(my_fit, list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 20)), resolution = 10)
+  grid_model <- boundary_compute(my_fit, list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 20)), resolution = 10)
+  grid <- grid_model$boundary_data
 
   # Validate that boundary generation succeeded using the custom predict adapter
   expect_s3_class(grid, "data.frame")

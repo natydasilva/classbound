@@ -42,7 +42,8 @@ as_classbound.default <- function(model, data, response = NULL, ...) {
       metadata = list(
         features = feature_meta,
         class_levels = orig_class_levels
-      )
+      ),
+      boundary_data = NULL
     ),
     class = "classbound"
   )

@@ -71,7 +71,8 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
       metadata = list(
         features = feature_meta,
         class_levels = orig_class_levels
-      )
+      ),
+      boundary_data = NULL
     ),
     class = "classbound"
   )

@@ -38,7 +38,8 @@ test_that(
     )
 
     grids <- lapply(names(models), function(m_name) {
-      grid <- boundary_compute(models[[m_name]], range, resolution = 10)
+      grid_model <- boundary_compute(models[[m_name]], range, resolution = 10)
+      grid <- grid_model$boundary_data
       grid$model <- m_name
       grid
     })

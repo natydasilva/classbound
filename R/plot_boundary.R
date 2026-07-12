@@ -2,8 +2,8 @@
 #'
 #' @description Renders a 2D plot for boundary exploration.
 #'
-#' @param boundary The boundary data frame returned by `boundary_compute()`.
-#'   Must contain columns named `x`, `y`, and `prediction`.
+#' @param model A `classbound` model object returned by `boundary_compute()`.
+#'   Must contain boundary data in `$boundary_data`.
 #' @param obs_data Optional data frame of training observations to overlay.
 #' @param x_col Column name in `obs_data` for the x-axis feature. Also used as the x-axis label.
 #'   Required if `obs_data` is provided.
@@ -25,14 +25,19 @@
 #' plot_boundary(grid, data69_1, "V1", "V2", "Y")
 #' }
 #' @export
-plot_boundary <- function(boundary, obs_data = NULL, x_col = NULL, y_col = NULL,
+plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D", ...) {
   if (type != "2D") {
     stop("Only type='2D' is currently supported.", call. = FALSE)
   }
 
-  if (!inherits(boundary, "data.frame")) {
-    stop("boundary must be a data.frame returned by boundary_compute().", call. = FALSE)
+  if (!inherits(model, "classbound")) {
+    stop("model must be a 'classbound' object returned by boundary_compute().", call. = FALSE)
+  }
+
+  boundary <- model$boundary_data
+  if (is.null(boundary)) {
+    stop("model does not contain boundary data. Please run boundary_compute() first.", call. = FALSE)
   }
 
   req_cols <- c("x", "y", "prediction")
