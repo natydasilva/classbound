@@ -4,14 +4,7 @@
 \alias{boundary_workflow_set}
 \title{Compute classification boundaries for a workflow_set}
 \usage{
-boundary_workflow_set(
-  wf_set,
-  data,
-  range,
-  response = NULL,
-  resolution = 100,
-  ...
-)
+boundary_workflow_set(wf_set, data, range, response, resolution = 100, ...)
 }
 \arguments{
 \item{wf_set}{A \code{workflow_set} object from the \code{workflowsets} package.}

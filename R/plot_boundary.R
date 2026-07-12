@@ -21,8 +21,8 @@
 #' data(data69_1)
 #' data69_1$Y <- as.factor(data69_1$Y)
 #' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-#' grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
-#' plot_boundary(grid, data69_1, "V1", "V2", "Y")
+#' model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+#' plot_boundary(model, data69_1, "V1", "V2", "Y")
 #' }
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
@@ -79,6 +79,11 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       size = 2, shape = 16
     ) +
       ggplot2::labs(color = "True Class")
+  }
+
+  if (is.null(facet_col) && isTRUE(model$metadata$is_multimodel)) {
+    warning("This model contains multiple boundaries (workflow_set). Automatically setting facet_col = 'model' to prevent overlapping plots.", call. = FALSE)
+    facet_col <- "model"
   }
 
   if (!is.null(facet_col)) {

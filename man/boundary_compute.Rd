@@ -43,6 +43,6 @@ Computes the decision boundary for a fitted classifier over a specified feature 
 data(data69_1)
 data69_1$Y <- as.factor(data69_1$Y)
 model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 }
 }

@@ -14,7 +14,7 @@
 #' @return A data frame containing the combined boundary grid for all models, with a `model` column
 #'   indicating the `wflow_id`.
 #' @export
-boundary_workflow_set <- function(wf_set, data, range, response = NULL, resolution = 100, ...) {
+boundary_workflow_set <- function(wf_set, data, range, response, resolution = 100, ...) {
   if (!requireNamespace("workflowsets", quietly = TRUE)) {
     stop("Package 'workflowsets' is required to process workflow_set objects.", call. = FALSE)
   }
@@ -27,6 +27,14 @@ boundary_workflow_set <- function(wf_set, data, range, response = NULL, resoluti
 
   if (missing(data)) {
     stop("`data` must be provided to extract metadata and fit workflows.", call. = FALSE)
+  }
+  
+  if (missing(response)) {
+    stop("`response` must be provided to guarantee that class levels are perfectly synchronized across all models in the set.", call. = FALSE)
+  }
+  
+  if (!response %in% colnames(data)) {
+    stop(sprintf("Response column '%s' not found in `data`.", response), call. = FALSE)
   }
 
   results <- lapply(wf_set$wflow_id, function(id) {
@@ -52,5 +60,25 @@ boundary_workflow_set <- function(wf_set, data, range, response = NULL, resoluti
     grid_preds[, cols, drop = FALSE]
   })
 
-  do.call(rbind, results)
+  final_grid <- do.call(rbind, results)
+
+  # Extract metadata from training data
+  y <- data[[response]]
+  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
+  predictors_df <- data[, setdiff(colnames(data), response), drop = FALSE]
+  
+  feature_meta <- extract_feature_metadata(predictors_df)
+
+  structure(
+    list(
+      fit = wf_set,
+      metadata = list(
+        features = feature_meta,
+        class_levels = orig_class_levels,
+        is_multimodel = TRUE
+      ),
+      boundary_data = final_grid
+    ),
+    class = "classbound"
+  )
 }

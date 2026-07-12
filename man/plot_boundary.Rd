@@ -47,7 +47,7 @@ Renders a 2D plot for boundary exploration.
 data(data69_1)
 data69_1$Y <- as.factor(data69_1$Y)
 model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-grid <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
-plot_boundary(grid, data69_1, "V1", "V2", "Y")
+model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+plot_boundary(model, data69_1, "V1", "V2", "Y")
 }
 }

@@ -40,7 +40,8 @@ Suggests:
     shiny,
     MASS,
     gridExtra,
-    MixSim
+    MixSim,
+    tourr
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3

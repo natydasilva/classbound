@@ -52,13 +52,13 @@ feature_range <- list(
 )
 
 # Compute predictions over the grid
-grid_data <- boundary_compute(
+model <- boundary_compute(
   model = model,
   range = feature_range,
   resolution = 100
 )
 
-head(grid_data)
+head(model$boundary_data)
 ```
 
 ## Visualizing the Boundary
@@ -67,7 +67,7 @@ To visualize the resulting boundary, pass the computed grid data to `plot_bounda
 
 ```{r}
 plot_boundary(
-  boundary = grid_data,
+  model = model,
   obs_data = penguins,
   x_col = "bill_length_mm",
   y_col = "bill_depth_mm",
