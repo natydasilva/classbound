@@ -12,6 +12,7 @@ edu
 fcea
 ffffff
 fg
+ggnewscale
 ggplot
 github
 gmail
@@ -43,9 +44,12 @@ rlang
 rmarkdown
 roxygen
 Roxygen
+RoxygenNote
 rpart
 Shinyapp
 testthat
+tidymodels
+tourr
 uy
 vaibhav
 Vaibhav

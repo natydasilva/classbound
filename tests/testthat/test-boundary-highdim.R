@@ -10,10 +10,10 @@ test_that("boundary_compute validates projection object correctly", {
   skip_if_not_installed("rpart")
   model <- fit_model(penguins_data, species ~ ., rpart::rpart)
 
-  # Missing projection for high-dimensional model
+  # Missing projection for high-dimensional model (using invalid features z1/z2)
   expect_error(
     boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1))),
-    "Visualizing models with >2 features without a projection requires fixed-value slicing"
+    "Names in `range` do not match the training features."
   )
 
   # Model with a factor feature

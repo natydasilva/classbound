@@ -63,6 +63,9 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     stop("boundary must contain 'x', 'y', and 'prediction' columns.", call. = FALSE)
   }
 
+  default_x <- if (!is.null(model$boundary_features)) model$boundary_features[1] else "Feature 1"
+  default_y <- if (!is.null(model$boundary_features)) model$boundary_features[2] else "Feature 2"
+
   if (type == "disagreement") {
     if (is.null(model$fits)) {
       stop("Disagreement plots require a multi-model comparison (created by passing a list of models to boundary_compute).", call. = FALSE)
@@ -85,8 +88,8 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       ) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
-        x = if (!is.null(x_col)) x_col else "Feature 1",
-        y = if (!is.null(y_col)) y_col else "Feature 2",
+        x = if (!is.null(x_col)) x_col else default_x,
+        y = if (!is.null(y_col)) y_col else default_y,
         fill = "Consensus"
       )
   } else {
@@ -105,8 +108,8 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
         ggplot2::theme_minimal() +
         ggplot2::labs(
-          x = if (!is.null(x_col)) x_col else "Feature 1",
-          y = if (!is.null(y_col)) y_col else "Feature 2",
+          x = if (!is.null(x_col)) x_col else default_x,
+          y = if (!is.null(y_col)) y_col else default_y,
           fill = "Prediction"
         )
     } else {
@@ -115,8 +118,8 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
         ggplot2::theme_minimal() +
         ggplot2::labs(
-          x = if (!is.null(x_col)) x_col else "Feature 1",
-          y = if (!is.null(y_col)) y_col else "Feature 2",
+          x = if (!is.null(x_col)) x_col else default_x,
+          y = if (!is.null(y_col)) y_col else default_y,
           fill = "Prediction"
         )
     }

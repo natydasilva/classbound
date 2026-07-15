@@ -63,9 +63,24 @@ as_classbound.model_fit <- function(model, data, response = NULL, ...) {
 
 # Internal helper used by both fit_model() and as_classbound()
 extract_feature_metadata <- function(data) {
+  imputation_values <- lapply(data, function(col) {
+    if (is.numeric(col)) {
+      stats::median(col, na.rm = TRUE)
+    } else {
+      tbl <- table(col)
+      if (length(tbl) > 0) {
+        mode_val <- names(tbl)[which.max(tbl)]
+        if (is.factor(col)) factor(mode_val, levels = levels(col)) else mode_val
+      } else {
+        if (is.factor(col)) factor(levels(col)[1], levels = levels(col)) else NA
+      }
+    }
+  })
+
   list(
     names = colnames(data),
     types = lapply(data, class),
-    levels = lapply(data, levels)
+    levels = lapply(data, levels),
+    imputation = imputation_values
   )
 }

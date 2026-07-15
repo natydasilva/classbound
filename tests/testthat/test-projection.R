@@ -38,14 +38,14 @@ test_that("plot_boundary handles projection forward mapping correctly", {
 
   # Verify ggplot layer aesthetics
   expect_s3_class(p, "ggplot")
-  
+
   # The second layer should be the points (first is raster)
   point_data <- p$layers[[2]]$data
-  
+
   # Check if alpha_val exists and is within [0, 1]
   expect_true("alpha_val" %in% colnames(point_data))
   expect_true(all(round(point_data$alpha_val, 5) >= 0.2 & round(point_data$alpha_val, 5) <= 1.0))
-  
+
   # Check if x_val and y_val were synthesized
   expect_true("x_val" %in% colnames(point_data))
   expect_true("y_val" %in% colnames(point_data))

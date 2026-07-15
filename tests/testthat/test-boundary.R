@@ -87,15 +87,6 @@ test_that("boundary_compute handles metadata validation gracefully", {
     boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
     "Invalid features: wrong_name"
   )
-
-  # Model trained on 3 features, range provides 2
-  train_data_3 <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "species")]
-  model_3 <- fit_model(data = train_data_3, formula = species ~ ., classifier = rpart::rpart)
-
-  expect_error(
-    boundary_compute(model_3, range = list(bill_length_mm = c(1, 2), bill_depth_mm = c(1, 2))),
-    "Visualizing models with >2 features without a projection requires fixed-value slicing"
-  )
 })
 
 test_that("boundary_compute rejects categorical features", {

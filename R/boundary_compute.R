@@ -13,6 +13,8 @@
 #'   Projection is only supported for models trained exclusively on numeric features.
 #'   If provided, `range` defines the limits of the 2D projected space, and the grid
 #'   is inversely projected back to the original feature space before prediction.
+#' @param reference An optional named list of fixed values to use for features not specified in `range`.
+#'   If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.
 #' @param ... Additional computation parameters.
 #'
 #' @return A modified `classbound` model object containing the 2D grid points and predictions in `$boundary_data`.
@@ -24,7 +26,7 @@
 #' model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
 #' }
 #' @export
-boundary_compute <- function(model, range, resolution = 100, predfun = NULL, projection = NULL, ...) {
+boundary_compute <- function(model, range, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
   is_multi <- FALSE
   is_bare_list <- is.list(model) && (class(model)[1] == "list")
 
@@ -77,20 +79,21 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
   }
 
   if (is.null(projection)) {
-    if (length(expected_names) > 2) {
-      stop(
-        paste0(
-          "Visualizing models with >2 features without a projection requires fixed-value slicing, ",
-          "which is currently unsupported. Please supply a projection."
-        ),
-        call. = FALSE
-      )
-    }
     if (length(var_names) != 2) {
       stop(
         sprintf("Expected exactly 2 boundary variables, but got %d.", length(var_names)),
         call. = FALSE
       )
+    }
+
+    if (!is.null(reference)) {
+      if (!is.list(reference) || is.null(names(reference))) {
+        stop("`reference` must be a named list of fixed values.", call. = FALSE)
+      }
+      ref_invalid <- setdiff(names(reference), expected_names)
+      if (length(ref_invalid) > 0) {
+        stop(paste0("Names in `reference` do not match training features. Invalid features: ", paste(ref_invalid, collapse = ", ")), call. = FALSE)
+      }
     }
   } else {
     if (length(var_names) != 2) {
@@ -105,11 +108,8 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
   invalid_names <- setdiff(var_names, expected_names)
 
   if (is.null(projection)) {
-    if (length(missing_names) > 0 || length(invalid_names) > 0) {
+    if (length(invalid_names) > 0) {
       msg <- "Names in `range` do not match the training features."
-      if (length(missing_names) > 0) {
-        msg <- paste0(msg, "\nMissing features: ", paste(missing_names, collapse = ", "))
-      }
       if (length(invalid_names) > 0) {
         msg <- paste0(msg, "\nInvalid features: ", paste(invalid_names, collapse = ", "))
       }
@@ -195,6 +195,26 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     colnames(predict_df) <- expected_names
   } else {
     predict_df <- grid_df
+
+    missing_feats <- setdiff(expected_names, colnames(predict_df))
+    for (feat in missing_feats) {
+      if (!is.null(reference) && feat %in% names(reference)) {
+        val <- reference[[feat]]
+        expected_levels <- first_model$metadata$features$levels[[feat]]
+        if (!is.null(expected_levels)) {
+          if (!as.character(val) %in% expected_levels) {
+            stop(sprintf("Reference value '%s' for feature '%s' is not a valid level.", val, feat), call. = FALSE)
+          }
+          val <- factor(val, levels = expected_levels)
+        }
+        predict_df[[feat]] <- val
+      } else {
+        predict_df[[feat]] <- first_model$metadata$features$imputation[[feat]]
+      }
+    }
+
+    # Reorder columns to exactly match expected_names
+    predict_df <- predict_df[, expected_names, drop = FALSE]
   }
 
   # Predict over all models
@@ -233,13 +253,15 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
           class_levels = expected_classes
         ),
         boundary_data = final_boundary,
-        projection = projection
+        projection = projection,
+        boundary_features = var_names
       ),
       class = "classbound"
     )
   } else {
     first_model$boundary_data <- final_boundary
     first_model$projection <- projection
+    first_model$boundary_features <- var_names
     first_model
   }
 }

@@ -10,6 +10,7 @@ boundary_compute(
   resolution = 100,
   predfun = NULL,
   projection = NULL,
+  reference = NULL,
   ...
 )
 }
@@ -29,6 +30,9 @@ Optionally contains \code{center} and \code{scale} (numeric vectors) to reverse 
 Projection is only supported for models trained exclusively on numeric features.
 If provided, \code{range} defines the limits of the 2D projected space, and the grid
 is inversely projected back to the original feature space before prediction.}
+
+\item{reference}{An optional named list of fixed values to use for features not specified in \code{range}.
+If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.}
 
 \item{...}{Additional computation parameters.}
 }

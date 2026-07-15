@@ -36,7 +36,7 @@ test_that("plot_boundary works correctly with observations", {
   )
 
   expect_s3_class(p, "ggplot")
-  
+
   # Verify the plot builds successfully without error
   expect_silent(suppressWarnings(ggplot2::ggplot_build(p)))
 })
@@ -45,7 +45,7 @@ test_that("plot_boundary handles errors gracefully", {
   boundary_data <- data.frame(x = 1:5, y = 1:5, prediction = factor(1:5))
 
   mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
-  
+
   # Type not 2D
   expect_error(plot_boundary(mock_model, type = "tour"), "Only type='2D' and type='disagreement' are currently supported")
 
