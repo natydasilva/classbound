@@ -47,7 +47,7 @@ test_that("plot_boundary handles errors gracefully", {
   mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
   
   # Type not 2D
-  expect_error(plot_boundary(mock_model, type = "tour"), "Only type='2D' is currently supported")
+  expect_error(plot_boundary(mock_model, type = "tour"), "Only type='2D' and type='disagreement' are currently supported")
 
   # Missing prediction column
   bad_boundary <- data.frame(x = 1:5, y = 1:5)

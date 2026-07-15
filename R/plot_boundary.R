@@ -24,7 +24,11 @@
 #' @param true_label Column name in `obs_data` representing the true class labels. Required if `obs_data` is provided.
 #' @param facet_col Optional string naming a column in `boundary` to facet the plot by.
 #'   Useful for comparing multiple models (e.g. from `boundary_workflow_set()`).
-#' @param type The type of visualization to generate. Only '2D' is supported.
+#' @param type The type of visualization to generate. Supported: '2D' or 'disagreement'.
+#' @param agree_color Color used for areas where all models agree (only for type='disagreement').
+#' @param disagree_color Color used for areas where models disagree (only for type='disagreement').
+#' @param obs_alpha Numeric transparency level for overlaid observation points (0.0 to 1.0).
+#' @param obs_size Numeric size for overlaid observation points.
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
@@ -38,9 +42,11 @@
 #' }
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
-                          true_label = NULL, facet_col = NULL, type = "2D", ...) {
-  if (type != "2D") {
-    stop("Only type='2D' is currently supported.", call. = FALSE)
+                          true_label = NULL, facet_col = NULL, type = "2D",
+                          agree_color = "#006666", disagree_color = "#FF8000",
+                          obs_alpha = 1.0, obs_size = 2.5, ...) {
+  if (!type %in% c("2D", "disagreement")) {
+    stop("Only type='2D' and type='disagreement' are currently supported.", call. = FALSE)
   }
 
   if (!inherits(model, "classbound")) {
@@ -57,35 +63,63 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     stop("boundary must contain 'x', 'y', and 'prediction' columns.", call. = FALSE)
   }
 
-  # Check if probabilities exist for all class levels
-  class_levels <- levels(boundary$prediction)
-  has_probs <- !is.null(class_levels) && all(class_levels %in% colnames(boundary))
+  if (type == "disagreement") {
+    if (is.null(model$fits)) {
+      stop("Disagreement plots require a multi-model comparison (created by passing a list of models to boundary_compute).", call. = FALSE)
+    }
 
-  if (has_probs) {
-    # Extract the probability of the predicted class for each point
-    col_indices <- match(as.character(boundary$prediction), colnames(boundary))
-    boundary$probability <- as.numeric(boundary[cbind(seq_len(nrow(boundary)), col_indices)])
+    # Aggregate predictions to find disagreements
+    disagree_data <- stats::aggregate(
+      prediction ~ x + y,
+      data = boundary,
+      FUN = function(p) if (length(unique(p)) > 1) "Disagree" else "Agree"
+    )
+    # Ensure it's a factor for discrete coloring
+    disagree_data$prediction <- factor(disagree_data$prediction, levels = c("Agree", "Disagree"))
 
-    # Basic plot with alpha mapped to probability
-    p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
-      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability)) +
-      ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
+    p <- ggplot2::ggplot(disagree_data, ggplot2::aes(x = .data$x, y = .data$y)) +
+      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction)) +
+      ggplot2::scale_fill_manual(
+        values = c("Agree" = agree_color, "Disagree" = disagree_color),
+        drop = FALSE
+      ) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
         x = if (!is.null(x_col)) x_col else "Feature 1",
         y = if (!is.null(y_col)) y_col else "Feature 2",
-        fill = "Prediction"
+        fill = "Consensus"
       )
   } else {
-    # Basic plot with hardcoded alpha (no probabilities)
-    p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
-      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
-      ggplot2::theme_minimal() +
-      ggplot2::labs(
-        x = if (!is.null(x_col)) x_col else "Feature 1",
-        y = if (!is.null(y_col)) y_col else "Feature 2",
-        fill = "Prediction"
-      )
+    # Check if probabilities exist for all class levels
+    class_levels <- levels(boundary$prediction)
+    has_probs <- !is.null(class_levels) && all(class_levels %in% colnames(boundary))
+
+    if (has_probs) {
+      # Extract the probability of the predicted class for each point
+      col_indices <- match(as.character(boundary$prediction), colnames(boundary))
+      boundary$probability <- as.numeric(boundary[cbind(seq_len(nrow(boundary)), col_indices)])
+
+      # Basic plot with alpha mapped to probability
+      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
+        ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability)) +
+        ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
+        ggplot2::theme_minimal() +
+        ggplot2::labs(
+          x = if (!is.null(x_col)) x_col else "Feature 1",
+          y = if (!is.null(y_col)) y_col else "Feature 2",
+          fill = "Prediction"
+        )
+    } else {
+      # Basic plot with hardcoded alpha (no probabilities)
+      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
+        ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
+        ggplot2::theme_minimal() +
+        ggplot2::labs(
+          x = if (!is.null(x_col)) x_col else "Feature 1",
+          y = if (!is.null(y_col)) y_col else "Feature 2",
+          fill = "Prediction"
+        )
+    }
   }
 
   # Overlay training observations if provided
@@ -141,9 +175,9 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
 
       # Map distance to opacity (1.0 = on plane, fades to 0.2)
       if (max_dist > 0) {
-        obs_df$alpha_val <- 1 - 0.8 * (dists / max_dist)
+        obs_df$alpha_val <- obs_alpha * (1 - 0.8 * (dists / max_dist))
       } else {
-        obs_df$alpha_val <- 1.0
+        obs_df$alpha_val <- obs_alpha
       }
 
       p <- p +
@@ -151,7 +185,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::geom_point(
           data = obs_df,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
-          size = 2.5, shape = 21, color = "white", stroke = 0.5
+          size = obs_size, shape = 21, color = "white", stroke = 0.5
         ) +
         ggplot2::scale_alpha_identity() +
         ggplot2::labs(fill = "True Class")
@@ -173,16 +207,16 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::geom_point(
           data = obs_df,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
-          size = 2.5, shape = 21, color = "white", stroke = 0.5
+          size = obs_size, alpha = obs_alpha, shape = 21, color = "white", stroke = 0.5
         ) +
         ggplot2::labs(fill = "True Class")
     }
   }
 
-  if (is.null(facet_col) && isTRUE(model$metadata$is_multimodel)) {
+  if (is.null(facet_col) && !is.null(model$fits) && type == "2D") {
     warning(
       paste0(
-        "This model contains multiple boundaries (workflow_set). ",
+        "This model contains multiple boundaries. ",
         "Automatically setting facet_col = 'model' to prevent overlapping plots."
       ),
       call. = FALSE

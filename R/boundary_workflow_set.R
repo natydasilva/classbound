@@ -28,16 +28,16 @@ boundary_workflow_set <- function(wf_set, data, range, response, resolution = 10
   if (missing(data)) {
     stop("`data` must be provided to extract metadata and fit workflows.", call. = FALSE)
   }
-  
+
   if (missing(response)) {
     stop("`response` must be provided to guarantee that class levels are perfectly synchronized across all models in the set.", call. = FALSE)
   }
-  
+
   if (!response %in% colnames(data)) {
     stop(sprintf("Response column '%s' not found in `data`.", response), call. = FALSE)
   }
 
-  results <- lapply(wf_set$wflow_id, function(id) {
+  model_list <- lapply(wf_set$wflow_id, function(id) {
     wf <- workflowsets::extract_workflow(wf_set, id)
 
     # Fit the workflow if it is not already trained
@@ -46,39 +46,11 @@ boundary_workflow_set <- function(wf_set, data, range, response, resolution = 10
     }
 
     # Wrap the fitted workflow into the classbound pipeline
-    cb_model <- as_classbound(wf, data = data, response = response) # nolint: object_usage_linter.
-
-    # Compute the grid
-    grid_model <- boundary_compute(cb_model, range = range, resolution = resolution, ...)
-    grid_preds <- grid_model$boundary_data
-
-    # Prepend the model identifier
-    grid_preds$model <- id
-
-    # Reorder columns to put model first
-    cols <- c("model", setdiff(colnames(grid_preds), "model"))
-    grid_preds[, cols, drop = FALSE]
+    as_classbound(wf, data = data, response = response)
   })
 
-  final_grid <- do.call(rbind, results)
+  names(model_list) <- wf_set$wflow_id
 
-  # Extract metadata from training data
-  y <- data[[response]]
-  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
-  predictors_df <- data[, setdiff(colnames(data), response), drop = FALSE]
-  
-  feature_meta <- extract_feature_metadata(predictors_df)
-
-  structure(
-    list(
-      fit = wf_set,
-      metadata = list(
-        features = feature_meta,
-        class_levels = orig_class_levels,
-        is_multimodel = TRUE
-      ),
-      boundary_data = final_grid
-    ),
-    class = "classbound"
-  )
+  # Delegate completely to the multi-model pipeline in boundary_compute
+  boundary_compute(model_list, range = range, resolution = resolution, ...)
 }

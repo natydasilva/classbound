@@ -25,9 +25,22 @@
 #' }
 #' @export
 boundary_compute <- function(model, range, resolution = 100, predfun = NULL, projection = NULL, ...) {
-  if (!inherits(model, "classbound")) {
-    stop("model must be a 'classbound' object.", call. = FALSE)
+  is_multi <- FALSE
+  is_bare_list <- is.list(model) && (class(model)[1] == "list")
+
+  if (is_bare_list) {
+    if (!all(vapply(model, inherits, "classbound", FUN.VALUE = logical(1)))) {
+      stop("If model is a list, all elements must be 'classbound' objects.", call. = FALSE)
+    }
+    is_multi <- TRUE
+    model_list <- model
+  } else if (inherits(model, "classbound")) {
+    model_list <- list(model)
+  } else {
+    stop("model must be a 'classbound' object or a list of 'classbound' objects.", call. = FALSE)
   }
+
+  first_model <- model_list[[1]]
 
   if (!is.list(range) || length(range) != 2 || is.null(names(range))) {
     stop("range must be a named list of length 2 specifying feature ranges.", call. = FALSE)
@@ -39,11 +52,29 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     stop("Duplicate feature names found in `range`.", call. = FALSE)
   }
 
-  if (is.null(model$metadata$features)) {
+  if (is.null(first_model$metadata$features)) {
     stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
   }
 
-  expected_names <- model$metadata$features$names
+  expected_names <- first_model$metadata$features$names
+  expected_classes <- first_model$metadata$class_levels
+
+  if (is_multi) {
+    for (m in model_list) {
+      if (!identical(m$metadata$features$names, expected_names)) {
+        stop("All models in a multi-model list must be trained on the exact same features (names and order).", call. = FALSE)
+      }
+      if (!identical(m$metadata$class_levels, expected_classes)) {
+        stop("All models in a multi-model list must share the exact same class levels.", call. = FALSE)
+      }
+      # If we have feature types (e.g. from preprocessing), validate them too
+      if (!is.null(first_model$metadata$features$types) && !is.null(m$metadata$features$types)) {
+        if (!identical(m$metadata$features$types, first_model$metadata$features$types)) {
+          stop("All models in a multi-model list must share identical feature types.", call. = FALSE)
+        }
+      }
+    }
+  }
 
   if (is.null(projection)) {
     if (length(expected_names) > 2) {
@@ -86,7 +117,7 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     }
   } else {
     # Validate that all features are numeric
-    if (!all(model$metadata$features$type %in% c("numeric", "integer", "double"))) {
+    if (!all(first_model$metadata$features$type %in% c("numeric", "integer", "double"))) {
       stop("High-dimensional projection is only supported for models trained exclusively on numeric features.", call. = FALSE)
     }
 
@@ -133,9 +164,9 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
 
   # Ensure requested boundary features are numeric
   if (is.null(projection)) {
-    feature_types <- model$metadata$features$types[var_names]
+    feature_types <- first_model$metadata$features$types[var_names]
   } else {
-    feature_types <- model$metadata$features$types
+    feature_types <- first_model$metadata$features$types
   }
   is_numeric <- vapply(feature_types, function(x) any(c("numeric", "integer") %in% x), logical(1))
 
@@ -166,25 +197,49 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
     predict_df <- grid_df
   }
 
-  # Predict using the standardized predict_model function
-  preds <- predict_model(model, newdata = predict_df, predfun = predfun, ...)
+  # Predict over all models
+  res_list <- lapply(seq_along(model_list), function(i) {
+    m <- model_list[[i]]
+    preds <- predict_model(m, newdata = predict_df, predfun = predfun, ...)
 
-  # Class predictions are now strictly guaranteed to be correctly leveled factors
-  # by the predict_model() contract, so we directly construct the frame.
+    df <- data.frame(
+      x = grid_df[[1]],
+      y = grid_df[[2]],
+      prediction = preds$class
+    )
 
-  # Combine grid and predictions
-  res <- data.frame(
-    x = grid_df[[1]],
-    y = grid_df[[2]],
-    prediction = preds$class
-  )
+    if (!is.null(preds$probs)) {
+      df <- cbind(df, as.data.frame(preds$probs))
+    }
 
-  if (!is.null(preds$probs)) {
-    res <- cbind(res, as.data.frame(preds$probs))
+    if (is_multi) {
+      model_name <- names(model_list)[i]
+      if (is.null(model_name) || model_name == "") model_name <- paste0("Model_", i)
+      df <- cbind(model = model_name, df)
+    }
+
+    df
+  })
+
+  final_boundary <- do.call(rbind, res_list)
+
+  if (is_multi) {
+    structure(
+      list(
+        fit = NULL,
+        fits = lapply(model_list, function(x) x$fit),
+        metadata = list(
+          features = first_model$metadata$features,
+          class_levels = expected_classes
+        ),
+        boundary_data = final_boundary,
+        projection = projection
+      ),
+      class = "classbound"
+    )
+  } else {
+    first_model$boundary_data <- final_boundary
+    first_model$projection <- projection
+    first_model
   }
-
-  model$boundary_data <- res
-  model$projection <- projection
-  model
 }
-

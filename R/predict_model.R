@@ -14,6 +14,9 @@
 #' Downstream functions like \code{boundary_compute()} are designed to handle \code{probs = NULL} gracefully.
 #' @export
 predict.classbound <- function(object, newdata, predict_args = list(), predfun = NULL, ...) {
+  if (!is.null(object$fits)) {
+    stop("Cannot call predict() directly on a multi-model boundary comparison object.", call. = FALSE)
+  }
   if (!is.null(predfun)) {
     # Use the user-supplied custom prediction function
     args <- c(list(object$fit, newdata), predict_args, list(...))

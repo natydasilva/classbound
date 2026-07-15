@@ -11,15 +11,23 @@ print.classbound <- function(x, ...) {
   cat("=== Classbound Model Pipeline ===\n")
   cat("Features: ", paste(x$metadata$features$names, collapse = ", "), "\n")
   cat("Classes:  ", paste(x$metadata$class_levels, collapse = ", "), "\n")
-  
+
   if (!is.null(x$boundary_data)) {
     cat("Boundary: Computed (", nrow(x$boundary_data), " grid points)\n\n", sep = "")
   } else {
     cat("Boundary: Not yet computed (Run `boundary_compute()`)\n\n")
   }
-  
-  cat("-- Native Model --\n")
-  print(x$fit, ...)
+
+  if (!is.null(x$fits)) {
+    cat("-- Multi-Model Comparison --\n")
+    cat(length(x$fits), "models compared:\n")
+    model_names <- names(x$fits)
+    if (is.null(model_names)) model_names <- paste("Model", seq_along(x$fits))
+    cat(paste("  -", model_names), sep = "\n")
+  } else {
+    cat("-- Native Model --\n")
+    print(x$fit, ...)
+  }
   invisible(x)
 }
 
@@ -44,5 +52,10 @@ plot.classbound <- function(x, ...) {
 #' @return The summary of the native model.
 #' @export
 summary.classbound <- function(object, ...) {
-  summary(object$fit, ...)
+  if (!is.null(object$fits)) {
+    cat("Multi-Model Comparison Object containing", length(object$fits), "models.\n")
+    invisible(object$fits)
+  } else {
+    summary(object$fit, ...)
+  }
 }

@@ -12,6 +12,10 @@ plot_boundary(
   true_label = NULL,
   facet_col = NULL,
   type = "2D",
+  agree_color = "#006666",
+  disagree_color = "#FF8000",
+  obs_alpha = 1,
+  obs_size = 2.5,
   ...
 )
 }
@@ -32,7 +36,15 @@ Required if \code{obs_data} is provided.}
 \item{facet_col}{Optional string naming a column in \code{boundary} to facet the plot by.
 Useful for comparing multiple models (e.g. from \code{boundary_workflow_set()}).}
 
-\item{type}{The type of visualization to generate. Only '2D' is supported.}
+\item{type}{The type of visualization to generate. Supported: '2D' or 'disagreement'.}
+
+\item{agree_color}{Color used for areas where all models agree (only for type='disagreement').}
+
+\item{disagree_color}{Color used for areas where models disagree (only for type='disagreement').}
+
+\item{obs_alpha}{Numeric transparency level for overlaid observation points (0.0 to 1.0).}
+
+\item{obs_size}{Numeric size for overlaid observation points.}
 
 \item{...}{Additional visualization parameters.}
 }
