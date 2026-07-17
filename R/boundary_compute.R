@@ -256,7 +256,7 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
         projection = projection,
         boundary_features = var_names
       ),
-      class = "classbound"
+      class = c("classbound_multi", "classbound")
     )
   } else {
     first_model$boundary_data <- final_boundary

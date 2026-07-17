@@ -1,7 +1,9 @@
 #' Predict using a classbound model
 #'
 #' @description Generates predictions using a unified interface across all classifiers.
-#' Dispatches natively on objects of class \code{"classbound"}.
+#' Dispatches natively on objects of class \code{"classbound"}. Attempting to call
+#' \code{predict()} directly on a \code{"classbound_multi"} object will result in an error,
+#' as multi-model boundaries are evaluated internally by \code{boundary_compute()}.
 #'
 #' @param object A fitted classbound model. This is the object returned by \code{fit_model()} or \code{classbound()}.
 #' @param newdata A data frame of new observations to predict on.
@@ -14,9 +16,6 @@
 #' Downstream functions like \code{boundary_compute()} are designed to handle \code{probs = NULL} gracefully.
 #' @export
 predict.classbound <- function(object, newdata, predict_args = list(), predfun = NULL, ...) {
-  if (!is.null(object$fits)) {
-    stop("Cannot call predict() directly on a multi-model boundary comparison object.", call. = FALSE)
-  }
   if (!is.null(predfun)) {
     # Use the user-supplied custom prediction function
     args <- c(list(object$fit, newdata), predict_args, list(...))
@@ -40,6 +39,12 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
   }
 
   res
+}
+
+#' @rdname predict.classbound
+#' @export
+predict.classbound_multi <- function(object, newdata, predict_args = list(), predfun = NULL, ...) {
+  stop("Cannot call predict() directly on a multi-model boundary comparison object.", call. = FALSE)
 }
 
 #' Predict using a fitted classbound model

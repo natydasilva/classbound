@@ -67,7 +67,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
   default_y <- if (!is.null(model$boundary_features)) model$boundary_features[2] else "Feature 2"
 
   if (type == "disagreement") {
-    if (is.null(model$fits)) {
+    if (!inherits(model, "classbound_multi")) {
       stop("Disagreement plots require a multi-model comparison (created by passing a list of models to boundary_compute).", call. = FALSE)
     }
 
@@ -216,7 +216,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     }
   }
 
-  if (is.null(facet_col) && !is.null(model$fits) && type == "2D") {
+  if (is.null(facet_col) && inherits(model, "classbound_multi") && type == "2D") {
     warning(
       paste0(
         "This model contains multiple boundaries. ",

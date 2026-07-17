@@ -2,12 +2,15 @@
 % Please edit documentation in R/classbound_methods.R
 \name{summary.classbound}
 \alias{summary.classbound}
+\alias{summary.classbound_multi}
 \title{Summarize a classbound model}
 \usage{
 \method{summary}{classbound}(object, ...)
+
+\method{summary}{classbound_multi}(object, ...)
 }
 \arguments{
-\item{object}{A \code{classbound} object.}
+\item{object}{A \code{classbound} or \code{classbound_multi} object.}
 
 \item{...}{Additional arguments passed to the native model's summary method.}
 }
@@ -15,5 +18,7 @@
 The summary of the native model.
 }
 \description{
-Delegates the summary function directly to the native model wrapped inside the classbound object.
+For single models, delegates the summary function directly to the native model
+wrapped inside the classbound object. For multi-model objects (\code{classbound_multi}), it
+returns a summary of the contained models.
 }

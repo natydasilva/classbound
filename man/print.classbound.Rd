@@ -2,12 +2,15 @@
 % Please edit documentation in R/classbound_methods.R
 \name{print.classbound}
 \alias{print.classbound}
+\alias{print.classbound_multi}
 \title{Print a classbound model}
 \usage{
 \method{print}{classbound}(x, ...)
+
+\method{print}{classbound_multi}(x, ...)
 }
 \arguments{
-\item{x}{A \code{classbound} object.}
+\item{x}{A \code{classbound} or \code{classbound_multi} object.}
 
 \item{...}{Additional arguments passed to the native model's print method.}
 }
@@ -16,5 +19,6 @@ The object, invisibly.
 }
 \description{
 Prints a clean summary of a classbound model object, hiding the internal wrapper
-structure, and delegates to the native model's print method.
+structure. For single models, it delegates to the native model's print method. For multi-model
+objects (\code{classbound_multi}), it prints a comparison summary of the included models.
 }

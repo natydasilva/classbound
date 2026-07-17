@@ -2,9 +2,12 @@
 % Please edit documentation in R/predict_model.R
 \name{predict.classbound}
 \alias{predict.classbound}
+\alias{predict.classbound_multi}
 \title{Predict using a classbound model}
 \usage{
 \method{predict}{classbound}(object, newdata, predict_args = list(), predfun = NULL, ...)
+
+\method{predict}{classbound_multi}(object, newdata, predict_args = list(), predfun = NULL, ...)
 }
 \arguments{
 \item{object}{A fitted classbound model. This is the object returned by \code{fit_model()} or \code{classbound()}.}
@@ -24,5 +27,7 @@ Downstream functions like \code{boundary_compute()} are designed to handle \code
 }
 \description{
 Generates predictions using a unified interface across all classifiers.
-Dispatches natively on objects of class \code{"classbound"}.
+Dispatches natively on objects of class \code{"classbound"}. Attempting to call
+\code{predict()} directly on a \code{"classbound_multi"} object will result in an error,
+as multi-model boundaries are evaluated internally by \code{boundary_compute()}.
 }
