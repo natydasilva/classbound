@@ -51,7 +51,19 @@ as_classbound.default <- function(model, data, response = NULL, ...) {
 
 #' @export
 as_classbound.workflow <- function(model, data, response = NULL, ...) {
-  # Natively wraps a tidymodels workflow
+  if (!requireNamespace("workflows", quietly = TRUE)) {
+    stop("Package 'workflows' is required to process workflow objects.", call. = FALSE)
+  }
+  
+  if (!workflows::is_trained_workflow(model)) {
+    stop(
+      "The provided workflow is not trained. `as_classbound()` requires a pre-fitted model.\n",
+      "Please run `fit()` on your workflow first, or use `boundary_workflow_set()` to have classbound train it automatically.",
+      call. = FALSE
+    )
+  }
+
+  # Natively wraps a fitted tidymodels workflow
   NextMethod()
 }
 

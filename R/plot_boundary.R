@@ -25,6 +25,9 @@
 #' @param facet_col Optional string naming a column in `boundary` to facet the plot by.
 #'   Useful for comparing multiple models (e.g. from `boundary_workflow_set()`).
 #' @param type The type of visualization to generate. Supported: '2D' or 'disagreement'.
+#' @param show_gradient Logical. If \code{TRUE}, classification probabilities (if available) 
+#'   will be mapped to the transparency (alpha) of the decision regions, creating a gradient 
+#'   surface. Defaults to \code{FALSE} (renders a flat decision boundary).
 #' @param agree_color Color used for areas where all models agree (only for type='disagreement').
 #' @param disagree_color Color used for areas where models disagree (only for type='disagreement').
 #' @param obs_alpha Numeric transparency level for overlaid observation points (0.0 to 1.0).
@@ -43,6 +46,7 @@
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D",
+                          show_gradient = FALSE,
                           agree_color = "#006666", disagree_color = "#FF8000",
                           obs_alpha = 1.0, obs_size = 2.5, ...) {
   if (!type %in% c("2D", "disagreement")) {
@@ -97,7 +101,14 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     class_levels <- levels(boundary$prediction)
     has_probs <- !is.null(class_levels) && all(class_levels %in% colnames(boundary))
 
-    if (has_probs) {
+    if (show_gradient && !has_probs) {
+      warning(
+        "show_gradient = TRUE was requested, but the boundary data does not contain class probabilities. Falling back to a flat decision boundary.",
+        call. = FALSE
+      )
+    }
+
+    if (has_probs && show_gradient) {
       # Extract the probability of the predicted class for each point
       col_indices <- match(as.character(boundary$prediction), colnames(boundary))
       boundary$probability <- as.numeric(boundary[cbind(seq_len(nrow(boundary)), col_indices)])

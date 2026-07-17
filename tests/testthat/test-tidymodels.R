@@ -1,7 +1,7 @@
 test_that("tidymodels adapter works", {
   skip_if_not_installed("tidymodels")
 
-  library(tidymodels)
+  suppressWarnings(suppressPackageStartupMessages(library(tidymodels)))
 
   # Prepare simple data
   data(data69_1, package = "classbound")

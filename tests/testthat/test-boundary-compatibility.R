@@ -1,6 +1,6 @@
 test_that("boundary_compute works correctly with pptree model", {
   skip_if_not_installed("PPtreeExt")
-  library(palmerpenguins)
+  suppressWarnings(suppressPackageStartupMessages(library(palmerpenguins)))
   penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 

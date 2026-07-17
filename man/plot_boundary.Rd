@@ -12,6 +12,7 @@ plot_boundary(
   true_label = NULL,
   facet_col = NULL,
   type = "2D",
+  show_gradient = FALSE,
   agree_color = "#006666",
   disagree_color = "#FF8000",
   obs_alpha = 1,
@@ -37,6 +38,10 @@ Required if \code{obs_data} is provided.}
 Useful for comparing multiple models (e.g. from \code{boundary_workflow_set()}).}
 
 \item{type}{The type of visualization to generate. Supported: '2D' or 'disagreement'.}
+
+\item{show_gradient}{Logical. If \code{TRUE}, classification probabilities (if available)
+will be mapped to the transparency (alpha) of the decision regions, creating a gradient
+surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
 
 \item{agree_color}{Color used for areas where all models agree (only for type='disagreement').}
 
