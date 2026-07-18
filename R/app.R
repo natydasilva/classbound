@@ -29,303 +29,6 @@ explorapp <- function() {
   pred <- NULL
   predict <- NULL
 
-  # Function to simulate multivariate (bivariate) normal distributions
-  #  simu3(mux1, mux2, muy1, muy2, muz1, muz2, cor1, cor2, cor3, n1 = 100, n2 = 100, n3 = 100)
-  #  mux1 mean of X1 for class 1
-  #  mux2 mean of X2 for class 1
-  #  muy1 mean of X1 for class 2
-  #  muy2 mean of X2 for class 2
-  #  muz1 mean of X1 for class 3
-  #  muz2 mean of X2 for class 3
-  #  cor1 correlation for class 1
-  #  cor2 correlation for class 2
-  #  cor3 correlation for class 3
-  #  n1 number of samples for class 1
-  #  n2 number of samples for class 2
-  #  n3 number of samples for class 3
-  #  data.frame with dimension (n1+n2+n3)x(3)
-
-  simu3 <-
-    function(mux1,
-             mux2,
-             muy1,
-             muy2,
-             muz1,
-             muz2,
-             cor1,
-             cor2,
-             cor3,
-             n1 = 100,
-             n2 = 100,
-             n3 = 100) {
-      bivn <- MASS::mvrnorm(n1, mu = c(mux1, mux2), Sigma = matrix(c(1, cor1, cor1, 1), 2))
-      bivn2 <- MASS::mvrnorm(n2, mu = c(muy1, muy2), Sigma = matrix(c(1, cor2, cor2, 1), 2))
-      bivn3 <- MASS::mvrnorm(n3, mu = c(muz1, muz2), Sigma = matrix(c(1, cor3, cor3, 1), 2))
-
-      d1 <- data.frame(Sim = "sim1", bivn)
-      d2 <- data.frame(Sim = "sim2", bivn2)
-      d3 <- data.frame(Sim = "sim3", bivn3)
-      return(rbind(d1, d2, d3))
-    }
-
-
-  # Description: Function to generate grid values for plotting decision boundaries for modification 1
-  #  modifying the choice of split points-through class subsetting
-  # ppbound(ru, data , test, meth, entro , title, simM = FALSE)
-  # ru = split rule = {1, 2, 3, 4, 5, 6, 7, 8}
-  # data data frame with the simulated dataset
-  # test data frame simulated test data
-  # entro logical; if TRUE use entropy in the modified PPtreeExt
-  # meth character; method to use "Original" for PPtree, "Rpart" for rpart, "Modified" for PPtreeExt with subsetting classes
-  # title character; title for the plot
-  # simM logical; if TRUE use shapes and colors for classes, if FALSE use only colors
-
-  ppbound <- function(ru, data, test, meth, entro, title, simM = FALSE) {
-    grilla <-
-      base::expand.grid(
-        X1 = seq((min(data$X1) + sign(min(data$X1)) * .5), (max(data$X1) + sign(max(data$X1)) * .5), length.out = 100),
-        X2 = seq((min(data$X2) + sign(min(data$X2)) * .5), (max(data$X2) + sign(max(data$X2)) * .5), length.out = 100)
-      )
-
-    data$Sim <- as.factor(data$Sim)
-
-    if (meth == "Original") {
-      pptree <- PPtreeViz::PPTreeclass(Sim ~ ., data = data, "LDA")
-      ppred.sim <-
-        PPtreeViz::PPclassify(pptree, test.data = grilla, Rule = ru)
-      grilla$pred <- ppred.sim[[2]]
-      err <-
-        round(
-          PPtreeViz::PPclassify(
-            pptree,
-            test.data = test[, -1],
-            true.class = test[, 1],
-            Rule = ru
-          )[[1]] / nrow(test[, -1]),
-          3
-        ) * 100
-    }
-    if (meth == "Rpart") {
-      rpart.mod <- rpart::rpart(Sim ~ ., data = data)
-      grilla$pred <-
-        predict(rpart.mod, newdata = grilla, type = "class")
-      err <-
-        round(1 - sum(diag(table(
-          predict(rpart.mod, newdata = test[, -1], type = "class"), test[, 1]
-        ))) / nrow(test[, -1]), 3) * 100
-    }
-
-    if (meth == "Modified") {
-      # Esto esta mal?? estoy usando PPtreeViz
-      pptree <- PPtreeExt::PPtreeExt_split(Sim ~ ., data = data, "LDA", entro = entro)
-      # ppred.sim <- PPtreeViz::PPclassify(pptree, test.data = grilla, Rule = ru)
-      ppred.sim <- predict(pptree, newdata = grilla, Rule = ru)
-      # grilla$pred <- paste("sim", ppred.sim[[2]], sep = "")
-      grilla$pred <- ppred.sim
-      aux_test <- predict(
-        pptree,
-        newdata = test[, -1],
-        true.class = test[, 1],
-        Rule = ru
-      )
-      err <- round(1 - sum(aux_test == test[, 1]) / length(test[, 1]), 3) * 100
-    }
-
-    # ruleid <- pptree$splitCutoff.node[,ru]
-    if (simM) {
-      pl.pp <-
-        ggplot2::ggplot(data = grilla) +
-        ggplot2::geom_point(ggplot2::aes(
-          x = X1,
-          y = X2,
-          color = as.factor(pred)
-        ), alpha = .20) +
-        ggplot2::scale_colour_brewer(
-          name = "Class",
-          type = "qual",
-          palette = "Dark2"
-        ) +
-        ggplot2::theme_bw() +
-        ggplot2::geom_point(
-          data = data,
-          ggplot2::aes(
-            x = X1,
-            y = X2,
-            group = Sim,
-            color = Sim
-          ),
-          size = I(3)
-        ) +
-        ggplot2::theme(legend.position = "none", aspect.ratio = 1) +
-        ggplot2::scale_y_continuous(expand = c(0, 0)) +
-        ggplot2::scale_x_continuous(expand = c(0, 0)) +
-        ggplot2::labs(
-          x = " ",
-          y = "",
-          title = paste(title, "(test error", err, "%)", sep = "")
-        )
-    } else {
-      pl.pp <-
-        ggplot2::ggplot(data = grilla) +
-        ggplot2::geom_point(
-          ggplot2::aes(
-            x = X1,
-            y = X2,
-            color = as.factor(pred),
-            shape = as.factor(pred)
-          ),
-          alpha = .20
-        ) +
-        ggplot2::scale_colour_brewer(
-          name = "Class",
-          type = "qual",
-          palette = "Dark2"
-        ) +
-        ggplot2::theme_bw() +
-        ggplot2::scale_shape_discrete(name = "Class") +
-        ggplot2::geom_point(
-          data = data,
-          ggplot2::aes(
-            x = X1,
-            y = X2,
-            group = Sim,
-            shape = Sim,
-            color = Sim
-          ),
-          size = I(3)
-        ) +
-        ggplot2::theme(legend.position = "none", aspect.ratio = 1) +
-        ggplot2::scale_y_continuous(expand = c(0, 0)) +
-        ggplot2::scale_x_continuous(expand = c(0, 0)) +
-        ggplot2::labs(
-          x = " ",
-          y = "",
-          title = paste(title, "(test error", err, "%)", sep = "")
-        )
-    }
-
-    return(pl.pp)
-  }
-
-  # Description: Function to generate grid values for plotting decision boundaries for modification 2
-  #  modification: multiple splits
-  # ppboundMOD(data , test, meth, entro , entroindiv, title, simM = FALSE, strule, tot)
-  # data data frame with the simulated dataset
-  # test data frame simulated test data
-  # entro logical; if TRUE use entropy in the modified PPtreeExt
-  # entroindiv logical; if TRUE use individual entropy stopping rule in PPtreeExt
-  # meth character; method to use "MOD" for PPtreeExt with multiple splits
-  # title character; title for the plot
-
-  ppboundMOD <-
-    function(data,
-             test,
-             meth = "MOD",
-             entro = FALSE,
-             entroindiv = TRUE,
-             title,
-             simM = FALSE,
-             strule,
-             tot) {
-      # Generate grid values to evaluate tree
-      grilla <-
-        base::expand.grid(
-          X1 = seq((min(data$X1) + sign(min(data$X1)) * .5), (max(data$X1) + sign(max(data$X1)) * .5), length.out = 100),
-          X2 = seq((min(data$X2) + sign(min(data$X2)) * .5), (max(data$X2) + sign(max(data$X2)) * .5), length.out = 100)
-        )
-
-      # Sim variable must be a factor
-      data$Sim <- as.factor(data$Sim)
-      pptree <-
-        PPtreeExt::PPtreeExtclass(
-          Sim ~ .,
-          data = data,
-          PPmethod = "LDA",
-          strule = strule,
-          tot = tot
-        )
-
-      ppred.sim <- predict(object = pptree, newdata = grilla)
-
-      grilla$ppred <- ppred.sim[[2]]
-
-      err <-
-        round(
-          predict(object = pptree, newdata = test[, -1], true.class = test[, 1])[[1]] /
-            nrow(test[, -1]),
-          3
-        ) * 100
-
-      if (simM) {
-        pl.pp <-
-          ggplot2::ggplot(data = grilla) +
-          ggplot2::geom_point(ggplot2::aes(x = X1, y = X2, color = ppred), alpha = .20) +
-          ggplot2::scale_colour_brewer(
-            name = "Class",
-            type = "qual",
-            palette = "Dark2"
-          ) +
-          ggplot2::theme_bw() +
-          ggplot2::scale_shape_discrete(name = "Class") +
-          ggplot2::geom_point(
-            data = data,
-            ggplot2::aes(
-              x = X1,
-              y = X2,
-              group = Sim,
-              color = Sim
-            ),
-            size = I(3)
-          ) +
-          ggplot2::theme(legend.position = "none", aspect.ratio = 1) +
-          ggplot2::scale_y_continuous(expand = c(0, 0)) +
-          ggplot2::scale_x_continuous(expand = c(0, 0)) +
-          ggplot2::labs(
-            x = " ",
-            y = "",
-            title = paste(title, "(test error", err, "%)", sep = "")
-          )
-      } else {
-        pl.pp <-
-          ggplot2::ggplot(data = grilla) +
-          ggplot2::geom_point(
-            ggplot2::aes(
-              x = X1,
-              y = X2,
-              color = ppred,
-              shape = ppred
-            ),
-            alpha = .20
-          ) +
-          ggplot2::scale_colour_brewer(
-            name = "Class",
-            type = "qual",
-            palette = "Dark2"
-          ) +
-          ggplot2::theme_bw() +
-          ggplot2::scale_shape_discrete(name = "Class") +
-          ggplot2::geom_point(
-            data = data,
-            ggplot2::aes(
-              x = X1,
-              y = X2,
-              group = Sim,
-              shape = Sim,
-              color = Sim
-            ),
-            size = I(3)
-          ) +
-          ggplot2::theme(legend.position = "none", aspect.ratio = 1) +
-          ggplot2::scale_y_continuous(expand = c(0, 0)) +
-          ggplot2::scale_x_continuous(expand = c(0, 0)) +
-          ggplot2::labs(
-            x = " ",
-            y = "",
-            title = paste(title, "(test error", err, "%)", sep = "")
-          )
-      }
-      return(pl.pp)
-    }
 
   # UI ----------------------------------------------------------------------
   ui <- shiny::fluidPage(shiny::mainPanel(
@@ -531,6 +234,48 @@ explorapp <- function() {
   ))
 
 
+
+# UI to Package API Mapping -----------------------------------------------
+APP_METHODS <- list(
+  "Original" = list(fn = PPtreeViz::PPTreeclass,     args = list(PPmethod = "LDA")),
+  "Rpart"    = list(fn = rpart::rpart,               args = list()),
+  "Modified" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA")),
+  "MOD"      = list(fn = PPtreeExt::PPtreeExtclass,  args = list(PPmethod = "LDA"))
+)
+
+PREDICT_ARGS <- list(
+  "Original" = function(ru) list(Rule = ru),
+  "Rpart"    = function(...) list(type = "class"),
+  "Modified" = function(ru) list(Rule = ru),
+  "MOD"      = function(...) list()
+)
+
+create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list()) {
+  config <- APP_METHODS[[meth]]
+  fit_args <- c(config$args, fit_opts)
+  predict_args <- PREDICT_ARGS[[meth]](ru)
+
+  # Fit the model via the core pipeline
+  cb_mod <- fit_model(data, Sim ~ ., classifier = config$fn, fit_args = fit_args)
+
+  # Compute decision boundary (standard 0.5 padding on standardized data)
+  range_list <- list(
+    X1 = range(data$X1) + c(-0.5, 0.5),
+    X2 = range(data$X2) + c(-0.5, 0.5)
+  )
+  cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100)
+
+  # Calculate test error for the UI title
+  preds <- predict_model(cb_mod, test, predict_args = predict_args)
+  err <- round(mean(preds$class != test$Sim) * 100, 3)
+
+  # Render plot
+  plot_boundary(cb_bound, obs_data = data, x_col = "X1", y_col = "X2", true_label = "Sim") +
+    ggplot2::ggtitle(paste0(title, " (test error ", err, "%)")) +
+    ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
+    ggplot2::scale_fill_brewer(name = "Class", type = "qual", palette = "Dark2")
+}
+
   # Server ------------------------------------------------------------------
   server <- function(input, output) {
     output$distPlot <- shiny::renderPlot({
@@ -552,13 +297,13 @@ explorapp <- function() {
 
         if (input$modi == 1) {
           modpl <-
-            ppbound(
-              ru = 1, # as.numeric(input$rule),
+            create_boundary_plot(
+              ru = 1,
               data = dat.pl2,
               test = dat.test,
               meth = "Modified",
-              entro = FALSE,
-              title = "PPtreeExt: Subsetting clases"
+              title = "PPtreeExt: Subsetting clases",
+              fit_opts = list(entro = FALSE)
             )
         }
         # if (input$modi == 2) {
@@ -575,36 +320,30 @@ explorapp <- function() {
         # }
         if (input$modi == 3) {
           modpl <-
-            ppboundMOD(
+            create_boundary_plot(
               data = dat.pl2,
               test = dat.test,
               meth = "MOD",
-              entro = FALSE,
-              entroindiv = TRUE,
               title = "PPtreeExt: Multiple splits",
-              strule = x4,
-              tot = sum(x3)
+              fit_opts = list(strule = x4, tot = sum(x3))
             )
         }
 
         gridExtra::grid.arrange(
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule),
             data = dat.pl2,
             test = dat.test,
             meth = "Rpart",
-            entro = TRUE,
             title = "Rpart"
           ),
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule),
             data = dat.pl2,
             test = dat.test,
             meth = "Original",
-            entro = FALSE,
             title = "PPtree"
           ),
-          # ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
           modpl,
           ncol = 3
         )
@@ -672,59 +411,52 @@ explorapp <- function() {
 
         if (input$modi2 == 1) {
           modpl <-
-            ppbound(
+            create_boundary_plot(
               ru = as.numeric(input$rule),
               data = dat.pl2,
               test = dat.test,
               meth = "Modified",
-              entro = FALSE,
-              title = "PPtreeExt: Subsetting clases"
+              title = "PPtreeExt: Subsetting clases",
+              fit_opts = list(entro = FALSE)
             )
         }
         if (input$modi2 == 2) {
           modpl <-
-            ppbound(
+            create_boundary_plot(
               ru = as.numeric(input$rule),
               data = dat.pl2,
               test = dat.test,
               meth = "Modified",
-              entro = TRUE,
-              title = "Modified 2"
+              title = "Modified 2",
+              fit_opts = list(entro = TRUE)
             )
         }
         if (input$modi2 == 3) {
           modpl <-
-            ppboundMOD(
+            create_boundary_plot(
               data = dat.pl2,
               test = dat.test,
               meth = "MOD",
-              entro = FALSE,
-              entroindiv = TRUE,
               title = "PPtreeExt: Multiple splits",
-              strule = x7,
-              tot = sum(x3 + x6)
+              fit_opts = list(strule = x7, tot = sum(x3 + x6))
             )
         }
 
         gridExtra::grid.arrange(
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule2),
             data = dat.pl2,
             test = dat.test,
             meth = "Rpart",
-            entro = FALSE,
             title = "Rpart"
           ),
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule2),
             data = dat.pl2,
             test = dat.test,
             meth = "Original",
-            entro = TRUE,
             title = "PPtree"
           ),
-
-          # ppbound(ru =  as.numeric(input$rule2), FALSE, data = dat.pl2, meth = "Modified" , entro = TRUE),
           modpl,
           ncol = 3
         )
@@ -786,63 +518,52 @@ explorapp <- function() {
 
         if (input$modi3 == 1) {
           modpl <-
-            ppbound(
+            create_boundary_plot(
               ru = as.numeric(input$rule3),
               data = dat.pl2,
               test = dat.test,
               meth = "Modified",
-              entro = FALSE,
               title = "PPtreeExt: Subsetting clases",
-              simM = TRUE
+              fit_opts = list(entro = FALSE)
             )
         }
         if (input$modi3 == 2) {
           modpl <-
-            ppbound(
+            create_boundary_plot(
               ru = as.numeric(input$rule3),
               data = dat.pl2,
               test = dat.test,
               meth = "Modified",
-              entro = TRUE,
               title = "Modified 2",
-              simM = TRUE
+              fit_opts = list(entro = TRUE)
             )
         }
         if (input$modi3 == 3) {
           modpl <-
-            ppboundMOD(
+            create_boundary_plot(
               data = dat.pl2,
               test = dat.test,
               meth = "MOD",
-              entro = FALSE,
-              entroindiv = TRUE,
               title = "PPtreeExt: Multiple splits",
-              simM = TRUE,
-              strule = x1,
-              tot = input$size
+              fit_opts = list(strule = x1, tot = input$size)
             )
         }
 
         gridExtra::grid.arrange(
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule3),
             data = dat.pl2,
             test = dat.test,
             meth = "Rpart",
-            entro = TRUE,
-            title = "Rpart",
-            simM = TRUE
+            title = "Rpart"
           ),
-          ppbound(
+          create_boundary_plot(
             ru = as.numeric(input$rule3),
             data = dat.pl2,
             test = dat.test,
             meth = "Original",
-            entro = FALSE,
-            title = "PPtree",
-            simM = TRUE
+            title = "PPtree"
           ),
-          # ppbound(ru =  as.numeric(input$rule),  data = dat.pl2, meth = "Modified" , entro = TRUE),
           modpl,
           ncol = 3
         )
