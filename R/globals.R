@@ -2,11 +2,12 @@
 utils::globalVariables(c(
   ".",
   ".data",
-  "estimate", 
+  "estimate",
   "label",
   "X1",
   "X2",
   "pred",
   "ppred",
-  "Sim"
+  "Sim",
+  "predict"
 ))

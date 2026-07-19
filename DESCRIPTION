@@ -24,7 +24,8 @@ Imports:
     workflows,
     parsnip,
     rlang,
-    ggnewscale
+    ggnewscale,
+    scales
 Suggests:
     tidymodels,
     rpart,
@@ -42,7 +43,8 @@ Suggests:
     MASS,
     gridExtra,
     MixSim,
-    tourr
+    tourr,
+    e1071
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3

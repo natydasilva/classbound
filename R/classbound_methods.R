@@ -20,7 +20,7 @@ print.classbound <- function(x, ...) {
   }
 
   cat("-- Native Model --\n")
-  print(x$fit, ...)
+  cat(utils::capture.output(x$fit, ...), sep = "\\n")
   invisible(x)
 }
 
@@ -59,8 +59,8 @@ plot.classbound <- function(x, ...) {
 
 #' Summarize a classbound model
 #'
-#' @description For single models, delegates the summary function directly to the native model 
-#'   wrapped inside the classbound object. For multi-model objects (`classbound_multi`), it 
+#' @description For single models, delegates the summary function directly to the native model
+#'   wrapped inside the classbound object. For multi-model objects (`classbound_multi`), it
 #'   returns a summary of the contained models.
 #'
 #' @param object A `classbound` or `classbound_multi` object.

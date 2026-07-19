@@ -27,6 +27,17 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
       res <- list(class = as.factor(preds_raw), probs = NULL)
     }
   } else {
+    # Isolate strictly the features the model was trained on
+    # This prevents fragile native predict methods (like PPtreeViz) from crashing
+    # when non-numeric target variables or extra metadata columns are passed in newdata.
+    if (!is.null(object$metadata$features$names)) {
+      expected_feats <- object$metadata$features$names
+      present_feats <- intersect(expected_feats, colnames(newdata))
+      if (length(present_feats) > 0) {
+        newdata <- newdata[, present_feats, drop = FALSE]
+      }
+    }
+
     # Call predict_adapter on the native model, dispatching on its native class
     args <- c(list(model = object$fit, newdata = newdata), predict_args, list(...))
     res <- do.call(predict_adapter, args)

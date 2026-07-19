@@ -54,7 +54,7 @@ as_classbound.workflow <- function(model, data, response = NULL, ...) {
   if (!requireNamespace("workflows", quietly = TRUE)) {
     stop("Package 'workflows' is required to process workflow objects.", call. = FALSE)
   }
-  
+
   if (!workflows::is_trained_workflow(model)) {
     stop(
       "The provided workflow is not trained. `as_classbound()` requires a pre-fitted model.\n",

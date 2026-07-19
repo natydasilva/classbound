@@ -13,28 +13,32 @@ generate_simulation <- function(n, type, ...) {
   stop("generate_simulation() is not yet implemented.")
 }
 
-#' Simulate multivariate normal distribution data
+#' Simulate multivariate normal distribution data for N classes
 #'
-#' @keywords internal
-simu3 <-
-  function(mux1,
-           mux2,
-           muy1,
-           muy2,
-           muz1,
-           muz2,
-           cor1,
-           cor2,
-           cor3,
-           n1 = 100,
-           n2 = 100,
-           n3 = 100) {
-    bivn <- MASS::mvrnorm(n1, mu = c(mux1, mux2), Sigma = matrix(c(1, cor1, cor1, 1), 2))
-    bivn2 <- MASS::mvrnorm(n2, mu = c(muy1, muy2), Sigma = matrix(c(1, cor2, cor2, 1), 2))
-    bivn3 <- MASS::mvrnorm(n3, mu = c(muz1, muz2), Sigma = matrix(c(1, cor3, cor3, 1), 2))
+#' @param means A list of numeric vectors containing the means for each class.
+#' @param covs A list of covariance matrices for each class.
+#' @param ns A numeric vector of sample sizes for each class.
+#' @param class_names A character vector of class labels.
+#'
+#' @return A data frame containing simulated features and a 'Sim' label column.
+#' @export
+simu_n <- function(means, covs, ns, class_names = NULL) {
+  num_classes <- length(ns)
 
-    d1 <- data.frame(Sim = "sim1", bivn)
-    d2 <- data.frame(Sim = "sim2", bivn2)
-    d3 <- data.frame(Sim = "sim3", bivn3)
-    return(rbind(d1, d2, d3))
+  if (is.null(class_names)) {
+    if (num_classes <= 26) {
+      class_names <- paste0("Class ", LETTERS[1:num_classes])
+    } else {
+      class_names <- paste0("Class ", 1:num_classes)
+    }
   }
+
+  sim_data <- lapply(1:num_classes, function(i) {
+    sim <- MASS::mvrnorm(n = ns[i], mu = means[[i]], Sigma = covs[[i]])
+    df <- data.frame(Sim = class_names[i], sim)
+    colnames(df)[-1] <- paste0("X", seq_len(ncol(sim)))
+    df
+  })
+
+  do.call(rbind, sim_data)
+}

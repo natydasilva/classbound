@@ -4,7 +4,14 @@
 \alias{explorapp}
 \title{Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios}
 \usage{
-explorapp()
+explorapp(data = NULL, target_col = NULL, custom_models = list())
+}
+\arguments{
+\item{data}{Optional data frame to import directly into the app.}
+
+\item{target_col}{Optional string specifying the column in \code{data} that contains the true class labels.}
+
+\item{custom_models}{A list of custom models to inject into the app's comparison UI. Each element should be a named list containing at least \code{fn} (the model fitting function). Optionally, it can contain \code{args} (a list of arguments to pass to \code{fn}) and \code{predict_args} (a function returning a list of arguments for prediction).}
 }
 \value{
 No return value, called for side effects. Shinyapp is launched.
@@ -14,7 +21,16 @@ Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different
 }
 \examples{
 if (interactive()) {
+  # Launch with default models
   explorapp()
+
+  # Launch with a custom SVM model
+  explorapp(custom_models = list(
+    "SVM" = list(
+      fn = e1071::svm,
+      args = list(kernel = "linear")
+    )
+  ))
 }
 
 }

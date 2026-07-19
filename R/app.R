@@ -1,14 +1,25 @@
 #' Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
 #'
-#' @usage explorapp()
+#' @param data Optional data frame to import directly into the app.
+#' @param target_col Optional string specifying the column in `data` that contains the true class labels.
+#' @param custom_models A list of custom models to inject into the app's comparison UI. Each element should be a named list containing at least `fn` (the model fitting function). Optionally, it can contain `args` (a list of arguments to pass to `fn`) and `predict_args` (a function returning a list of arguments for prediction).
 #' @return No return value, called for side effects. Shinyapp is launched.
 #' @export
 #' @examples
 #' if (interactive()) {
+#'   # Launch with default models
 #'   explorapp()
+#'
+#'   # Launch with a custom SVM model
+#'   explorapp(custom_models = list(
+#'     "SVM" = list(
+#'       fn = e1071::svm,
+#'       args = list(kernel = "linear")
+#'     )
+#'   ))
 #' }
 #'
-explorapp <- function() {
+explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   if (!requireNamespace("shiny", quietly = TRUE)) {
     stop("Package 'shiny' must be installed to use explorapp().", call. = FALSE)
   }
@@ -22,552 +33,589 @@ explorapp <- function() {
     stop("Package 'MixSim' must be installed to use explorapp().", call. = FALSE)
   }
 
-  X1 <- NULL
-  X2 <- NULL
-  ppred <- NULL
-  Sim <- NULL
-  pred <- NULL
-  predict <- NULL
+  # UI to Package API Mapping
+  app_methods <- list(
+    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA")),
+    "Rpart"           = list(fn = rpart::rpart, args = list()),
+    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA")),
+    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA")),
+    "RandomForest"    = list(fn = randomForest::randomForest, args = list())
+  )
 
+  predict_args <- list(
+    "PPtreeViz"       = function(ru) list(Rule = ru),
+    "Rpart"           = function(...) list(),
+    "PPtreeExt_split" = function(ru) list(Rule = ru),
+    "PPtreeExtclass"  = function(...) list(),
+    "RandomForest"    = function(...) list()
+  )
 
-  # UI ----------------------------------------------------------------------
-  ui <- shiny::fluidPage(shiny::mainPanel(
-    shiny::tabsetPanel(
-      shiny::tabPanel(
-        "Basic-Sim",
-        shiny::fluidRow(
-          shiny::column(
-            3,
-            shiny::selectInput(
-              inputId = "rule",
-              label = "Rule",
-              choices = 1:8,
-              selected = 1
-            )
+  # Integrate custom models
+  custom_uis <- list()
+  for (m_name in names(custom_models)) {
+    c_mod <- custom_models[[m_name]]
+    if (!is.list(c_mod) || is.null(c_mod$fn)) {
+      warning("Custom model '", m_name, "' must be a list containing at least 'fn'. Skipping.")
+      next
+    }
+
+    app_methods[[m_name]] <- list(
+      fn = c_mod$fn,
+      args = if (!is.null(c_mod$args)) c_mod$args else list(),
+      fit_args_fn = c_mod$fit_args
+    )
+
+    if (!is.null(c_mod$ui)) {
+      custom_uis[[m_name]] <- c_mod$ui
+    }
+
+    predict_args[[m_name]] <- if (!is.null(c_mod$predict_args) && is.function(c_mod$predict_args)) {
+      c_mod$predict_args
+    } else {
+      function(...) list()
+    }
+  }
+
+  # UI
+  ui <- shiny::fluidPage(
+    shiny::tags$head(shiny::tags$style(shiny::HTML(".col-sm-4 { max-height: 90vh; overflow-y: auto; }"))),
+    shiny::titlePanel("Classbound Exploration & Comparison"),
+    shiny::sidebarLayout(
+      shiny::sidebarPanel(
+        shiny::wellPanel(
+          shiny::radioButtons("data_mode", "Data Mode", choices = c("Draw Data", "Simulate Data", "Imported Data"), selected = if (!is.null(data)) "Imported Data" else "Draw Data"),
+          shiny::helpText("Tip: Brush on any plot to zoom in, and double-click to reset the view."),
+          shiny::conditionalPanel(
+            condition = "input.data_mode == 'Draw Data'",
+            shiny::hr(),
+            shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Draw Point", "Draw Cluster", "Navigate"), inline = TRUE),
+            shiny::p("Click or brush on any plot to add data."),
+            shiny::radioButtons("draw_class", "Active Class", choices = c("Class A", "Class B", "Class C"), inline = TRUE),
+            shiny::div(
+              style = "display: flex; gap: 10px; align-items: baseline; margin-bottom: 15px;",
+              shiny::textInput("new_class_name", label = NULL, placeholder = "New class name...", width = "100%"),
+              shiny::actionButton("add_class", "Add Class")
+            ),
+            shiny::numericInput("brush_size", "Brush Density (points/brush)", value = 20, min = 1),
+            shiny::actionButton("clear", "Clear Canvas")
           ),
-          shiny::column(
-            3,
-            shiny::selectInput(
-              inputId = "modi",
-              label = "Modification",
-              choices = c(
-                "Subsetting clases" = "1",
-                "Multiple splits" = "3"
-              ),
-              selected = 3
-            )
+          shiny::conditionalPanel(
+            condition = "input.data_mode == 'Simulate Data'",
+            shiny::numericInput("sim_n_classes", "Number of Classes", value = 3, min = 2, max = 10),
+            shiny::uiOutput("sim_params_ui"),
+            shiny::actionButton("sim_do", "Generate Data")
+          ),
+          shiny::conditionalPanel(
+            condition = "input.data_mode == 'Imported Data'",
+            shiny::p("Using dataset provided via console.")
           )
         ),
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "mean",
-              label = "Group means ",
-              value =
-                "-1, 0.6, 0, -0.6, 2,-1"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "cor",
-              label = "Correlations",
-              value = "0.95, 0.5, 0.95"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "sample",
-              label = "Group sample",
-              value = "100, 100, 100"
-            )
+        shiny::wellPanel(
+          shiny::tags$details(
+            shiny::tags$summary("Model Configuration", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
+            shiny::checkboxGroupInput(
+              "selected_models",
+              "Models to Compare",
+              choices = names(app_methods),
+              selected = c("Rpart", "PPtreeViz", "PPtreeExtclass")
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
+              shiny::hr(),
+              shiny::selectInput("rule", "Projection Pursuit Rule", choices = 1:8, selected = 1)
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('PPtreeExtclass') > -1",
+              shiny::numericInput("stop", "Stopping Rule", value = 4, min = 1)
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('Rpart') > -1",
+              shiny::hr(),
+              shiny::numericInput("rpart_cp", "Complexity Parameter", value = 0.01, min = 0, step = 0.01)
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
+              shiny::hr(),
+              shiny::numericInput("rf_ntree", "Number of Trees", value = 500, min = 10, step = 50)
+            ),
+            lapply(names(custom_uis), function(m_name) {
+              shiny::conditionalPanel(
+                condition = sprintf("input.selected_models && input.selected_models.indexOf('%s') > -1", m_name),
+                shiny::hr(),
+                custom_uis[[m_name]]
+              )
+            })
           )
         ),
-        shiny::fluidRow(shiny::actionButton("do", label = "OK")),
-        shiny::fluidRow(shiny::plotOutput("distPlot"))
+        shiny::uiOutput("tour_panel")
       ),
-      shiny::tabPanel(
-        "SIM-Outliers",
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::selectInput(
-              inputId = "rule2",
-              label = "Rule",
-              choices = 1:8,
-              selected = 1
-            )
-          ),
-          shiny::column(
-            3,
-            shiny::selectInput(
-              inputId = "modi2",
-              label = "Modification",
-              choices = c(
-                "Subsetting clases" = "1",
-                "Multiple splits" = "3"
-              ),
-              selected = 3
-            )
-          )
-        ),
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "mean2",
-              label = "Group means ",
-              value =
-                "-1, 0.6, 0, -0.6, 2,-1"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "cor2",
-              label = "Correlations",
-              value = "0.95, 0.95, 0.95"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "sample2",
-              label = "Group sample",
-              value = "100, 100, 100"
-            )
-          )
-        ),
-        shiny::fluidRow(shiny::column(
-          4,
-          shiny::selectInput(
-            inputId = "group",
-            label = "Add outliers to class",
-            choices = 1:3,
-            selected = 2
-          )
-        )),
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "meanout",
-              label = "Out. X1, X2 means ",
-              value =
-                "-3, 3"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "sdout",
-              label = "Out. X1, X2 sd ",
-              value = ".2,.2"
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::textInput(
-              inputId = "sampleout",
-              label = "Out. sample size",
-              value = "50"
-            )
-          ),
-          shiny::fluidRow(shiny::actionButton("do2", label = "OK"))
-        ),
-        shiny::fluidRow(shiny::plotOutput("distPlot2"))
-      ),
-      ##
-      shiny::tabPanel(
-        "MixSim",
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::selectInput(
-              inputId = "rule3",
-              label = "Rule",
-              choices = 1:8,
-              selected = 1
-            )
-          ),
-          shiny::column(
-            4,
-            shiny::selectInput(
-              inputId = "modi3",
-              label = "Modification",
-              choices = c(
-                "Subsetting clases" = "1",
-                "Multiple splits" = "3"
-              ),
-              selected = 3
-            )
-          )
-        ),
-        shiny::fluidRow(
-          shiny::column(4, shiny::numericInput(
-            "size",
-            label = "Sample size", value = 500
-          )),
-          shiny::column(
-            4,
-            shiny::numericInput("BarOmega", label = "BarOmega desired average overlap", value = 0.05)
-          )
-        ),
-        shiny::fluidRow(
-          shiny::column(
-            4,
-            shiny::numericInput("MaxOmega", label = "MaxOmega desired maximum overlap", value = 0.15)
-          ),
-          shiny::column(
-            4,
-            shiny::numericInput("K", label = "K number of components", value = 4)
-          )
-        ),
-        # shiny::numericInput("p", label = "number of dimensions", value = 5),
-        shiny::fluidRow(shiny::actionButton("simmaitra", "OK")),
-        shiny::fluidRow(shiny::plotOutput("plotsmaitra"))
-        ##
+      shiny::mainPanel(
+        shiny::uiOutput("data_stats_ui"),
+        shiny::uiOutput("plot_grid")
       )
     )
-  ))
-
-
-
-# UI to Package API Mapping -----------------------------------------------
-APP_METHODS <- list(
-  "Original" = list(fn = PPtreeViz::PPTreeclass,     args = list(PPmethod = "LDA")),
-  "Rpart"    = list(fn = rpart::rpart,               args = list()),
-  "Modified" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA")),
-  "MOD"      = list(fn = PPtreeExt::PPtreeExtclass,  args = list(PPmethod = "LDA"))
-)
-
-PREDICT_ARGS <- list(
-  "Original" = function(ru) list(Rule = ru),
-  "Rpart"    = function(...) list(type = "class"),
-  "Modified" = function(ru) list(Rule = ru),
-  "MOD"      = function(...) list()
-)
-
-create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list()) {
-  config <- APP_METHODS[[meth]]
-  fit_args <- c(config$args, fit_opts)
-  predict_args <- PREDICT_ARGS[[meth]](ru)
-
-  # Fit the model via the core pipeline
-  cb_mod <- fit_model(data, Sim ~ ., classifier = config$fn, fit_args = fit_args)
-
-  # Compute decision boundary (standard 0.5 padding on standardized data)
-  range_list <- list(
-    X1 = range(data$X1) + c(-0.5, 0.5),
-    X2 = range(data$X2) + c(-0.5, 0.5)
   )
-  cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100)
 
-  # Calculate test error for the UI title
-  preds <- predict_model(cb_mod, test, predict_args = predict_args)
-  err <- round(mean(preds$class != test$Sim) * 100, 3)
 
-  # Render plot
-  plot_boundary(cb_bound, obs_data = data, x_col = "X1", y_col = "X2", true_label = "Sim") +
-    ggplot2::ggtitle(paste0(title, " (test error ", err, "%)")) +
-    ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
-    ggplot2::scale_fill_brewer(name = "Class", type = "qual", palette = "Dark2")
-}
+  create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list(), class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL) {
+    config <- app_methods[[meth]]
+    if (is.null(config)) stop("Unknown method: ", meth)
+    fit_args <- c(config$args, fit_opts)
+    predict_args <- predict_args[[meth]](ru)
 
-  # Server ------------------------------------------------------------------
+    # Fit the model via the core pipeline
+    cb_mod <- fit_model(data, Sim ~ ., classifier = config$fn, fit_args = fit_args)
+
+    if (!is.null(proj_matrix)) {
+      proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
+      x_mat <- as.matrix(data[, rownames(proj_matrix)])
+      if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
+      if (!is.null(proj_info$center)) x_mat <- sweep(x_mat, 2, proj_info$center, "-")
+      z_mat <- x_mat %*% proj_matrix
+
+      range_list <- list(
+        PC1 = range(z_mat[, 1]) + c(-0.5, 0.5),
+        PC2 = range(z_mat[, 2]) + c(-0.5, 0.5)
+      )
+      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100, projection = proj_list)
+      x_col_label <- "PC1"
+      y_col_label <- "PC2"
+    } else {
+      feat_cols <- setdiff(colnames(data), "Sim")
+      x_name <- feat_cols[1]
+      y_name <- feat_cols[2]
+      range_list <- list()
+      range_list[[x_name]] <- range(data[[x_name]]) + c(-0.5, 0.5)
+      range_list[[y_name]] <- range(data[[y_name]]) + c(-0.5, 0.5)
+
+      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100)
+      x_col_label <- x_name
+      y_col_label <- y_name
+    }
+
+    # Calculate test error for the UI title
+    preds <- predict_model(cb_mod, test, predict_args = predict_args)
+    err <- round(mean(preds$class != test$Sim) * 100, 3)
+
+    # Lock factor levels if provided to prevent color shifting
+    if (!is.null(class_levels)) {
+      data$Sim <- factor(data$Sim, levels = class_levels)
+      cb_bound$boundary_data$prediction <- factor(cb_bound$boundary_data$prediction, levels = class_levels)
+    }
+
+    # Render plot
+    p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim") +
+      ggplot2::ggtitle(paste0(title, " (Error ", err, "%)")) +
+      ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
+      ggplot2::scale_color_discrete(drop = FALSE)
+
+    if (!is.null(zoom_x) && !is.null(zoom_y)) {
+      p <- p + ggplot2::coord_cartesian(xlim = zoom_x, ylim = zoom_y)
+    }
+
+    p
+  }
+
+  # Server
   server <- function(input, output) {
-    output$distPlot <- shiny::renderPlot({
-      if (input$do) {
-        x1 <- shiny::isolate(as.numeric(unlist(strsplit(input$mean, ","))))
-        x2 <- shiny::isolate(as.numeric(unlist(strsplit(input$cor, ","))))
-        x3 <- shiny::isolate(as.numeric(unlist(strsplit(input$sample, ","))))
-        x4 <- shiny::isolate(as.numeric(input$stop))
-        dat.pl2 <-
-          shiny::isolate(simu3(
-            x1[1], x1[2], x1[3], x1[4], x1[5], x1[6],
-            x2[1], x2[2], x2[3], x3[1], x3[2], x3[3]
-          ))
-        dat.test <-
-          shiny::isolate(simu3(
-            x1[1], x1[2], x1[3], x1[4], x1[5], x1[6],
-            x2[1], x2[2], x2[3], round(x3[1] * 0.25), round(x3[2] * 0.25), round(x3[3] * 0.25)
-          ))
+    # Initialize current_data based on passed 'data'
+    initial_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
+    initial_classes <- c("Class A", "Class B", "Class C")
 
-        if (input$modi == 1) {
-          modpl <-
-            create_boundary_plot(
-              ru = 1,
-              data = dat.pl2,
-              test = dat.test,
-              meth = "Modified",
-              title = "PPtreeExt: Subsetting clases",
-              fit_opts = list(entro = FALSE)
-            )
-        }
-        # if (input$modi == 2) {
-        #   #entropy mp groups
-        #   modpl <-
-        #     ppbound(
-        #       ru =  1, #as.numeric(input$rule),
-        #       data = dat.pl2,
-        #       test = dat.test,
-        #       meth = "Modified" ,
-        #       entro = TRUE,
-        #       title = "Modified 2 "
-        #     )
-        # }
-        if (input$modi == 3) {
-          modpl <-
-            create_boundary_plot(
-              data = dat.pl2,
-              test = dat.test,
-              meth = "MOD",
-              title = "PPtreeExt: Multiple splits",
-              fit_opts = list(strule = x4, tot = sum(x3))
-            )
-        }
+    if (!is.null(data)) {
+      if (is.null(target_col) || !(target_col %in% colnames(data))) {
+        stop("Please provide a valid 'target_col' that exists in 'data'.")
+      }
+      initial_data <- stats::na.omit(data)
+      # Standardize target column to "Sim" for internal app logic
+      colnames(initial_data)[colnames(initial_data) == target_col] <- "Sim"
 
-        gridExtra::grid.arrange(
-          create_boundary_plot(
-            ru = as.numeric(input$rule),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Rpart",
-            title = "Rpart"
-          ),
-          create_boundary_plot(
-            ru = as.numeric(input$rule),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Original",
-            title = "PPtree"
-          ),
-          modpl,
-          ncol = 3
+      # Keep only numeric features and the target
+      numeric_cols <- sapply(initial_data, is.numeric)
+      numeric_cols[which(colnames(initial_data) == "Sim")] <- TRUE
+      initial_data <- initial_data[, numeric_cols, drop = FALSE]
+
+      initial_classes <- as.character(unique(initial_data$Sim))
+      if (length(initial_classes) == 0) {
+        initial_classes <- c("Class A", "Class B", "Class C")
+      }
+    }
+
+    current_data <- shiny::reactiveVal(initial_data)
+    imported_data <- shiny::reactiveVal(if (!is.null(data)) initial_data else NULL)
+    class_choices <- shiny::reactiveVal(initial_classes)
+    zoom_xlim <- shiny::reactiveVal(NULL)
+    zoom_ylim <- shiny::reactiveVal(NULL)
+
+    output$data_stats_ui <- shiny::renderUI({
+      dat <- current_data()
+      if (nrow(dat) == 0) {
+        return(NULL)
+      }
+
+      n_obs <- nrow(dat)
+      dims <- ncol(dat) - 1
+      classes <- class_choices()
+
+      colors <- scales::hue_pal()(length(classes))
+      legend_items <- lapply(seq_along(classes), function(i) {
+        shiny::span(
+          style = "display: inline-flex; align-items: center; margin-left: 10px;",
+          shiny::tags$span(style = sprintf("display: inline-block; width: 12px; height: 12px; border-radius: 50%%; margin-right: 5px; background-color: %s;", colors[i])),
+          classes[i]
+        )
+      })
+
+      shiny::div(
+        style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: center;",
+        shiny::div(shiny::tags$b("N Observations: "), n_obs),
+        shiny::div(shiny::tags$b("Dimensions: "), dims),
+        shiny::div(
+          shiny::tags$b("Target Classes: "),
+          shiny::div(style = "display: inline-flex;", legend_items)
+        )
+      )
+    })
+
+    output$is_high_dim <- shiny::reactive({
+      ncol(current_data()) > 3
+    })
+    shiny::outputOptions(output, "is_high_dim", suspendWhenHidden = FALSE)
+
+    shiny::observeEvent(input$data_mode, {
+      zoom_xlim(NULL)
+      zoom_ylim(NULL)
+
+      if (input$data_mode == "Imported Data") {
+        if (!is.null(imported_data())) {
+          current_data(imported_data())
+          new_classes <- unique(as.character(imported_data()$Sim))
+          class_choices(new_classes)
+          shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1], inline = TRUE)
+        }
+      } else {
+        # Switch to Draw/Simulate Data: completely reset the canvas and classes
+        current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
+        default_classes <- c("Class A", "Class B", "Class C")
+        class_choices(default_classes)
+        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = default_classes, selected = default_classes[1], inline = TRUE)
+      }
+    })
+
+    shiny::observeEvent(input$add_class, {
+      new_class <- trimws(input$new_class_name)
+      if (new_class != "" && !(new_class %in% class_choices())) {
+        updated_choices <- c(class_choices(), new_class)
+        class_choices(updated_choices)
+        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class",
+          choices = updated_choices,
+          selected = new_class,
+          inline = TRUE
+        )
+        shiny::updateTextInput(shiny::getDefaultReactiveDomain(), "new_class_name", value = "")
+      }
+    })
+
+    # Dynamic Simulation UI
+    output$sim_params_ui <- shiny::renderUI({
+      shiny::req(input$sim_n_classes)
+      n <- input$sim_n_classes
+      if (is.na(n) || n < 1) {
+        return(NULL)
+      }
+
+      lapply(1:n, function(i) {
+        shiny::wellPanel(
+          shiny::h5(paste("Class", i)),
+          shiny::textInput(paste0("sim_mean_", i), "Mean (comma separated)", value = if (i == 1) "-1,0" else if (i == 2) "1,0" else "0,1"),
+          shiny::textInput(paste0("sim_cov_", i), "Covariance Diag (comma separated)", value = "1,1"),
+          shiny::numericInput(paste0("sim_n_", i), "Sample Size", value = 100, min = 10)
+        )
+      })
+    })
+
+    shiny::observeEvent(input$sim_do, {
+      shiny::req(input$sim_n_classes)
+      n <- input$sim_n_classes
+      if (is.na(n) || n < 1) {
+        return()
+      }
+
+      means <- list()
+      covs <- list()
+      ns <- c()
+
+      for (i in 1:n) {
+        m <- as.numeric(unlist(strsplit(input[[paste0("sim_mean_", i)]], ",")))
+        cv <- as.numeric(unlist(strsplit(input[[paste0("sim_cov_", i)]], ",")))
+        ns <- c(ns, input[[paste0("sim_n_", i)]])
+
+        means[[i]] <- m
+        covs[[i]] <- diag(cv, length(m))
+      }
+
+      lengths <- sapply(means, length)
+      if (length(unique(lengths)) > 1) {
+        shiny::showNotification("Error: All mean vectors must have the same number of dimensions.", type = "error")
+        return()
+      }
+      cv_lengths <- sapply(covs, nrow)
+      if (any(cv_lengths != lengths)) {
+        shiny::showNotification("Error: Covariance diagonals must have the same length as their mean vectors.", type = "error")
+        return()
+      }
+      if (any(is.na(unlist(means))) || any(is.na(unlist(covs)))) {
+        shiny::showNotification("Error: Invalid numeric input in mean or covariance.", type = "error")
+        return()
+      }
+
+      new_data <- simu_n(means = means, covs = covs, ns = ns)
+      current_data(new_data)
+      new_classes <- unique(as.character(new_data$Sim))
+      class_choices(new_classes)
+      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1], inline = TRUE)
+      zoom_xlim(NULL)
+      zoom_ylim(NULL)
+    })
+
+    shiny::observeEvent(input$clear, {
+      current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
+      class_choices(c("Class A", "Class B", "Class C"))
+      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = c("Class A", "Class B", "Class C"), selected = "Class A", inline = TRUE)
+      zoom_xlim(NULL)
+      zoom_ylim(NULL)
+    })
+
+    shiny::observeEvent(input$plot_click, {
+      if (input$data_mode == "Draw Data" && input$interaction_mode == "Draw Point") {
+        if (ncol(current_data()) > 3) {
+          return()
+        } # Prevent drawing on high-dim data
+        cd <- current_data()
+        feat_cols <- setdiff(colnames(cd), "Sim")
+        pt <- data.frame(Sim = input$draw_class)
+        pt[[feat_cols[1]]] <- input$plot_click$x
+        pt[[feat_cols[2]]] <- input$plot_click$y
+        current_data(rbind(cd, pt))
+      }
+    })
+
+    shiny::observeEvent(input$plot_dblclick, {
+      if (input$data_mode != "Draw Data" || input$interaction_mode == "Navigate") {
+        zoom_xlim(NULL)
+        zoom_ylim(NULL)
+      }
+    })
+
+    shiny::observeEvent(input$plot_brush, {
+      if (input$data_mode != "Draw Data" || input$interaction_mode == "Navigate") {
+        b <- input$plot_brush
+        if (!is.null(b)) {
+          zoom_xlim(c(b$xmin, b$xmax))
+          zoom_ylim(c(b$ymin, b$ymax))
+        }
+      } else if (input$data_mode == "Draw Data" && input$interaction_mode == "Draw Cluster") {
+        if (ncol(current_data()) > 3) {
+          return()
+        } # Prevent brushing on high-dim data
+        b <- input$plot_brush
+        n <- shiny::isolate(input$brush_size)
+
+        # Ensure we don't try to generate NA points
+        if (!is.null(b) && is.numeric(n) && n > 0) {
+          cd <- current_data()
+          feat_cols <- setdiff(colnames(cd), "Sim")
+          pts <- data.frame(Sim = shiny::isolate(input$draw_class))
+          pts[[feat_cols[1]]] <- stats::runif(n, b$xmin, b$xmax)
+          pts[[feat_cols[2]]] <- stats::runif(n, b$ymin, b$ymax)
+          current_data(rbind(cd, pts))
+        }
+      }
+    })
+
+    output$plot_grid <- shiny::renderUI({
+      models <- input$selected_models
+      if (is.null(models) || length(models) == 0) {
+        return(shiny::p("Please select at least one model to compare."))
+      }
+
+      plot_outputs <- lapply(models, function(m) {
+        col_width <- max(4, floor(12 / length(models)))
+
+        shiny::column(
+          col_width,
+          shiny::plotOutput(
+            outputId = paste0("plot_", m),
+            click = "plot_click",
+            dblclick = "plot_dblclick",
+            brush = shiny::brushOpts(id = "plot_brush", resetOnNew = TRUE)
+          )
+        )
+      })
+
+      shiny::fluidRow(plot_outputs)
+    })
+
+    # Manual Tour Steering (High-Dimensional Mode)
+
+    current_basis <- shiny::reactiveVal(NULL)
+    current_path <- shiny::reactiveVal(NULL)
+    current_projection <- shiny::reactiveVal(NULL)
+    current_projection_info <- shiny::reactiveVal(NULL)
+
+    output$tour_panel <- shiny::renderUI({
+      dat <- current_data()
+      if (ncol(dat) > 3) {
+        shiny::wellPanel(
+          shiny::h4("Manual Tour Steering"),
+          shiny::p("High-dimensional data detected. Use the controls below to steer the 2D projection plane."),
+          shiny::selectInput("tour_var", "Manipulation Variable", choices = setdiff(colnames(dat), "Sim")),
+          shiny::sliderInput("tour_angle", "Rotation Angle", min = 0, max = 1, value = 0, step = 0.01)
         )
       }
     })
 
+    # Initialize PCA basis when high-dim data loads
+    shiny::observe({
+      dat <- current_data()
+      if (ncol(dat) > 3 && nrow(dat) >= 2 && is.null(current_basis())) {
+        num_dat <- dat[, setdiff(colnames(dat), "Sim"), drop = FALSE]
 
-    output$distPlot2 <- shiny::renderPlot({
-      if (input$do2) {
-        x1 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$mean2, ","))))
-        x2 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$cor2, ","))))
-        x3 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$sample2, ","))))
-        x4 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$meanout, ","))))
-        x5 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$sdout, ","))))
-        x6 <-
-          shiny::isolate(as.numeric(unlist(strsplit(input$sampleout, ","))))
-        x7 <-
-          shiny::isolate(input$stop2)
-        dat.pl2 <- simu3(
-          x1[1], x1[2], x1[3], x1[4], x1[5], x1[6],
-          x2[1], x2[2], x2[3], x3[1], x3[2], x3[3]
-        )
-        dat.test <-
-          shiny::isolate(simu3(
-            x1[1], x1[2], x1[3], x1[4], x1[5], x1[6],
-            x2[1], x2[2], x2[3], round(x3[1] * 0.25), round(x3[2] * 0.25), round(x3[3] * 0.25)
-          ))
+        # Check variance to prevent scaling errors
+        vars <- apply(num_dat, 2, stats::var)
+        scale_flag <- if (any(vars == 0, na.rm = TRUE)) FALSE else TRUE
 
-        aux <-
-          data.frame(
-            Sim = rep(paste("sim", as.numeric(input$group), sep = ""), x6),
-            X1 = stats::rnorm(
-              n = x6,
-              mean = x4[1],
-              sd = x5[1]
-            ),
-            X2 = stats::rnorm(
-              n = x6,
-              mean = x4[2],
-              sd = x5[2]
-            )
-          )
-
-        aux2 <-
-          data.frame(
-            Sim = rep(paste("sim", as.numeric(input$group), sep = ""), round(x6 * 0.25)),
-            X1 = stats::rnorm(
-              n = round(x6 * 0.25),
-              mean = x4[1],
-              sd = x5[1]
-            ),
-            X2 = stats::rnorm(
-              n = round(x6 * 0.25),
-              mean = x4[2],
-              sd = x5[2]
-            )
-          )
-        dat.pl2 <- rbind(dat.pl2, aux)
-        dat.test <- rbind(dat.test, aux2)
-
-        if (input$modi2 == 1) {
-          modpl <-
-            create_boundary_plot(
-              ru = as.numeric(input$rule),
-              data = dat.pl2,
-              test = dat.test,
-              meth = "Modified",
-              title = "PPtreeExt: Subsetting clases",
-              fit_opts = list(entro = FALSE)
-            )
-        }
-        if (input$modi2 == 2) {
-          modpl <-
-            create_boundary_plot(
-              ru = as.numeric(input$rule),
-              data = dat.pl2,
-              test = dat.test,
-              meth = "Modified",
-              title = "Modified 2",
-              fit_opts = list(entro = TRUE)
-            )
-        }
-        if (input$modi2 == 3) {
-          modpl <-
-            create_boundary_plot(
-              data = dat.pl2,
-              test = dat.test,
-              meth = "MOD",
-              title = "PPtreeExt: Multiple splits",
-              fit_opts = list(strule = x7, tot = sum(x3 + x6))
-            )
-        }
-
-        gridExtra::grid.arrange(
-          create_boundary_plot(
-            ru = as.numeric(input$rule2),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Rpart",
-            title = "Rpart"
-          ),
-          create_boundary_plot(
-            ru = as.numeric(input$rule2),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Original",
-            title = "PPtree"
-          ),
-          modpl,
-          ncol = 3
-        )
+        pca <- stats::prcomp(num_dat, scale. = scale_flag)
+        basis <- pca$rotation[, 1:2]
+        basis <- tourr::orthonormalise(basis)
+        current_basis(basis)
+        current_projection(basis)
+        current_projection_info(list(center = pca$center, scale = pca$scale))
+      } else if (ncol(dat) <= 3) {
+        current_basis(NULL)
+        current_path(NULL)
+        current_projection(NULL)
+        current_projection_info(NULL)
       }
     })
 
+    # Generate Geodesic Path when variable changes
+    shiny::observeEvent(input$tour_var, {
+      shiny::req(input$tour_var)
+      shiny::req(current_basis())
 
-    output$plotsmaitra <- shiny::renderPlot({
-      if (input$simmaitra) {
-        x1 <- shiny::isolate(as.numeric(input$stop3))
-        # Q <- MixSim(BarOmega = 0.01, K = 4, p = 2)
+      dat <- current_data()
+      num_cols <- setdiff(colnames(dat), "Sim")
+      var_idx <- which(num_cols == input$tour_var)
 
-        repeat {
-          Q <-
-            MixSim::MixSim(
-              BarOmega = shiny::isolate(as.numeric(input$BarOmega)),
-              MaxOmega = shiny::isolate(as.numeric(input$MaxOmega)),
-              K = shiny::isolate(as.numeric(input$K)),
-              p = 2,
-              # sph = FALSE,
-              # ecc = 1,
-              # PiLow = 1.0,
-              # int = c(0.0, 1.0),
-              # resN = 100,
-              # eps = 1e-06,
-              # lim = 1e06
-            )
-          if (Q$fail == 0) {
-            break
+      # Following tourr::radial_tour logic to find the target basis:
+      # Zero out the variable's contribution and orthonormalize
+      start_basis <- current_basis()
+      target_basis <- start_basis
+      target_basis[var_idx, ] <- 0
+      target_basis <- tourr::orthonormalise(target_basis)
+
+      path <- tourr::geodesic_path(start_basis, target_basis)
+      current_path(path)
+
+      # Reset slider when variable changes
+      shiny::updateSliderInput(shiny::getDefaultReactiveDomain(), "tour_angle", value = 0)
+    })
+
+    # Interpolate basis when slider moves
+    shiny::observeEvent(input$tour_angle, {
+      shiny::req(current_path())
+
+      frac <- input$tour_angle
+      path <- current_path()
+
+      new_proj <- path$interpolate(frac)
+      current_projection(new_proj)
+    })
+
+    #
+
+    # We must observe changes to selected models to register renderPlot for newly selected ones
+    shiny::observe({
+      models <- input$selected_models
+      if (is.null(models)) {
+        return()
+      }
+
+      lapply(models, function(m) {
+        output[[paste0("plot_", m)]] <- shiny::renderPlot({
+          dat <- current_data()
+
+          title <- switch(m,
+            "Rpart" = "Decision Tree (Rpart)",
+            "PPtreeViz" = "PPtreeViz",
+            "PPtreeExtclass" = "PPtreeExtclass",
+            "PPtreeExt_split" = "PPtreeExt_split",
+            "RandomForest" = "Random Forest",
+            m
+          )
+
+          if (nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
+            feat_cols <- setdiff(colnames(dat), "Sim")
+            x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
+            y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
+
+            p <- ggplot2::ggplot(dat) +
+              ggplot2::labs(title = paste0(title, " (Waiting for data)"), x = x_name, y = y_name) +
+              ggplot2::theme_minimal() +
+              ggplot2::theme(aspect.ratio = 1, legend.position = "none")
+
+            if (nrow(dat) == 0) {
+              p <- p + ggplot2::xlim(-4, 4) + ggplot2::ylim(-4, 4)
+            }
+
+            if (nrow(dat) > 0) {
+              dat$Sim <- factor(dat$Sim, levels = class_choices())
+              p <- p + ggplot2::geom_point(ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]], color = .data$Sim), size = 3) +
+                ggplot2::scale_color_discrete(drop = FALSE)
+            }
+            return(p)
           }
-        }
-        A <-
-          MixSim::simdataset(
-            n = shiny::isolate(as.numeric(input$size)),
-            Pi = Q$Pi,
-            Mu = Q$Mu,
-            S = Q$S
-          )
 
-        Atest <-
-          MixSim::simdataset(
-            n = shiny::isolate(as.numeric(round(input$size * 0.25))),
-            Pi = Q$Pi,
-            Mu = Q$Mu,
-            S = Q$S
-          )
-        dat.pl2 <-
-          data.frame(
-            Sim = paste("sim", A[[2]], sep = ""),
-            X1 = scale(A[[1]][, 1]),
-            X2 = scale(A[[1]][, 2])
-          )
-        dat.test <-
-          data.frame(
-            Sim = paste("sim", Atest[[2]], sep = ""),
-            X1 = scale(Atest[[1]][, 1]),
-            X2 = scale(Atest[[1]][, 2])
-          )
+          # Safe fit and plot
+          plot_opts <- list()
+          if (m == "PPtreeExtclass") plot_opts <- list(stop = input$stop)
+          if (m == "Rpart") plot_opts <- list(control = rpart::rpart.control(cp = input$rpart_cp))
+          if (m == "RandomForest") plot_opts <- list(ntree = input$rf_ntree)
 
-        if (input$modi3 == 1) {
-          modpl <-
-            create_boundary_plot(
-              ru = as.numeric(input$rule3),
-              data = dat.pl2,
-              test = dat.test,
-              meth = "Modified",
-              title = "PPtreeExt: Subsetting clases",
-              fit_opts = list(entro = FALSE)
-            )
-        }
-        if (input$modi3 == 2) {
-          modpl <-
-            create_boundary_plot(
-              ru = as.numeric(input$rule3),
-              data = dat.pl2,
-              test = dat.test,
-              meth = "Modified",
-              title = "Modified 2",
-              fit_opts = list(entro = TRUE)
-            )
-        }
-        if (input$modi3 == 3) {
-          modpl <-
-            create_boundary_plot(
-              data = dat.pl2,
-              test = dat.test,
-              meth = "MOD",
-              title = "PPtreeExt: Multiple splits",
-              fit_opts = list(strule = x1, tot = input$size)
-            )
-        }
+          c_mod <- app_methods[[m]]
+          if (!is.null(c_mod$fit_args_fn) && is.function(c_mod$fit_args_fn)) {
+            custom_opts <- c_mod$fit_args_fn(input)
+            plot_opts <- c(plot_opts, custom_opts)
+          }
 
-        gridExtra::grid.arrange(
-          create_boundary_plot(
-            ru = as.numeric(input$rule3),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Rpart",
-            title = "Rpart"
-          ),
-          create_boundary_plot(
-            ru = as.numeric(input$rule3),
-            data = dat.pl2,
-            test = dat.test,
-            meth = "Original",
-            title = "PPtree"
-          ),
-          modpl,
-          ncol = 3
-        )
-      }
+          tryCatch(
+            {
+              create_boundary_plot(
+                data = dat,
+                test = dat,
+                meth = m,
+                title = m,
+                ru = as.numeric(input$rule),
+                fit_opts = plot_opts,
+                class_levels = class_choices(),
+                proj_matrix = current_projection(),
+                proj_info = current_projection_info(),
+                zoom_x = zoom_xlim(),
+                zoom_y = zoom_ylim()
+              )
+            },
+            error = function(e) {
+              # Graceful fallback if model fails (e.g. data is degenerate)
+              ggplot2::ggplot() +
+                ggplot2::annotate("text", x = 0, y = 0, label = paste("Error:", e$message)) +
+                ggplot2::labs(title = title) +
+                ggplot2::theme_minimal() +
+                ggplot2::theme(aspect.ratio = 1)
+            }
+          )
+        })
+      })
     })
   }
 

@@ -25,8 +25,8 @@
 #' @param facet_col Optional string naming a column in `boundary` to facet the plot by.
 #'   Useful for comparing multiple models (e.g. from `boundary_workflow_set()`).
 #' @param type The type of visualization to generate. Supported: '2D' or 'disagreement'.
-#' @param show_gradient Logical. If \code{TRUE}, classification probabilities (if available) 
-#'   will be mapped to the transparency (alpha) of the decision regions, creating a gradient 
+#' @param show_gradient Logical. If \code{TRUE}, classification probabilities (if available)
+#'   will be mapped to the transparency (alpha) of the decision regions, creating a gradient
 #'   surface. Defaults to \code{FALSE} (renders a flat decision boundary).
 #' @param agree_color Color used for areas where all models agree (only for type='disagreement').
 #' @param disagree_color Color used for areas where models disagree (only for type='disagreement').
@@ -118,6 +118,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability)) +
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
         ggplot2::theme_minimal() +
+        ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -128,6 +129,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
         ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
         ggplot2::theme_minimal() +
+        ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -201,6 +203,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
           size = obs_size, shape = 21, color = "white", stroke = 0.5
         ) +
+        ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::scale_alpha_identity() +
         ggplot2::labs(fill = "True Class")
     } else {
@@ -223,6 +226,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
           size = obs_size, alpha = obs_alpha, shape = 21, color = "white", stroke = 0.5
         ) +
+        ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::labs(fill = "True Class")
     }
   }
