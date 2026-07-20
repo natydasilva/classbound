@@ -1,6 +1,6 @@
-#' Compute the classification decision boundary
+#' Compute 2D the classification decision boundary 
 #'
-#' @description Computes the decision boundary for a fitted classifier over a specified feature space.
+#' @description Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
 #'
 #' @param model A fitted model object of class `classbound`.
 #' @param range A named list defining the feature ranges for a 2D space. Each element should be a

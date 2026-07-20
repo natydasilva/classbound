@@ -35,11 +35,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
   # UI to Package API Mapping
   app_methods <- list(
-    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA")),
-    "Rpart"           = list(fn = rpart::rpart, args = list()),
-    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA")),
-    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA")),
-    "RandomForest"    = list(fn = randomForest::randomForest, args = list())
+    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "Rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE),
+    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "RandomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE)
   )
 
   predict_args <- list(
@@ -119,6 +119,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               choices = names(app_methods),
               selected = c("Rpart", "PPtreeViz", "PPtreeExtclass")
             ),
+            shiny::uiOutput("prob_surface_ui"),
             shiny::conditionalPanel(
               condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
@@ -157,7 +158,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   )
 
 
-  create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list(), class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL) {
+  create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list(), class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE) {
     config <- app_methods[[meth]]
     if (is.null(config)) stop("Unknown method: ", meth)
     fit_args <- c(config$args, fit_opts)
@@ -204,7 +205,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     }
 
     # Render plot
-    p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim") +
+    p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs) +
       ggplot2::ggtitle(paste0(title, " (Error ", err, "%)")) +
       ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
       ggplot2::scale_color_discrete(drop = FALSE)
@@ -241,9 +242,19 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
     }
 
-    current_data <- shiny::reactiveVal(initial_data)
-    imported_data <- shiny::reactiveVal(if (!is.null(data)) initial_data else NULL)
-    class_choices <- shiny::reactiveVal(initial_classes)
+    initial_drawn_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
+    initial_drawn_classes <- c("Class A", "Class B", "Class C")
+
+    mode_states <- shiny::reactiveValues(
+      "Imported Data" = list(data = if (!is.null(data)) initial_data else NULL, classes = if (!is.null(data)) initial_classes else NULL),
+      "Draw Data" = list(data = initial_drawn_data, classes = initial_drawn_classes),
+      "Simulate Data" = list(data = initial_drawn_data, classes = initial_drawn_classes)
+    )
+
+    init_mode <- if (!is.null(data)) "Imported Data" else "Draw Data"
+    previous_data_mode <- shiny::reactiveVal(init_mode)
+    current_data <- shiny::reactiveVal(if (init_mode == "Imported Data") initial_data else initial_drawn_data)
+    class_choices <- shiny::reactiveVal(if (init_mode == "Imported Data") initial_classes else initial_drawn_classes)
     zoom_xlim <- shiny::reactiveVal(NULL)
     zoom_ylim <- shiny::reactiveVal(NULL)
 
@@ -282,24 +293,58 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     })
     shiny::outputOptions(output, "is_high_dim", suspendWhenHidden = FALSE)
 
+    output$prob_surface_ui <- shiny::renderUI({
+      req_models <- input$selected_models
+      if (length(req_models) == 0) return(NULL)
+
+      # Check if ALL selected models support probability
+      all_support_prob <- all(vapply(req_models, function(m) {
+        if (m %in% names(app_methods)) {
+          isTRUE(app_methods[[m]]$supports_prob)
+        } else if (m %in% names(custom_models)) {
+          isTRUE(custom_models[[m]]$supports_prob)
+        } else {
+          FALSE
+        }
+      }, logical(1)))
+
+      shiny::div(
+        style = "margin-top: 15px; margin-bottom: 10px;",
+        if (all_support_prob) {
+          shiny::checkboxInput("show_probs", "Show Probability Surface", value = FALSE)
+        } else {
+          shiny::div(
+            style = "opacity: 0.6; pointer-events: none;",
+            title = "One or more selected classifiers do not support probability outputs. Falling back to hard decision boundaries.",
+            shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = FALSE)
+          )
+        }
+      )
+    })
+
     shiny::observeEvent(input$data_mode, {
       zoom_xlim(NULL)
       zoom_ylim(NULL)
 
-      if (input$data_mode == "Imported Data") {
-        if (!is.null(imported_data())) {
-          current_data(imported_data())
-          new_classes <- unique(as.character(imported_data()$Sim))
-          class_choices(new_classes)
-          shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1], inline = TRUE)
-        }
-      } else {
-        # Switch to Draw/Simulate Data: completely reset the canvas and classes
-        current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
-        default_classes <- c("Class A", "Class B", "Class C")
-        class_choices(default_classes)
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = default_classes, selected = default_classes[1], inline = TRUE)
+      old_mode <- previous_data_mode()
+      new_mode <- input$data_mode
+
+      # Save state to old mode
+      if (!is.null(old_mode)) {
+        mode_states[[old_mode]]$data <- current_data()
+        mode_states[[old_mode]]$classes <- class_choices()
       }
+
+      # Load state from new mode
+      if (!is.null(mode_states[[new_mode]]$data)) {
+        current_data(mode_states[[new_mode]]$data)
+        class_choices(mode_states[[new_mode]]$classes)
+
+        # Reset UI element for drawing
+        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1], inline = TRUE)
+      }
+
+      previous_data_mode(new_mode)
     })
 
     shiny::observeEvent(input$add_class, {
@@ -602,7 +647,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 proj_matrix = current_projection(),
                 proj_info = current_projection_info(),
                 zoom_x = zoom_xlim(),
-                zoom_y = zoom_ylim()
+                zoom_y = zoom_ylim(),
+                show_probs = isTRUE(input$show_probs)
               )
             },
             error = function(e) {
