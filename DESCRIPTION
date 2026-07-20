@@ -10,7 +10,12 @@ Authors@R: c(
     person(given = "Vaibhav",
            family = "Manihar",
            role = c("aut", "ctb"),
-           email = "vaibhav.manihar@gmail.com")
+           email = "vaibhav.manihar@gmail.com"),
+    person(given = "Ignacio",
+           family = "Alvarez-Castro",
+           role = "aut",
+           email = "ignacio.lavarez@fcea.edu.uy",
+           comment = c(ORCID = "https://orcid.org/0000-0003-1633-2432"))        
     )
 Description: This R package allows to explore decision boundaries for existing classification methods and also for new methods.
 License: GPL (>= 2)
