@@ -2,7 +2,7 @@
 % Please edit documentation in R/boundary_compute.R
 \name{boundary_compute}
 \alias{boundary_compute}
-\title{Compute the classification decision boundary}
+\title{Compute 2D the classification decision boundary}
 \usage{
 boundary_compute(
   model,
@@ -40,7 +40,7 @@ If NULL, missing numeric features are imputed with their median, and missing cat
 A modified \code{classbound} model object containing the 2D grid points and predictions in \verb{$boundary_data}.
 }
 \description{
-Computes the decision boundary for a fitted classifier over a specified feature space.
+Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
 }
 \examples{
 \donttest{
