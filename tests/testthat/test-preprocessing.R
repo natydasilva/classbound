@@ -52,17 +52,36 @@ test_that("preprocess_data handles factors correctly", {
 })
 
 
-test_that("preprocess_data rejects empty data frames", {
+test_that("preprocess_data rejects data frames with fewer than 2 rows", {
   expect_error(
     preprocess_data(data.frame()),
-    "must have at least one row"
+    "must have at least two rows"
   )
 
-  # Also test a data.frame with columns but 0 rows
+  # Test a data.frame with columns but 0 rows
   expect_error(
     preprocess_data(data.frame(x = numeric(0), y = numeric(0))),
-    "must have at least one row"
+    "must have at least two rows"
   )
+  
+  # Test a single-row data.frame
+  expect_error(
+    preprocess_data(data.frame(x = 1, y = 2)),
+    "must have at least two rows"
+  )
+})
+
+test_that("preprocess_data rejects infinite values", {
+  expect_error(
+    preprocess_data(data.frame(x = c(1, Inf, 3))),
+    "Infinite values are not supported"
+  )
+  
+  expect_error(
+    preprocess_data(data.frame(x = c(1, -Inf, 3))),
+    "Infinite values are not supported"
+  )
+
 })
 
 test_that("preprocess_data rejects duplicate column names", {

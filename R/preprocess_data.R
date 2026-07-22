@@ -20,8 +20,8 @@ preprocess_data <- function(data, labels = NULL, ...) {
   # This prevents indexing bugs in older packages that expect df[, col] to return a vector
   data <- as.data.frame(data)
 
-  if (nrow(data) == 0) {
-    stop("`data` must have at least one row.", call. = FALSE)
+  if (nrow(data) < 2) {
+    stop("`data` must have at least two rows to train a classification boundary.", call. = FALSE)
   }
 
   if (any(duplicated(colnames(data)))) {
@@ -36,6 +36,12 @@ preprocess_data <- function(data, labels = NULL, ...) {
 
   if (any(is.na(data)) || (!is.null(labels) && any(is.na(labels)))) {
     stop("Missing values are not supported. Please handle them before modeling.", call. = FALSE)
+  }
+
+  # Reject Infinite values which crash downstream C/C++ model backends
+  is_inf <- function(x) is.numeric(x) && any(is.infinite(x))
+  if (any(sapply(data, is_inf))) {
+    stop("Infinite values are not supported. Please handle them before modeling.", call. = FALSE)
   }
 
   # Factor handling for labels

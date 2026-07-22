@@ -52,5 +52,30 @@ boundary_workflow_set <- function(wf_set, data, range, response, resolution = 10
   names(model_list) <- wf_set$wflow_id
 
   # Delegate completely to the multi-model pipeline in boundary_compute
-  boundary_compute(model_list, range = range, resolution = resolution, ...)
+  if (missing(range) || is.null(range)) {
+    predictors <- setdiff(colnames(data), response)
+    
+    if (length(predictors) == 2) {
+      if (!is.numeric(data[[predictors[1]]]) || !is.numeric(data[[predictors[2]]])) {
+        stop("Boundary generation requires numeric features. Auto-range calculation failed because the features are not numeric.", call. = FALSE)
+      }
+      
+      min1 <- suppressWarnings(min(data[[predictors[1]]], na.rm = TRUE))
+      max1 <- suppressWarnings(max(data[[predictors[1]]], na.rm = TRUE))
+      min2 <- suppressWarnings(min(data[[predictors[2]]], na.rm = TRUE))
+      max2 <- suppressWarnings(max(data[[predictors[2]]], na.rm = TRUE))
+      
+      if (is.infinite(min1) || is.infinite(max1) || is.infinite(min2) || is.infinite(max2)) {
+        stop("Auto-range calculation failed because one or more features have no valid numeric data.", call. = FALSE)
+      }
+      
+      range <- list(c(min1, max1), c(min2, max2))
+      names(range) <- predictors
+      boundary_compute(model_list, range = range, resolution = resolution, ...)
+    } else {
+      stop("`range` must be provided if the data contains more than 2 predictors.", call. = FALSE)
+    }
+  } else {
+    boundary_compute(model_list, range = range, resolution = resolution, ...)
+  }
 }

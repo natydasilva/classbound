@@ -85,20 +85,11 @@ tidymodels_bridge <- function(data, response, models, range = NULL, resolution =
   )
 
   # Execute boundary computation
-  if (is.null(range)) {
-    boundary_workflow_set(
-      wf_set,
-      data = data,
-      response = response,
-      resolution = resolution
-    )
-  } else {
-    boundary_workflow_set(
-      wf_set,
-      data = data,
-      response = response,
-      range = range,
-      resolution = resolution
-    )
-  }
+  boundary_workflow_set(
+    wf_set,
+    data = data,
+    response = response,
+    range = range,
+    resolution = resolution
+  )
 }
