@@ -76,7 +76,7 @@ test_that("tidymodels_bridge auto-computes range robustly", {
   data_3d <- na.omit(palmerpenguins::penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "species")])
   expect_error(
     tidymodels_bridge(data_3d, "species", c("rpart")),
-    "more than 2 predictors"
+    "exactly 2 numeric features"
   )
   
   # 3. Rejects categorical predictors in auto-computation
@@ -87,7 +87,7 @@ test_that("tidymodels_bridge auto-computes range robustly", {
   )
   expect_error(
     tidymodels_bridge(data_cat, "y", c("rpart")),
-    "features are not numeric"
+    "exactly 2 numeric features"
   )
   
   # 4. Rejects NA/Inf only data
@@ -98,6 +98,6 @@ test_that("tidymodels_bridge auto-computes range robustly", {
   )
   expect_error(
     tidymodels_bridge(data_na, "y", c("rpart")),
-    "no valid numeric data"
+    "Could not find numeric range"
   )
 })

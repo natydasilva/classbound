@@ -6,7 +6,7 @@
 \usage{
 boundary_compute(
   model,
-  range,
+  range = NULL,
   resolution = 100,
   predfun = NULL,
   projection = NULL,
@@ -17,12 +17,16 @@ boundary_compute(
 \arguments{
 \item{model}{A fitted model object of class \code{classbound}.}
 
-\item{range}{A named list defining the feature ranges for a 2D space. Each element should be a
-numeric vector of length 2 (e.g., \code{list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))}).}
+\item{range}{An optional named list defining the feature ranges (e.g., \code{list(V1 = c(4, 8), V2 = c(2, 5))}),
+or a character vector of two feature names to automatically compute bounds from the training data.
+If \code{NULL} and the model has exactly two numeric features, it will automatically use their ranges.}
 
 \item{resolution}{An integer specifying the grid resolution.}
 
-\item{predfun}{A custom function to generate predictions for non-standard models.}
+\item{predfun}{A custom function to generate predictions for non-standard models.
+The function must accept at least two arguments: \code{model} (the fitted native model)
+and \code{newdata} (a data frame of new observations). It should return either a vector/factor
+of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).}
 
 \item{projection}{An optional list defining a high-dimensional projection.
 Must contain \code{basis} (a numeric matrix defining the projection frame, which MUST be orthonormal).
@@ -47,6 +51,26 @@ Computes the decision boundary for a fitted classifier over a specified feature 
 data(data69_1)
 data69_1$Y <- as.factor(data69_1$Y)
 model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+# Auto-compute ranges for the two numeric features
+model <- boundary_compute(model)
+
+# Palmer penguins example with projection and resolution
+library(palmerpenguins)
+data(penguins)
+penguins <- na.omit(
+  penguins[, c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
+)
+m_peng <- fit_model(penguins, species ~ ., rpart::rpart)
+
+# Create a simple orthonormal projection basis (e.g., PCA or manual)
+basis <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3, ncol = 3)[, 1:2]
+rownames(basis) <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+
+m_peng_proj <- boundary_compute(
+  m_peng, 
+  range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+  resolution = 50,
+  projection = list(basis = basis)
+)
 }
 }

@@ -6,15 +6,39 @@
 #' @param wf_set A `workflow_set` object from the `workflowsets` package.
 #' @param data A data frame containing the training data. This is required to extract feature
 #'   metadata and to fit any workflows that are not yet trained.
-#' @param range A named list specifying the minimum and maximum values for each feature.
+#' @param range An optional named list specifying the minimum and maximum values for each feature,
+#'   or a character vector of feature names. If `NULL`, the ranges are automatically computed from the training data
+#'   (if there are exactly 2 numeric features).
 #' @param response A string specifying the name of the response column in `data`.
 #' @param resolution An integer specifying the number of points along each axis (default = 100).
 #' @param ... Additional arguments passed to `boundary_compute()`.
 #'
 #' @return A data frame containing the combined boundary grid for all models, with a `model` column
 #'   indicating the `wflow_id`.
+#' @examples
+#' \donttest{
+#' library(palmerpenguins)
+#' library(workflowsets)
+#' library(parsnip)
+#' 
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#' 
+#' # Define multiple engines
+#' spec_rpart <- decision_tree() |> set_engine("rpart") |> set_mode("classification")
+#' spec_glm   <- multinom_reg() |> set_engine("nnet") |> set_mode("classification")
+#' 
+#' # Create a workflow set
+#' wf_set <- workflow_set(
+#'   preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
+#'   models = list(tree = spec_rpart, log_reg = spec_glm)
+#' )
+#' 
+#' # Compute 2D boundaries for all models simultaneously (auto-range)
+#' bounds <- boundary_workflow_set(wf_set, peng_data, response = "species", resolution = 30)
+#' }
 #' @export
-boundary_workflow_set <- function(wf_set, data, range, response, resolution = 100, ...) {
+boundary_workflow_set <- function(wf_set, data, range = NULL, response, resolution = 100, ...) {
   if (!requireNamespace("workflowsets", quietly = TRUE)) {
     stop("Package 'workflowsets' is required to process workflow_set objects.", call. = FALSE)
   }
@@ -52,30 +76,5 @@ boundary_workflow_set <- function(wf_set, data, range, response, resolution = 10
   names(model_list) <- wf_set$wflow_id
 
   # Delegate completely to the multi-model pipeline in boundary_compute
-  if (missing(range) || is.null(range)) {
-    predictors <- setdiff(colnames(data), response)
-    
-    if (length(predictors) == 2) {
-      if (!is.numeric(data[[predictors[1]]]) || !is.numeric(data[[predictors[2]]])) {
-        stop("Boundary generation requires numeric features. Auto-range calculation failed because the features are not numeric.", call. = FALSE)
-      }
-      
-      min1 <- suppressWarnings(min(data[[predictors[1]]], na.rm = TRUE))
-      max1 <- suppressWarnings(max(data[[predictors[1]]], na.rm = TRUE))
-      min2 <- suppressWarnings(min(data[[predictors[2]]], na.rm = TRUE))
-      max2 <- suppressWarnings(max(data[[predictors[2]]], na.rm = TRUE))
-      
-      if (is.infinite(min1) || is.infinite(max1) || is.infinite(min2) || is.infinite(max2)) {
-        stop("Auto-range calculation failed because one or more features have no valid numeric data.", call. = FALSE)
-      }
-      
-      range <- list(c(min1, max1), c(min2, max2))
-      names(range) <- predictors
-      boundary_compute(model_list, range = range, resolution = resolution, ...)
-    } else {
-      stop("`range` must be provided if the data contains more than 2 predictors.", call. = FALSE)
-    }
-  } else {
-    boundary_compute(model_list, range = range, resolution = resolution, ...)
-  }
+  boundary_compute(model_list, range = range, resolution = resolution, ...)
 }

@@ -3,10 +3,14 @@
 #' @description Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
 #'
 #' @param model A fitted model object of class `classbound`.
-#' @param range A named list defining the feature ranges for a 2D space. Each element should be a
-#'   numeric vector of length 2 (e.g., `list(Sepal.Length = c(4, 8), Sepal.Width = c(2, 5))`).
+#' @param range An optional named list defining the feature ranges (e.g., `list(V1 = c(4, 8), V2 = c(2, 5))`),
+#'   or a character vector of two feature names to automatically compute bounds from the training data.
+#'   If `NULL` and the model has exactly two numeric features, it will automatically use their ranges.
 #' @param resolution An integer specifying the grid resolution.
 #' @param predfun A custom function to generate predictions for non-standard models.
+#'   The function must accept at least two arguments: \code{model} (the fitted native model) 
+#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor 
+#'   of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).
 #' @param projection An optional list defining a high-dimensional projection.
 #'   Must contain `basis` (a numeric matrix defining the projection frame, which MUST be orthonormal).
 #'   Optionally contains `center` and `scale` (numeric vectors) to reverse visual normalization.
@@ -23,10 +27,30 @@
 #' data(data69_1)
 #' data69_1$Y <- as.factor(data69_1$Y)
 #' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-#' model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
+#' # Auto-compute ranges for the two numeric features
+#' model <- boundary_compute(model)
+#' 
+#' # Palmer penguins example with projection and resolution
+#' library(palmerpenguins)
+#' data(penguins)
+#' penguins <- na.omit(
+#'   penguins[, c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
+#' )
+#' m_peng <- fit_model(penguins, species ~ ., rpart::rpart)
+#' 
+#' # Create a simple orthonormal projection basis (e.g., PCA or manual)
+#' basis <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3, ncol = 3)[, 1:2]
+#' rownames(basis) <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+#' 
+#' m_peng_proj <- boundary_compute(
+#'   m_peng, 
+#'   range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+#'   resolution = 50,
+#'   projection = list(basis = basis)
+#' )
 #' }
 #' @export
-boundary_compute <- function(model, range, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
+boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
   is_multi <- FALSE
   is_bare_list <- is.list(model) && (class(model)[1] == "list")
 
@@ -44,6 +68,35 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
 
   first_model <- model_list[[1]]
 
+  if (is.null(first_model$metadata$features)) {
+    stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
+  }
+
+  if (is.null(range) || is.character(range)) {
+    avail_features <- first_model$metadata$features$names
+    avail_numeric <- avail_features[
+      vapply(first_model$metadata$features$types, function(x) any(c("numeric", "integer", "double") %in% x), logical(1))
+    ]
+    
+    if (is.character(range)) {
+      if (length(range) != 2) stop("If `range` is a character vector, it must specify exactly 2 feature names.", call. = FALSE)
+      target_features <- range
+    } else {
+      if (length(avail_numeric) == 2) {
+        target_features <- avail_numeric
+      } else {
+        stop("Cannot auto-compute `range`: model does not have exactly 2 numeric features. Please provide `range` explicitly.", call. = FALSE)
+      }
+    }
+    
+    range <- list()
+    for (f in target_features) {
+      rng <- first_model$metadata$features$range[[f]]
+      if (is.null(rng)) stop(sprintf("Could not find numeric range for feature '%s'.", f), call. = FALSE)
+      range[[f]] <- rng
+    }
+  }
+
   if (!is.list(range) || length(range) != 2 || is.null(names(range))) {
     stop("range must be a named list of length 2 specifying feature ranges.", call. = FALSE)
   }
@@ -52,10 +105,6 @@ boundary_compute <- function(model, range, resolution = 100, predfun = NULL, pro
 
   if (any(duplicated(var_names))) {
     stop("Duplicate feature names found in `range`.", call. = FALSE)
-  }
-
-  if (is.null(first_model$metadata$features)) {
-    stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
   }
 
   expected_names <- first_model$metadata$features$names

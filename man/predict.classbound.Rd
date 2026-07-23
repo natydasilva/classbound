@@ -16,7 +16,10 @@
 
 \item{predict_args}{A named list of additional arguments passed to \code{predict_adapter}.}
 
-\item{predfun}{A custom function to generate predictions for non-standard models.}
+\item{predfun}{A custom function to generate predictions for non-standard models.
+The function must accept at least two arguments: \code{model} (the fitted native model)
+and \code{newdata} (a data frame of new observations). It should return either a vector/factor
+of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).}
 
 \item{...}{Additional arguments passed to the specific model adapter.}
 }

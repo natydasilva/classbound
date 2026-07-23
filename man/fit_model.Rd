@@ -38,3 +38,12 @@ and extracted feature metadata.
 \description{
 Fits a machine learning classifier using a standard interface.
 }
+\examples{
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+}
+}

@@ -71,10 +71,17 @@ to improve contrast against the underlying colored decision regions.
 }
 \examples{
 \donttest{
-data(data69_1)
-data69_1$Y <- as.factor(data69_1$Y)
-model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
-plot_boundary(model, data69_1, "V1", "V2", "Y")
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+
+# Auto-compute bounds and generate 2D grid
+m_rpart <- boundary_compute(m_rpart, resolution = 50)
+
+# Plot the decision boundary with observations overlaid
+plot_boundary(m_rpart, obs_data = peng_data, 
+              x_col = "bill_length_mm", y_col = "bill_depth_mm", 
+              true_label = "species")
 }
 }

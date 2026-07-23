@@ -18,6 +18,14 @@
 #'
 #' @return A fitted model object with a normalized structure of class "classbound", containing the raw model
 #'   and extracted feature metadata.
+#' @examples
+#' \donttest{
+#' library(palmerpenguins)
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#' 
+#' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+#' }
 #' @importFrom stats model.frame model.matrix model.response na.pass
 #' @export
 fit_model <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list()) {

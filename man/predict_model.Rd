@@ -14,7 +14,10 @@ standard R \code{predict()} generic. This wrapper simply calls \code{predict(mod
 
 \item{predict_args}{A named list of additional arguments passed to \code{predict_adapter}.}
 
-\item{predfun}{A custom function to generate predictions for non-standard models.}
+\item{predfun}{A custom function to generate predictions for non-standard models.
+The function must accept at least two arguments: \code{model} (the fitted native model)
+and \code{newdata} (a data frame of new observations). It should return either a vector/factor
+of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).}
 
 \item{...}{Additional arguments passed to the specific model adapter.}
 }
@@ -25,4 +28,14 @@ A list containing \code{class} (a factor of predicted labels) and \code{probs}
 \description{
 Generates predictions using a unified interface across all classifiers.
 This function is a compatibility wrapper around the standard \code{predict()} method for "classbound" objects.
+}
+\examples{
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+preds <- predict_model(m_rpart, newdata = peng_data[1:5, ])
+}
 }
