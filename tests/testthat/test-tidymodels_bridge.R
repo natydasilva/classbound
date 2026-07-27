@@ -101,3 +101,28 @@ test_that("tidymodels_bridge auto-computes range robustly", {
     "Could not find numeric range"
   )
 })
+
+test_that("find_workspace_models correctly identifies relevant objects", {
+  # Create a temporary environment to simulate the global environment
+  test_env <- new.env()
+  
+  # Populate with relevant and irrelevant objects
+  test_env$my_wf <- structure(list(), class = c("workflow", "list"))
+  test_env$my_spec <- structure(list(), class = c("model_spec", "list"))
+  test_env$my_fit <- structure(list(), class = c("model_fit", "list"))
+  
+  test_env$not_a_model <- data.frame(x = 1:5)
+  test_env$just_a_string <- "hello"
+  
+  found <- find_workspace_models(test_env)
+  
+  expect_type(found, "character")
+  expect_length(found, 3)
+  expect_setequal(found, c("my_wf", "my_spec", "my_fit"))
+  
+  # Test empty environment
+  empty_env <- new.env()
+  found_empty <- find_workspace_models(empty_env)
+  expect_length(found_empty, 0)
+  expect_type(found_empty, "character")
+})

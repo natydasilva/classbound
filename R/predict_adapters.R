@@ -152,7 +152,9 @@ predict_adapter.workflow <- function(model, newdata, ...) {
 
   preds_prob <- tryCatch(
     {
-      as.matrix(predict(model, newdata, type = "prob"))
+      p_mat <- as.matrix(predict(model, newdata, type = "prob"))
+      colnames(p_mat) <- gsub("^\\.pred_", "", colnames(p_mat))
+      p_mat
     },
     error = function(e) {
       NULL

@@ -90,6 +90,105 @@ tidymodels_bridge <- function(data, response, models, range = NULL, resolution =
     data = data,
     response = response,
     range = range,
-    resolution = resolution
+  )
+}
+
+#' Find Workspace Models
+#'
+#' Scans an environment for objects that inherit from `workflow`, `model_fit`, or `model_spec`.
+#'
+#' @param env The environment to scan, defaults to `.GlobalEnv`.
+#' @return A character vector of object names.
+#' @noRd
+find_workspace_models <- function(env = .GlobalEnv) {
+  objs <- ls(envir = env)
+  if (length(objs) == 0) return(character(0))
+  
+  is_model <- vapply(objs, function(x) {
+    obj <- get(x, envir = env)
+    inherits(obj, c("workflow", "model_fit", "model_spec"))
+  }, logical(1))
+  
+  objs[is_model]
+}
+
+#' @export
+fit_model.workflow <- function(data, formula, classifier, ...) {
+  rlang::check_installed(c("parsnip", "workflows"))
+  
+  mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
+  y <- stats::model.response(mf)
+  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
+  
+  processed <- preprocess_data(data, y)
+  data <- processed$data
+  
+  # A fresh workflow from workflow() %>% add_model() lacks a preprocessor (formula).
+  # If it lacks a preprocessor, we add the provided formula.
+  has_pre <- tryCatch({ workflows::extract_preprocessor(classifier); TRUE }, error = function(e) FALSE)
+  if (!has_pre) {
+    classifier <- workflows::add_formula(classifier, formula)
+  }
+  
+  model_fit <- parsnip::fit(classifier, data = data)
+  
+  response_var <- all.vars(formula[[2]])
+  predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
+  feature_meta <- extract_feature_metadata(predictors_df)
+  
+  structure(
+    list(
+      fit = model_fit,
+      metadata = list(features = feature_meta, class_levels = orig_class_levels),
+      boundary_data = NULL
+    ),
+    class = "classbound"
+  )
+}
+
+#' @export
+fit_model.model_spec <- function(data, formula, classifier, ...) {
+  rlang::check_installed("parsnip")
+  
+  mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
+  y <- stats::model.response(mf)
+  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
+  
+  processed <- preprocess_data(data, y)
+  data <- processed$data
+  
+  model_fit <- parsnip::fit(classifier, formula, data = data)
+  
+  response_var <- all.vars(formula[[2]])
+  predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
+  feature_meta <- extract_feature_metadata(predictors_df)
+  
+  structure(
+    list(
+      fit = model_fit,
+      metadata = list(features = feature_meta, class_levels = orig_class_levels),
+      boundary_data = NULL
+    ),
+    class = "classbound"
+  )
+}
+
+#' @export
+fit_model.model_fit <- function(data, formula, classifier, ...) {
+  mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
+  y <- stats::model.response(mf)
+  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
+  
+  response_var <- all.vars(formula[[2]])
+  predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
+  feature_meta <- extract_feature_metadata(predictors_df)
+  
+  structure(
+    list(
+      fit = classifier,
+      metadata = list(features = feature_meta, class_levels = orig_class_levels),
+      boundary_data = NULL
+    ),
+    class = "classbound"
   )
 }

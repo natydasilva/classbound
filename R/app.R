@@ -50,6 +50,25 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     "RandomForest"    = function(...) list()
   )
 
+  # Dynamically add Tidymodels presets
+  if (requireNamespace("parsnip", quietly = TRUE)) {
+    tm_friendly <- c(
+      "rpart" = "Decision Tree (rpart)",
+      "randomForest" = "Random Forest",
+      "kernlab" = "SVM (kernlab)",
+      "nnet" = "Neural Net (nnet)"
+    )
+    for (m_key in names(.tidymodels_registry)) {
+      friendly_name <- paste0("Tidymodels: ", if (m_key %in% names(tm_friendly)) tm_friendly[[m_key]] else m_key)
+      app_methods[[friendly_name]] <- list(
+        fn = .tidymodels_registry[[m_key]](),
+        args = list(),
+        supports_prob = TRUE
+      )
+      predict_args[[friendly_name]] <- function(...) list()
+    }
+  }
+
   # Integrate custom models
   custom_uis <- list()
   for (m_name in names(custom_models)) {
@@ -88,22 +107,22 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Draw Data'",
             shiny::hr(),
-            shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Draw Point", "Draw Cluster", "Navigate"), inline = TRUE),
+            shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Draw Point", "Draw Cluster", "Navigate")),
             shiny::p("Click or brush on any plot to add data."),
-            shiny::radioButtons("draw_class", "Active Class", choices = c("Class A", "Class B", "Class C"), inline = TRUE),
+            shiny::radioButtons("draw_class", "Active Class", choices = c("Class A", "Class B", "Class C")),
             shiny::div(
               style = "display: flex; gap: 10px; align-items: baseline; margin-bottom: 15px;",
               shiny::textInput("new_class_name", label = NULL, placeholder = "New class name...", width = "100%"),
-              shiny::actionButton("add_class", "Add Class")
+              shiny::actionButton("add_class", "Add Class", class = "btn-info")
             ),
             shiny::numericInput("brush_size", "Brush Density (points/brush)", value = 20, min = 1),
-            shiny::actionButton("clear", "Clear Canvas")
+            shiny::actionButton("clear", "Clear Canvas", class = "btn-danger")
           ),
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Simulate Data'",
             shiny::numericInput("sim_n_classes", "Number of Classes", value = 3, min = 2, max = 10),
             shiny::uiOutput("sim_params_ui"),
-            shiny::actionButton("sim_do", "Generate Data")
+            shiny::actionButton("sim_do", "Generate Data", class = "btn-primary")
           ),
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Imported Data'",
@@ -119,25 +138,32 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               choices = names(app_methods),
               selected = c("Rpart", "PPtreeViz", "PPtreeExtclass")
             ),
+            shiny::checkboxInput("enable_workspace_import", "Import from Workspace", value = FALSE),
+            shiny::conditionalPanel(
+              condition = "input.enable_workspace_import",
+              shiny::hr(),
+              shiny::uiOutput("workspace_import_ui"),
+              shiny::hr()
+            ),
             shiny::uiOutput("prob_surface_ui"),
             shiny::conditionalPanel(
               condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
-              shiny::selectInput("rule", "Projection Pursuit Rule", choices = 1:8, selected = 1)
+              shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1)
             ),
             shiny::conditionalPanel(
               condition = "input.selected_models && input.selected_models.indexOf('PPtreeExtclass') > -1",
-              shiny::numericInput("stop", "Stopping Rule", value = 4, min = 1)
+              shiny::numericInput("stop", "PPtreeExt: Stopping Rule", value = 4, min = 1)
             ),
             shiny::conditionalPanel(
               condition = "input.selected_models && input.selected_models.indexOf('Rpart') > -1",
               shiny::hr(),
-              shiny::numericInput("rpart_cp", "Complexity Parameter", value = 0.01, min = 0, step = 0.01)
+              shiny::numericInput("rpart_cp", "Rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01)
             ),
             shiny::conditionalPanel(
               condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
               shiny::hr(),
-              shiny::numericInput("rf_ntree", "Number of Trees", value = 500, min = 10, step = 50)
+              shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50)
             ),
             lapply(names(custom_uis), function(m_name) {
               shiny::conditionalPanel(
@@ -297,8 +323,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       req_models <- input$selected_models
       if (length(req_models) == 0) return(NULL)
 
-      # Check if ALL selected models support probability
-      all_support_prob <- all(vapply(req_models, function(m) {
+      # Check if ANY selected model supports probability
+      any_support_prob <- any(vapply(req_models, function(m) {
         if (m %in% names(app_methods)) {
           isTRUE(app_methods[[m]]$supports_prob)
         } else if (m %in% names(custom_models)) {
@@ -310,12 +336,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       shiny::div(
         style = "margin-top: 15px; margin-bottom: 10px;",
-        if (all_support_prob) {
+        if (any_support_prob) {
           shiny::checkboxInput("show_probs", "Show Probability Surface", value = FALSE)
         } else {
           shiny::div(
             style = "opacity: 0.6; pointer-events: none;",
-            title = "One or more selected classifiers do not support probability outputs. Falling back to hard decision boundaries.",
+            title = "None of the selected classifiers support probability outputs. Falling back to hard decision boundaries.",
             shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = FALSE)
           )
         }
@@ -341,7 +367,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         class_choices(mode_states[[new_mode]]$classes)
 
         # Reset UI element for drawing
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1], inline = TRUE)
+        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1])
       }
 
       previous_data_mode(new_mode)
@@ -354,8 +380,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         class_choices(updated_choices)
         shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class",
           choices = updated_choices,
-          selected = new_class,
-          inline = TRUE
+          selected = new_class
         )
         shiny::updateTextInput(shiny::getDefaultReactiveDomain(), "new_class_name", value = "")
       }
@@ -373,7 +398,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::wellPanel(
           shiny::h5(paste("Class", i)),
           shiny::textInput(paste0("sim_mean_", i), "Mean (comma separated)", value = if (i == 1) "-1,0" else if (i == 2) "1,0" else "0,1"),
-          shiny::textInput(paste0("sim_cov_", i), "Covariance Diag (comma separated)", value = "1,1"),
+          shiny::textInput(paste0("sim_sd_", i), "Standard Deviations (comma separated)", value = "1,1"),
+          shiny::numericInput(paste0("sim_cor_", i), "Correlation (rho)", value = 0, min = -0.99, max = 0.99, step = 0.1),
           shiny::numericInput(paste0("sim_n_", i), "Sample Size", value = 100, min = 10)
         )
       })
@@ -392,11 +418,27 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       for (i in 1:n) {
         m <- as.numeric(unlist(strsplit(input[[paste0("sim_mean_", i)]], ",")))
-        cv <- as.numeric(unlist(strsplit(input[[paste0("sim_cov_", i)]], ",")))
+        sds <- as.numeric(unlist(strsplit(input[[paste0("sim_sd_", i)]], ",")))
+        rho <- input[[paste0("sim_cor_", i)]]
         ns <- c(ns, input[[paste0("sim_n_", i)]])
 
         means[[i]] <- m
-        covs[[i]] <- diag(cv, length(m))
+        
+        # Construct covariance matrix using SDs and exchangeable correlation
+        dim_m <- length(m)
+        if (length(sds) != dim_m) {
+          shiny::showNotification(sprintf("Class %d: Length of SDs must match length of means.", i), type = "error")
+          return()
+        }
+        
+        cov_mat <- matrix(rho, nrow = dim_m, ncol = dim_m)
+        diag(cov_mat) <- 1
+        
+        # Scale correlation matrix to covariance matrix: Cov_ij = rho * sd_i * sd_j
+        sd_diag <- diag(sds, dim_m)
+        cov_mat <- sd_diag %*% cov_mat %*% sd_diag
+        
+        covs[[i]] <- cov_mat
       }
 
       lengths <- sapply(means, length)
@@ -404,13 +446,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::showNotification("Error: All mean vectors must have the same number of dimensions.", type = "error")
         return()
       }
-      cv_lengths <- sapply(covs, nrow)
-      if (any(cv_lengths != lengths)) {
-        shiny::showNotification("Error: Covariance diagonals must have the same length as their mean vectors.", type = "error")
-        return()
-      }
       if (any(is.na(unlist(means))) || any(is.na(unlist(covs)))) {
-        shiny::showNotification("Error: Invalid numeric input in mean or covariance.", type = "error")
+        shiny::showNotification("Error: Invalid numeric input in mean or SDs.", type = "error")
         return()
       }
 
@@ -418,7 +455,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       current_data(new_data)
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1], inline = TRUE)
+      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
       zoom_xlim(NULL)
       zoom_ylim(NULL)
     })
@@ -426,7 +463,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     shiny::observeEvent(input$clear, {
       current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
       class_choices(c("Class A", "Class B", "Class C"))
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = c("Class A", "Class B", "Class C"), selected = "Class A", inline = TRUE)
+      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = c("Class A", "Class B", "Class C"), selected = "Class A")
       zoom_xlim(NULL)
       zoom_ylim(NULL)
     })
@@ -470,12 +507,66 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         if (!is.null(b) && is.numeric(n) && n > 0) {
           cd <- current_data()
           feat_cols <- setdiff(colnames(cd), "Sim")
-          pts <- data.frame(Sim = shiny::isolate(input$draw_class))
+          pts <- data.frame(Sim = rep(shiny::isolate(input$draw_class), n))
           pts[[feat_cols[1]]] <- stats::runif(n, b$xmin, b$xmax)
           pts[[feat_cols[2]]] <- stats::runif(n, b$ymin, b$ymax)
           current_data(rbind(cd, pts))
         }
       }
+    })
+
+    output$workspace_import_ui <- shiny::renderUI({
+      input$refresh_ws # Take dependency on refresh button
+      models <- find_workspace_models(.GlobalEnv)
+      
+      shiny::tagList(
+        if (length(models) > 0) {
+          shiny::selectInput("ws_model", "Select Workspace Object", choices = models)
+        } else {
+          shiny::p("No workflow or model_fit objects found in global environment.")
+        },
+        shiny::div(
+          style = "display: flex; gap: 10px; flex-wrap: wrap;",
+          shiny::actionButton("refresh_ws", "Refresh", icon = shiny::icon("sync")),
+          if (length(models) > 0) shiny::actionButton("add_ws_model", "Add to Comparison", class = "btn-primary")
+        )
+      )
+    })
+    
+    shiny::observeEvent(input$add_ws_model, {
+      shiny::req(input$ws_model)
+      obj_name <- input$ws_model
+      
+      tryCatch({
+        obj <- get(obj_name, envir = .GlobalEnv)
+        friendly_name <- paste0("Workspace: ", obj_name)
+        
+        is_new <- !(friendly_name %in% names(app_methods))
+        
+        # Add to the closure variables
+        app_methods[[friendly_name]] <<- list(
+          fn = obj,
+          args = list(),
+          supports_prob = inherits(obj, "workflow") # Generally workflows support probability
+        )
+        predict_args[[friendly_name]] <<- function(...) list()
+        
+        # Update UI choices
+        shiny::updateCheckboxGroupInput(
+          shiny::getDefaultReactiveDomain(),
+          "selected_models",
+          choices = names(app_methods),
+          selected = unique(c(input$selected_models, friendly_name))
+        )
+        
+        if (is_new) {
+          shiny::showNotification(paste("Added", obj_name, "to models."), type = "message")
+        } else {
+          shiny::showNotification(paste("Updated existing model", obj_name, "from workspace."), type = "message")
+        }
+      }, error = function(e) {
+        shiny::showNotification(paste("Failed to import model:", e$message), type = "error")
+      })
     })
 
     output$plot_grid <- shiny::renderUI({
@@ -486,11 +577,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       plot_outputs <- lapply(models, function(m) {
         col_width <- max(4, floor(12 / length(models)))
+        safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
 
         shiny::column(
           col_width,
           shiny::plotOutput(
-            outputId = paste0("plot_", m),
+            outputId = safe_id,
             click = "plot_click",
             dblclick = "plot_dblclick",
             brush = shiny::brushOpts(id = "plot_brush", resetOnNew = TRUE)
@@ -588,7 +680,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
 
       lapply(models, function(m) {
-        output[[paste0("plot_", m)]] <- shiny::renderPlot({
+        safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
+        output[[safe_id]] <- shiny::renderPlot({
           dat <- current_data()
 
           title <- switch(m,
@@ -653,8 +746,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             },
             error = function(e) {
               # Graceful fallback if model fails (e.g. data is degenerate)
+              err_msg <- gsub("\033\\[[0-9;]*m", "", e$message)
+              err_text <- paste(strwrap(paste("Error:", err_msg), width = 40), collapse = "\n")
+              
               ggplot2::ggplot() +
-                ggplot2::annotate("text", x = 0, y = 0, label = paste("Error:", e$message)) +
+                ggplot2::annotate("text", x = 0, y = 0, label = err_text) +
                 ggplot2::labs(title = title) +
                 ggplot2::theme_minimal() +
                 ggplot2::theme(aspect.ratio = 1)

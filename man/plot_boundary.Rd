@@ -17,6 +17,7 @@ plot_boundary(
   disagree_color = "#FF8000",
   obs_alpha = 1,
   obs_size = 2.5,
+  render = c("raster", "tile"),
   ...
 )
 }
@@ -50,6 +51,8 @@ surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
 \item{obs_alpha}{Numeric transparency level for overlaid observation points (0.0 to 1.0).}
 
 \item{obs_size}{Numeric size for overlaid observation points.}
+
+\item{render}{Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).}
 
 \item{...}{Additional visualization parameters.}
 }

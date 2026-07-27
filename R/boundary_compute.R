@@ -289,6 +289,15 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
 
     df
   })
+  # Pad missing columns with NA before rbinding to support mixed models (probs vs no probs)
+  all_cols <- unique(unlist(lapply(res_list, colnames)))
+  res_list <- lapply(res_list, function(df) {
+    missing_cols <- setdiff(all_cols, colnames(df))
+    if (length(missing_cols) > 0) {
+      df[missing_cols] <- NA
+    }
+    df[, all_cols, drop = FALSE]
+  })
 
   final_boundary <- do.call(rbind, res_list)
 
