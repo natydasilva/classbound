@@ -39,7 +39,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     "Rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE),
     "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
-    "RandomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE)
+    "RandomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE),
+    "PPforest"        = list(fn = function(formula, data, ...) {
+      y_name <- all.vars(formula[[2]])
+      PPforest::PPforest(data = as.data.frame(data), y = y_name, ...)
+    }, args = list(PPmethod = "LDA", size.tr = 1, size.p = 1), supports_prob = FALSE)
   )
 
   predict_args <- list(
@@ -47,7 +51,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     "Rpart"           = function(...) list(),
     "PPtreeExt_split" = function(ru) list(Rule = ru),
     "PPtreeExtclass"  = function(...) list(),
-    "RandomForest"    = function(...) list()
+    "RandomForest"    = function(...) list(),
+    "PPforest"        = function(...) list()
   )
 
   # Dynamically add Tidymodels presets
@@ -132,12 +137,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::wellPanel(
           shiny::tags$details(
             shiny::tags$summary("Model Configuration", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
-            shiny::checkboxGroupInput(
-              "selected_models",
-              "Models to Compare",
-              choices = names(app_methods),
-              selected = c("Rpart", "PPtreeViz", "PPtreeExtclass")
-            ),
+              shiny::checkboxGroupInput(
+                "selected_models",
+                "Models to Compare",
+                choices = names(app_methods),
+                selected = c("Rpart", "PPtreeViz", "PPtreeExtclass")
+              ),
             shiny::checkboxInput("enable_workspace_import", "Import from Workspace", value = FALSE),
             shiny::conditionalPanel(
               condition = "input.enable_workspace_import",
