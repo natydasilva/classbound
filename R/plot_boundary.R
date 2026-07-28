@@ -197,11 +197,11 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       x_mat <- as.matrix(obs_data[, features])
 
       # Apply standardization
-      if (!is.null(proj$scale)) {
-        x_mat <- sweep(x_mat, 2, proj$scale, "/")
-      }
       if (!is.null(proj$center)) {
         x_mat <- sweep(x_mat, 2, proj$center, "-")
+      }
+      if (!is.null(proj$scale)) {
+        x_mat <- sweep(x_mat, 2, proj$scale, "/")
       }
 
       # Forward project to 2D coordinates
@@ -230,6 +230,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
 
       p <- p +
         ggnewscale::new_scale_fill() +
+        ggnewscale::new_scale("alpha") +
         ggplot2::geom_point(
           data = obs_df,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),

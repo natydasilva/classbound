@@ -105,6 +105,19 @@ fit_model.function <- function(data, formula, classifier, interface = c("formula
 #' @export
 #' @rdname fit_model
 fit_model.character <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list(), ...) {
-  fit_model.default(data, formula, classifier, interface, fit_args, ...)
+  # Try to evaluate the string (e.g., "rpart::rpart") to a function
+  fn <- tryCatch(
+    eval(str2lang(classifier)),
+    error = function(e) {
+      # Fallback to match.fun if evaluation fails
+      match.fun(classifier)
+    }
+  )
+  
+  if (!is.function(fn)) {
+    stop(sprintf("Could not resolve '%s' to a valid function.", classifier), call. = FALSE)
+  }
+  
+  fit_model.default(data, formula, fn, interface, fit_args, ...)
 }
 NA

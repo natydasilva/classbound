@@ -246,6 +246,7 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
     predict_df <- grid_df
 
     missing_feats <- setdiff(expected_names, colnames(predict_df))
+    imputed_silently <- c()
     for (feat in missing_feats) {
       if (!is.null(reference) && feat %in% names(reference)) {
         val <- reference[[feat]]
@@ -259,7 +260,15 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
         predict_df[[feat]] <- val
       } else {
         predict_df[[feat]] <- first_model$metadata$features$imputation[[feat]]
+        imputed_silently <- c(imputed_silently, feat)
       }
+    }
+
+    if (length(imputed_silently) > 0) {
+      warning(
+        sprintf("The following high-dimensional features were not provided and were automatically imputed with their median/mode: %s", paste(imputed_silently, collapse = ", ")),
+        call. = FALSE
+      )
     }
 
     # Reorder columns to exactly match expected_names

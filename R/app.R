@@ -32,6 +32,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   if (!requireNamespace("MixSim", quietly = TRUE)) {
     stop("Package 'MixSim' must be installed to use explorapp().", call. = FALSE)
   }
+  if (!requireNamespace("DT", quietly = TRUE)) {
+    stop("Package 'DT' must be installed to use explorapp().", call. = FALSE)
+  }
 
   # UI to Package API Mapping
   app_methods <- list(
@@ -151,6 +154,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               shiny::hr()
             ),
             shiny::uiOutput("prob_surface_ui"),
+            shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
             shiny::conditionalPanel(
               condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
@@ -183,33 +187,34 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       ),
       shiny::mainPanel(
         shiny::uiOutput("data_stats_ui"),
-        shiny::uiOutput("plot_grid")
+        shiny::uiOutput("plot_grid"),
+        shiny::conditionalPanel(
+          condition = "input.selected_models && input.selected_models.length > 0",
+          shiny::hr(),
+          shiny::h4("Training Performance Metrics"),
+          DT::dataTableOutput("metrics_table"),
+          shiny::hr(),
+          shiny::h4("Visualization Information"),
+          shiny::uiOutput("vis_info_ui")
+        )
       )
     )
   )
 
 
-  create_boundary_plot <- function(data, test, meth, title, ru = 1, fit_opts = list(), class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE) {
-    config <- app_methods[[meth]]
-    if (is.null(config)) stop("Unknown method: ", meth)
-    fit_args <- c(config$args, fit_opts)
-    predict_args <- predict_args[[meth]](ru)
-
-    # Fit the model via the core pipeline
-    cb_mod <- fit_model(data, Sim ~ ., classifier = config$fn, fit_args = fit_args)
-
+  create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100) {
     if (!is.null(proj_matrix)) {
       proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
       x_mat <- as.matrix(data[, rownames(proj_matrix)])
-      if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
       if (!is.null(proj_info$center)) x_mat <- sweep(x_mat, 2, proj_info$center, "-")
+      if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
       z_mat <- x_mat %*% proj_matrix
 
       range_list <- list(
         PC1 = range(z_mat[, 1]) + c(-0.5, 0.5),
         PC2 = range(z_mat[, 2]) + c(-0.5, 0.5)
       )
-      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100, projection = proj_list)
+      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, projection = proj_list)
       x_col_label <- "PC1"
       y_col_label <- "PC2"
     } else {
@@ -220,14 +225,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       range_list[[x_name]] <- range(data[[x_name]]) + c(-0.5, 0.5)
       range_list[[y_name]] <- range(data[[y_name]]) + c(-0.5, 0.5)
 
-      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100)
+      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution)
       x_col_label <- x_name
       y_col_label <- y_name
     }
-
-    # Calculate test error for the UI title
-    preds <- predict_model(cb_mod, test, predict_args = predict_args)
-    err <- round(mean(preds$class != test$Sim) * 100, 3)
 
     # Lock factor levels if provided to prevent color shifting
     if (!is.null(class_levels)) {
@@ -237,7 +238,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     # Render plot
     p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs) +
-      ggplot2::ggtitle(paste0(title, " (Error ", err, "%)")) +
+      ggplot2::ggtitle(title) +
       ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
       ggplot2::scale_color_discrete(drop = FALSE)
 
@@ -291,7 +292,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     output$data_stats_ui <- shiny::renderUI({
       dat <- current_data()
-      if (nrow(dat) == 0) {
+      if (is.null(dat) || nrow(dat) == 0) {
         return(NULL)
       }
 
@@ -339,15 +340,17 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         }
       }, logical(1)))
 
+      current_val <- shiny::isolate(isTRUE(input$show_probs))
+      
       shiny::div(
         style = "margin-top: 15px; margin-bottom: 10px;",
         if (any_support_prob) {
-          shiny::checkboxInput("show_probs", "Show Probability Surface", value = FALSE)
+          shiny::checkboxInput("show_probs", "Show Probability Surface", value = current_val)
         } else {
           shiny::div(
             style = "opacity: 0.6; pointer-events: none;",
             title = "None of the selected classifiers support probability outputs. Falling back to hard decision boundaries.",
-            shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = FALSE)
+            shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = current_val)
           )
         }
       )
@@ -364,12 +367,19 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (!is.null(old_mode)) {
         mode_states[[old_mode]]$data <- current_data()
         mode_states[[old_mode]]$classes <- class_choices()
+        mode_states[[old_mode]]$basis <- current_basis()
+        mode_states[[old_mode]]$projection <- current_projection()
+        mode_states[[old_mode]]$projection_info <- current_projection_info()
       }
 
       # Load state from new mode
       if (!is.null(mode_states[[new_mode]]$data)) {
         current_data(mode_states[[new_mode]]$data)
         class_choices(mode_states[[new_mode]]$classes)
+        
+        current_basis(mode_states[[new_mode]]$basis)
+        current_projection(mode_states[[new_mode]]$projection)
+        current_projection_info(mode_states[[new_mode]]$projection_info)
 
         # Reset UI element for drawing
         shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1])
@@ -411,19 +421,26 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     })
 
     shiny::observeEvent(input$sim_do, {
+      shiny::req(input$sim_do > 0)
       shiny::req(input$sim_n_classes)
       n <- input$sim_n_classes
       if (is.na(n) || n < 1) {
         return()
       }
-
+      
       means <- list()
       covs <- list()
       ns <- c()
-
+      
       for (i in 1:n) {
-        m <- as.numeric(unlist(strsplit(input[[paste0("sim_mean_", i)]], ",")))
-        sds <- as.numeric(unlist(strsplit(input[[paste0("sim_sd_", i)]], ",")))
+        m_str <- input[[paste0("sim_mean_", i)]]
+        s_str <- input[[paste0("sim_sd_", i)]]
+        
+        # Guard against NULL inputs if UI hasn't fully rendered
+        if (is.null(m_str) || is.null(s_str)) return()
+        
+        m <- suppressWarnings(as.numeric(unlist(strsplit(m_str, ","))))
+        sds <- suppressWarnings(as.numeric(unlist(strsplit(s_str, ","))))
         rho <- input[[paste0("sim_cor_", i)]]
         ns <- c(ns, input[[paste0("sim_n_", i)]])
 
@@ -456,7 +473,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         return()
       }
 
-      new_data <- simu_n(means = means, covs = covs, ns = ns)
+      new_data <- tryCatch({
+        simu_n(means = means, covs = covs, ns = ns)
+      }, error = function(e) {
+        shiny::showNotification(paste("Data generation failed:", e$message), type = "error")
+        NULL
+      })
+      
+      if (is.null(new_data)) return()
+      
       current_data(new_data)
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
@@ -626,13 +651,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         # Check variance to prevent scaling errors
         vars <- apply(num_dat, 2, stats::var)
         scale_flag <- if (any(vars == 0, na.rm = TRUE)) FALSE else TRUE
+        
+        if (!scale_flag) {
+          shiny::showNotification("Notice: One or more features have zero variance. PCA scaling has been disabled.", type = "warning")
+        }
 
         pca <- stats::prcomp(num_dat, scale. = scale_flag)
         basis <- pca$rotation[, 1:2]
         basis <- tourr::orthonormalise(basis)
         current_basis(basis)
         current_projection(basis)
-        current_projection_info(list(center = pca$center, scale = pca$scale))
+        scale_val <- if (is.numeric(pca$scale)) pca$scale else NULL
+        current_projection_info(list(center = pca$center, scale = scale_val))
       } else if (ncol(dat) <= 3) {
         current_basis(NULL)
         current_path(NULL)
@@ -675,7 +705,48 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       current_projection(new_proj)
     })
 
-    #
+    comparison_state <- shiny::reactive({
+      models <- input$selected_models
+      dat <- current_data()
+      if (is.null(models) || length(models) == 0 || nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
+        return(NULL)
+      }
+      
+      state <- list(train_data = dat, models = list())
+      
+      for (m in models) {
+        config <- app_methods[[m]]
+        if (!is.null(config)) {
+          plot_opts <- list()
+          if (m == "PPtreeExtclass") plot_opts <- list(stop = input$stop)
+          if (m == "Rpart") plot_opts <- list(control = rpart::rpart.control(cp = input$rpart_cp))
+          if (m == "RandomForest") plot_opts <- list(ntree = input$rf_ntree)
+          
+          if (!is.null(config$fit_args_fn) && is.function(config$fit_args_fn)) {
+            custom_opts <- config$fit_args_fn(input)
+            plot_opts <- c(plot_opts, custom_opts)
+          }
+          
+          fit_args <- c(config$args, plot_opts)
+          
+          tryCatch({
+            cb_mod <- fit_model(dat, Sim ~ ., classifier = config$fn, fit_args = fit_args)
+            pred_args <- predict_args[[m]](as.numeric(input$rule))
+            preds <- predict_model(cb_mod, dat, predict_args = pred_args)
+            
+            state$models[[m]] <- list(
+              model = cb_mod,
+              predictions = preds
+            )
+          }, error = function(e) {
+            warning(paste("Model", m, "failed to fit:", e$message))
+            shiny::showNotification(paste("Model", m, "failed to fit:", e$message), type = "error", duration = 10)
+          })
+        }
+      }
+      
+      state
+    })
 
     # We must observe changes to selected models to register renderPlot for newly selected ones
     shiny::observe({
@@ -698,7 +769,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             m
           )
 
-          if (nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
+          if (is.null(dat) || nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
             feat_cols <- setdiff(colnames(dat), "Sim")
             x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
             y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
@@ -720,33 +791,32 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             return(p)
           }
 
-          # Safe fit and plot
-          plot_opts <- list()
-          if (m == "PPtreeExtclass") plot_opts <- list(stop = input$stop)
-          if (m == "Rpart") plot_opts <- list(control = rpart::rpart.control(cp = input$rpart_cp))
-          if (m == "RandomForest") plot_opts <- list(ntree = input$rf_ntree)
-
-          c_mod <- app_methods[[m]]
-          if (!is.null(c_mod$fit_args_fn) && is.function(c_mod$fit_args_fn)) {
-            custom_opts <- c_mod$fit_args_fn(input)
-            plot_opts <- c(plot_opts, custom_opts)
+          state <- comparison_state()
+          if (is.null(state) || is.null(state$models[[m]])) {
+            return(
+              ggplot2::ggplot() +
+                ggplot2::annotate("text", x = 0, y = 0, label = "Model failed to fit") +
+                ggplot2::labs(title = title) +
+                ggplot2::theme_minimal() +
+                ggplot2::theme(aspect.ratio = 1)
+            )
           }
+          
+          cb_mod <- state$models[[m]]$model
 
           tryCatch(
             {
               create_boundary_plot(
+                cb_mod = cb_mod,
                 data = dat,
-                test = dat,
-                meth = m,
-                title = m,
-                ru = as.numeric(input$rule),
-                fit_opts = plot_opts,
+                title = title,
                 class_levels = class_choices(),
                 proj_matrix = current_projection(),
                 proj_info = current_projection_info(),
                 zoom_x = zoom_xlim(),
                 zoom_y = zoom_ylim(),
-                show_probs = isTRUE(input$show_probs)
+                show_probs = isTRUE(input$show_probs),
+                resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100
               )
             },
             error = function(e) {
@@ -763,6 +833,91 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           )
         })
       })
+    })
+
+    output$metrics_table <- DT::renderDataTable({
+      state <- comparison_state()
+      if (is.null(state) || length(state$models) == 0) {
+        return(NULL)
+      }
+      
+      dat <- state$train_data
+      true_labels <- dat$Sim
+      
+      metrics_list <- lapply(names(state$models), function(m) {
+        preds <- state$models[[m]]$predictions$class
+        
+        if (is.null(preds) || length(preds) != length(true_labels)) {
+           return(data.frame(
+             Model = m,
+             `Training Accuracy` = NA,
+             `Training Error` = NA,
+             `Training Kappa` = NA,
+             check.names = FALSE
+           ))
+        }
+        
+        acc <- sum(preds == true_labels) / length(true_labels)
+        err <- 1 - acc
+        
+        levs <- class_choices()
+        if (is.null(levs)) levs <- unique(c(as.character(preds), as.character(true_labels)))
+        tab <- table(factor(preds, levels = levs), factor(true_labels, levels = levs))
+        row_sums <- rowSums(tab)
+        col_sums <- colSums(tab)
+        pe <- sum((row_sums * col_sums) / sum(tab)^2)
+        kappa <- if (is.nan(pe) || pe == 1) 1 else (acc - pe) / (1 - pe)
+        
+        data.frame(
+          Model = m,
+          `Training Accuracy` = round(acc, 4),
+          `Training Error` = round(err, 4),
+          `Training Kappa` = round(kappa, 4),
+          check.names = FALSE
+        )
+      })
+      
+      res <- do.call(rbind, metrics_list)
+      
+      DT::datatable(
+        res,
+        options = list(
+          dom = 't',
+          paging = FALSE,
+          searching = FALSE,
+          ordering = TRUE
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+      )
+    })
+
+    output$vis_info_ui <- shiny::renderUI({
+      state <- comparison_state()
+      dat <- current_data()
+      if (is.null(state) || length(state$models) == 0 || nrow(dat) < 2) return(NULL)
+
+      res_val <- if (!is.null(input$grid_resolution)) input$grid_resolution else 100
+      tot_points <- res_val * res_val
+      render_mode <- "raster"
+      proj_active <- !is.null(current_projection())
+      
+      feat_cols <- setdiff(colnames(dat), "Sim")
+      range_str <- if (length(feat_cols) >= 2) {
+        r1 <- range(dat[[feat_cols[1]]], na.rm = TRUE)
+        r2 <- range(dat[[feat_cols[2]]], na.rm = TRUE)
+        sprintf("%s: [%.2f, %.2f], %s: [%.2f, %.2f]", feat_cols[1], r1[1], r1[2], feat_cols[2], r2[1], r2[2])
+      } else {
+        "N/A"
+      }
+      
+      shiny::tags$ul(
+        shiny::tags$li(shiny::strong("Grid Resolution: "), sprintf("%d x %d", res_val, res_val)),
+        shiny::tags$li(shiny::strong("Total Grid Points: "), format(tot_points, big.mark = ",")),
+        shiny::tags$li(shiny::strong("Feature Ranges: "), range_str),
+        shiny::tags$li(shiny::strong("Rendering Engine: "), render_mode),
+        shiny::tags$li(shiny::strong("Space: "), if(proj_active) "High-Dimensional Projection" else "Native 2D Feature Space")
+      )
     })
   }
 
