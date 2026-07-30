@@ -89,10 +89,20 @@ extract_feature_metadata <- function(data) {
     }
   })
 
+  range_values <- lapply(data, function(col) {
+    if (is.numeric(col)) {
+      val <- suppressWarnings(range(col, na.rm = TRUE))
+      if (any(is.infinite(val))) NULL else val
+    } else {
+      NULL
+    }
+  })
+
   list(
     names = colnames(data),
     types = lapply(data, class),
     levels = lapply(data, levels),
-    imputation = imputation_values
+    imputation = imputation_values,
+    range = range_values
   )
 }

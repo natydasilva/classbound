@@ -6,15 +6,39 @@
 #' @param wf_set A `workflow_set` object from the `workflowsets` package.
 #' @param data A data frame containing the training data. This is required to extract feature
 #'   metadata and to fit any workflows that are not yet trained.
-#' @param range A named list specifying the minimum and maximum values for each feature.
+#' @param range An optional named list specifying the minimum and maximum values for each feature,
+#'   or a character vector of feature names. If `NULL`, the ranges are automatically computed from the training data
+#'   (if there are exactly 2 numeric features).
 #' @param response A string specifying the name of the response column in `data`.
 #' @param resolution An integer specifying the number of points along each axis (default = 100).
 #' @param ... Additional arguments passed to `boundary_compute()`.
 #'
 #' @return A data frame containing the combined boundary grid for all models, with a `model` column
 #'   indicating the `wflow_id`.
+#' @examples
+#' \donttest{
+#' library(palmerpenguins)
+#' library(workflowsets)
+#' library(parsnip)
+#' 
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#' 
+#' # Define multiple engines
+#' spec_rpart <- decision_tree() |> set_engine("rpart") |> set_mode("classification")
+#' spec_glm   <- multinom_reg() |> set_engine("nnet") |> set_mode("classification")
+#' 
+#' # Create a workflow set
+#' wf_set <- workflow_set(
+#'   preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
+#'   models = list(tree = spec_rpart, log_reg = spec_glm)
+#' )
+#' 
+#' # Compute 2D boundaries for all models simultaneously (auto-range)
+#' bounds <- boundary_workflow_set(wf_set, peng_data, response = "species", resolution = 30)
+#' }
 #' @export
-boundary_workflow_set <- function(wf_set, data, range, response, resolution = 100, ...) {
+boundary_workflow_set <- function(wf_set, data, range = NULL, response, resolution = 100, ...) {
   if (!requireNamespace("workflowsets", quietly = TRUE)) {
     stop("Package 'workflowsets' is required to process workflow_set objects.", call. = FALSE)
   }

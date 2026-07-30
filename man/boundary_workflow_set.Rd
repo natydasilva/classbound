@@ -4,7 +4,14 @@
 \alias{boundary_workflow_set}
 \title{Compute classification boundaries for a workflow_set}
 \usage{
-boundary_workflow_set(wf_set, data, range, response, resolution = 100, ...)
+boundary_workflow_set(
+  wf_set,
+  data,
+  range = NULL,
+  response,
+  resolution = 100,
+  ...
+)
 }
 \arguments{
 \item{wf_set}{A \code{workflow_set} object from the \code{workflowsets} package.}
@@ -12,7 +19,9 @@ boundary_workflow_set(wf_set, data, range, response, resolution = 100, ...)
 \item{data}{A data frame containing the training data. This is required to extract feature
 metadata and to fit any workflows that are not yet trained.}
 
-\item{range}{A named list specifying the minimum and maximum values for each feature.}
+\item{range}{An optional named list specifying the minimum and maximum values for each feature,
+or a character vector of feature names. If \code{NULL}, the ranges are automatically computed from the training data
+(if there are exactly 2 numeric features).}
 
 \item{response}{A string specifying the name of the response column in \code{data}.}
 
@@ -27,4 +36,27 @@ indicating the \code{wflow_id}.
 \description{
 A dedicated helper to automatically fit and extract classification boundaries
 for an entire \code{workflow_set}. This avoids the need for manual iteration over models.
+}
+\examples{
+\donttest{
+library(palmerpenguins)
+library(workflowsets)
+library(parsnip)
+
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+# Define multiple engines
+spec_rpart <- decision_tree() |> set_engine("rpart") |> set_mode("classification")
+spec_glm   <- multinom_reg() |> set_engine("nnet") |> set_mode("classification")
+
+# Create a workflow set
+wf_set <- workflow_set(
+  preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
+  models = list(tree = spec_rpart, log_reg = spec_glm)
+)
+
+# Compute 2D boundaries for all models simultaneously (auto-range)
+bounds <- boundary_workflow_set(wf_set, peng_data, response = "species", resolution = 30)
+}
 }

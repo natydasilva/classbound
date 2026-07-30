@@ -15,12 +15,30 @@
 #'     (verified for \code{qeML::qeKNN}).
 #' }
 #' @param fit_args A named list of additional arguments passed to the classifier during fitting.
+#' @param ... Additional arguments passed to methods.
 #'
 #' @return A fitted model object with a normalized structure of class "classbound", containing the raw model
 #'   and extracted feature metadata.
+#' @examples
+#' \donttest{
+#' library(palmerpenguins)
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#' 
+#' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+#' }
 #' @importFrom stats model.frame model.matrix model.response na.pass
 #' @export
-fit_model <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list()) {
+fit_model <- function(data, formula, classifier, ...) {
+  if (missing(classifier)) {
+    stop("Please specify a classifier function.", call. = FALSE)
+  }
+  UseMethod("fit_model", classifier)
+}
+
+#' @export
+#' @rdname fit_model
+fit_model.default <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list(), ...) {
   if (missing(classifier)) {
     stop("Please specify a classifier function.", call. = FALSE)
   }
@@ -77,3 +95,29 @@ fit_model <- function(data, formula, classifier, interface = c("formula", "matri
     class = "classbound"
   )
 }
+
+#' @export
+#' @rdname fit_model
+fit_model.function <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list(), ...) {
+  fit_model.default(data, formula, classifier, interface, fit_args, ...)
+}
+
+#' @export
+#' @rdname fit_model
+fit_model.character <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list(), ...) {
+  # Try to evaluate the string (e.g., "rpart::rpart") to a function
+  fn <- tryCatch(
+    eval(str2lang(classifier)),
+    error = function(e) {
+      # Fallback to match.fun if evaluation fails
+      match.fun(classifier)
+    }
+  )
+  
+  if (!is.function(fn)) {
+    stop(sprintf("Could not resolve '%s' to a valid function.", classifier), call. = FALSE)
+  }
+  
+  fit_model.default(data, formula, fn, interface, fit_args, ...)
+}
+NA

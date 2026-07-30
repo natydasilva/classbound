@@ -2,14 +2,38 @@
 % Please edit documentation in R/fit_model.R
 \name{fit_model}
 \alias{fit_model}
+\alias{fit_model.default}
+\alias{fit_model.function}
+\alias{fit_model.character}
 \title{Fit a machine learning model}
 \usage{
-fit_model(
+fit_model(data, formula, classifier, ...)
+
+\method{fit_model}{default}(
   data,
   formula,
   classifier,
   interface = c("formula", "matrix", "custom"),
-  fit_args = list()
+  fit_args = list(),
+  ...
+)
+
+\method{fit_model}{`function`}(
+  data,
+  formula,
+  classifier,
+  interface = c("formula", "matrix", "custom"),
+  fit_args = list(),
+  ...
+)
+
+\method{fit_model}{character}(
+  data,
+  formula,
+  classifier,
+  interface = c("formula", "matrix", "custom"),
+  fit_args = list(),
+  ...
 )
 }
 \arguments{
@@ -18,6 +42,8 @@ fit_model(
 \item{formula}{A formula specifying the response and predictors.}
 
 \item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{interface}{A string specifying how to invoke the classifier.
 \itemize{
@@ -37,4 +63,13 @@ and extracted feature metadata.
 }
 \description{
 Fits a machine learning classifier using a standard interface.
+}
+\examples{
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+}
 }

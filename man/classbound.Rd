@@ -17,11 +17,14 @@ classbound(
 )
 }
 \arguments{
-\item{data}{A data frame containing the training features and response.}
+\item{data}{A data frame containing the full training dataset. The specific variables
+used for modeling and plotting are strictly determined by the \code{formula}.}
 
-\item{formula}{A formula specifying the response and predictors.}
+\item{formula}{A formula specifying the response and exactly two predictors for the 2D visualization.}
 
-\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
+\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}, \code{e1071::svm}).
+This works with any R package classification algorithm. If the classifier uses a non-standard
+API, you can adapt it via the \code{predfun} argument.}
 
 \item{interface}{A string specifying how to invoke the classifier: \code{"formula"},
 \code{"matrix"}, or \code{"custom"}.}
@@ -37,9 +40,19 @@ classbound(
 \item{...}{Additional arguments passed to \code{\link{plot_boundary}}.}
 }
 \value{
-A \code{ggplot} object visualizing the decision boundary and original observations.
+A \code{ggplot} object visualizing the 2D decision boundary and original observations.
 }
 \description{
 A high-level unified wrapper to fit a model, compute its 2D decision boundary,
 and plot the results in a single step.
+}
+\examples{
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+# Quick 2D boundary visualization for an SVM
+classbound(peng_data, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
+}
 }

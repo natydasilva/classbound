@@ -32,23 +32,33 @@
 #' @param disagree_color Color used for areas where models disagree (only for type='disagreement').
 #' @param obs_alpha Numeric transparency level for overlaid observation points (0.0 to 1.0).
 #' @param obs_size Numeric size for overlaid observation points.
+#' @param render Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
 #' @examples
 #' \donttest{
-#' data(data69_1)
-#' data69_1$Y <- as.factor(data69_1$Y)
-#' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-#' model <- boundary_compute(model, list(V1 = c(-1, 1), V2 = c(-1, 1)))
-#' plot_boundary(model, data69_1, "V1", "V2", "Y")
+#' library(palmerpenguins)
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+#' 
+#' # Auto-compute bounds and generate 2D grid
+#' m_rpart <- boundary_compute(m_rpart, resolution = 50)
+#' 
+#' # Plot the decision boundary with observations overlaid
+#' plot_boundary(m_rpart, obs_data = peng_data, 
+#'               x_col = "bill_length_mm", y_col = "bill_depth_mm", 
+#'               true_label = "species")
 #' }
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D",
                           show_gradient = FALSE,
                           agree_color = "#006666", disagree_color = "#FF8000",
-                          obs_alpha = 1.0, obs_size = 2.5, ...) {
+                          obs_alpha = 1.0, obs_size = 2.5, render = c("raster", "tile"), ...) {
+  render <- match.arg(render)
+
   if (!type %in% c("2D", "disagreement")) {
     stop("Only type='2D' and type='disagreement' are currently supported.", call. = FALSE)
   }
@@ -84,8 +94,13 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     # Ensure it's a factor for discrete coloring
     disagree_data$prediction <- factor(disagree_data$prediction, levels = c("Agree", "Disagree"))
 
-    p <- ggplot2::ggplot(disagree_data, ggplot2::aes(x = .data$x, y = .data$y)) +
-      ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction)) +
+    p <- ggplot2::ggplot(disagree_data, ggplot2::aes(x = .data$x, y = .data$y))
+    if (render == "raster") {
+      p <- p + ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction))
+    } else {
+      p <- p + ggplot2::geom_tile(ggplot2::aes(fill = .data$prediction))
+    }
+    p <- p +
       ggplot2::scale_fill_manual(
         values = c("Agree" = agree_color, "Disagree" = disagree_color),
         drop = FALSE
@@ -97,26 +112,38 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         fill = "Consensus"
       )
   } else {
-    # Check if probabilities exist for all class levels
-    class_levels <- levels(boundary$prediction)
-    has_probs <- !is.null(class_levels) && all(class_levels %in% colnames(boundary))
-
-    if (show_gradient && !has_probs) {
-      warning(
-        "show_gradient = TRUE was requested, but the boundary data does not contain class probabilities. Falling back to a flat decision boundary.",
-        call. = FALSE
-      )
+    if (show_gradient) {
+      # Safely extract probability for the predicted class, leaving NA if the model doesn't support it
+      boundary$probability <- NA_real_
+      for (lvl in levels(boundary$prediction)) {
+        if (lvl %in% colnames(boundary)) {
+          idx <- which(boundary$prediction == lvl)
+          boundary$probability[idx] <- boundary[[lvl]][idx]
+        }
+      }
+      
+      has_any_probs <- any(!is.na(boundary$probability))
+      
+      if (!has_any_probs) {
+        warning(
+          "show_gradient = TRUE was requested, but no models contain class probabilities. Falling back to a flat decision boundary.",
+          call. = FALSE
+        )
+      }
+    } else {
+      has_any_probs <- FALSE
     }
 
-    if (has_probs && show_gradient) {
-      # Extract the probability of the predicted class for each point
-      col_indices <- match(as.character(boundary$prediction), colnames(boundary))
-      boundary$probability <- as.numeric(boundary[cbind(seq_len(nrow(boundary)), col_indices)])
-
-      # Basic plot with alpha mapped to probability
-      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
-        ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability)) +
-        ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), guide = "none") +
+    if (has_any_probs) {
+      # Basic plot with alpha mapped to probability (missing probs fallback to 0.3 transparency)
+      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y))
+      if (render == "raster") {
+        p <- p + ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction, alpha = .data$probability))
+      } else {
+        p <- p + ggplot2::geom_tile(ggplot2::aes(fill = .data$prediction, alpha = .data$probability))
+      }
+      p <- p +
+        ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
         ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::labs(
@@ -126,8 +153,13 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         )
     } else {
       # Basic plot with hardcoded alpha (no probabilities)
-      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y)) +
-        ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3) +
+      p <- ggplot2::ggplot(boundary, ggplot2::aes(x = .data$x, y = .data$y))
+      if (render == "raster") {
+        p <- p + ggplot2::geom_raster(ggplot2::aes(fill = .data$prediction), alpha = 0.3)
+      } else {
+        p <- p + ggplot2::geom_tile(ggplot2::aes(fill = .data$prediction), alpha = 0.3)
+      }
+      p <- p +
         ggplot2::theme_minimal() +
         ggplot2::scale_fill_discrete(drop = FALSE) +
         ggplot2::labs(
@@ -165,11 +197,11 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       x_mat <- as.matrix(obs_data[, features])
 
       # Apply standardization
-      if (!is.null(proj$scale)) {
-        x_mat <- sweep(x_mat, 2, proj$scale, "/")
-      }
       if (!is.null(proj$center)) {
         x_mat <- sweep(x_mat, 2, proj$center, "-")
+      }
+      if (!is.null(proj$scale)) {
+        x_mat <- sweep(x_mat, 2, proj$scale, "/")
       }
 
       # Forward project to 2D coordinates
@@ -198,6 +230,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
 
       p <- p +
         ggnewscale::new_scale_fill() +
+        ggnewscale::new_scale("alpha") +
         ggplot2::geom_point(
           data = obs_df,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
