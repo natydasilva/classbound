@@ -249,6 +249,10 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         stop(sprintf("obs_data must contain columns '%s' and '%s'.", x_col, y_col), call. = FALSE)
       }
 
+      if (!is.null(model$metadata$features$names) && length(model$metadata$features$names) > 2) {
+        warning("Plotting obs_data on a >2D slice projects points flat, which can be visually misleading. Consider using a projection matrix (e.g., PCA) via boundary_compute() instead.", call. = FALSE)
+      }
+
       obs_df <- obs_data[, c(x_col, y_col, true_label)]
       colnames(obs_df) <- c("x_val", "y_val", "true_class")
 
