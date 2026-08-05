@@ -42,14 +42,16 @@
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
 #' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
-#' 
+#'
 #' # Auto-compute bounds and generate 2D grid
 #' m_rpart <- boundary_compute(m_rpart, resolution = 50)
-#' 
+#'
 #' # Plot the decision boundary with observations overlaid
-#' plot_boundary(m_rpart, obs_data = peng_data, 
-#'               x_col = "bill_length_mm", y_col = "bill_depth_mm", 
-#'               true_label = "species")
+#' plot_boundary(m_rpart,
+#'   obs_data = peng_data,
+#'   x_col = "bill_length_mm", y_col = "bill_depth_mm",
+#'   true_label = "species"
+#' )
 #' }
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
@@ -121,9 +123,9 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           boundary$probability[idx] <- boundary[[lvl]][idx]
         }
       }
-      
+
       has_any_probs <- any(!is.na(boundary$probability))
-      
+
       if (!has_any_probs) {
         warning(
           "show_gradient = TRUE was requested, but no models contain class probabilities. Falling back to a flat decision boundary.",
@@ -285,6 +287,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     }
     p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)))
   }
-
+  p <- p + ggplot2::coord_cartesian(expand = FALSE)
   p
 }

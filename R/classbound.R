@@ -56,7 +56,7 @@ classbound <- function(data,
   predictor_vars <- setdiff(colnames(mf), response_var)
 
   if (length(predictor_vars) != 2) {
-    stop("classbound() currently supports exactly 2 predictors for 2D visualization.", call. = FALSE)
+    stop("The classbound() wrapper currently supports exactly 2 predictors for simple 2D visualization. For higher-dimensional data (which requires projections or reference values), please use the separated pipeline: fit_model() -> boundary_compute() -> plot_boundary().", call. = FALSE)
   }
 
   feature_range <- list()

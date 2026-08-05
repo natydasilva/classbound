@@ -30,7 +30,10 @@ Imports:
     parsnip,
     rlang,
     ggnewscale,
-    scales
+    scales,
+    shiny,
+    DT,
+    tourr
 Suggests:
     tidymodels,
     rpart,
@@ -44,13 +47,9 @@ Suggests:
     knitr,
     rmarkdown,
     palmerpenguins,
-    shiny,
-    MASS,
-    gridExtra,
-    MixSim,
-    tourr,
     e1071,
-    DT
+    MixSim,
+    MASS
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3
