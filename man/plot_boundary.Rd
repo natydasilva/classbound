@@ -18,6 +18,7 @@ plot_boundary(
   obs_alpha = 1,
   obs_size = 2.5,
   render = c("raster", "tile"),
+  colors = NULL,
   ...
 )
 }
@@ -54,6 +55,8 @@ surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
 
 \item{render}{Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).}
 
+\item{colors}{Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.}
+
 \item{...}{Additional visualization parameters.}
 }
 \value{
@@ -83,8 +86,10 @@ m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
 m_rpart <- boundary_compute(m_rpart, resolution = 50)
 
 # Plot the decision boundary with observations overlaid
-plot_boundary(m_rpart, obs_data = peng_data, 
-              x_col = "bill_length_mm", y_col = "bill_depth_mm", 
-              true_label = "species")
+plot_boundary(m_rpart,
+  obs_data = peng_data,
+  x_col = "bill_length_mm", y_col = "bill_depth_mm",
+  true_label = "species"
+)
 }
 }

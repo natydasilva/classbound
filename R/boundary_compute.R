@@ -118,7 +118,7 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
       if (!identical(m$metadata$class_levels, expected_classes)) {
         stop("All models in a multi-model list must share the exact same class levels.", call. = FALSE)
       }
-      # If we have feature types (e.g. from preprocessing), validate them too
+      # Validate feature types.
       if (!is.null(first_model$metadata$features$types) && !is.null(m$metadata$features$types)) {
         if (!identical(m$metadata$features$types, first_model$metadata$features$types)) {
           stop("All models in a multi-model list must share identical feature types.", call. = FALSE)
@@ -211,7 +211,6 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
     }
   }
 
-  # Ensure requested boundary features are numeric
   if (is.null(projection)) {
     feature_types <- first_model$metadata$features$types[var_names]
   } else {
@@ -222,15 +221,14 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
   if (any(!is_numeric)) {
     stop("Boundary generation requires numeric features. Categorical ranges are not supported.", call. = FALSE)
   }
-  # Generate grid points for each dimension
   seq_x <- seq(from = min(range[[1]]), to = max(range[[1]]), length.out = resolution)
   seq_y <- seq(from = min(range[[2]]), to = max(range[[2]]), length.out = resolution)
 
-  # Create grid
+  # Generate grid.
   grid_df <- expand.grid(seq_x, seq_y)
   colnames(grid_df) <- var_names
 
-  # Reconstruct high-dimensional feature space if projection is provided
+  # Apply projection matrix.
   if (!is.null(projection)) {
     z_matrix <- as.matrix(grid_df)
     x_matrix <- z_matrix %*% t(projection$basis)
@@ -271,7 +269,7 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
       )
     }
 
-    # Reorder columns to exactly match expected_names
+    # Restore expected column ordering.
     predict_df <- predict_df[, expected_names, drop = FALSE]
   }
 
@@ -298,7 +296,7 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
 
     df
   })
-  # Pad missing columns with NA before rbinding to support mixed models (probs vs no probs)
+  # Pad missing columns with NA.
   all_cols <- unique(unlist(lapply(res_list, colnames)))
   res_list <- lapply(res_list, function(df) {
     missing_cols <- setdiff(all_cols, colnames(df))

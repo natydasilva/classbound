@@ -49,14 +49,13 @@ preprocess_data <- function(data, labels = NULL, ...) {
     labels <- droplevels(as.factor(labels))
   }
 
-  # Factor handling for character columns in data
-  # Character columns are automatically converted to factors to ensure predictable modeling behavior.
+  # Coerce character columns to factors.
   char_cols <- sapply(data, is.character)
   if (any(char_cols)) {
     data[char_cols] <- lapply(data[char_cols], as.factor)
   }
 
-  # Drop unused levels for all factor columns in data
+  # Drop unused factor levels.
   factor_cols <- sapply(data, is.factor)
   if (any(factor_cols)) {
     data[factor_cols] <- lapply(data[factor_cols], droplevels)

@@ -20,7 +20,7 @@
 #' @export
 predict.classbound <- function(object, newdata, predict_args = list(), predfun = NULL, ...) {
   if (!is.null(predfun)) {
-    # Use the user-supplied custom prediction function
+    # Evaluate custom prediction function.
     args <- c(list(object$fit, newdata), predict_args, list(...))
     preds_raw <- do.call(predfun, args)
 
@@ -30,9 +30,7 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
       res <- list(class = as.factor(preds_raw), probs = NULL)
     }
   } else {
-    # Isolate strictly the features the model was trained on
-    # This prevents fragile native predict methods (like PPtreeViz) from crashing
-    # when non-numeric target variables or extra metadata columns are passed in newdata.
+    # Subset features to prevent native predict methods from crashing on extra columns.
     if (!is.null(object$metadata$features$names)) {
       expected_feats <- object$metadata$features$names
       present_feats <- intersect(expected_feats, colnames(newdata))
@@ -41,7 +39,7 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
       }
     }
 
-    # Call predict_adapter on the native model, dispatching on its native class
+    # Dispatch to predict_adapter.
     args <- c(list(model = object$fit, newdata = newdata), predict_args, list(...))
     res <- do.call(predict_adapter, args)
   }
@@ -112,8 +110,7 @@ predict_adapter <- function(model, newdata, ...) {
 
 #' @export
 predict_adapter.default <- function(model, newdata, ...) {
-  # Standard R predict convention: predict(model) usually returns a vector or factor of classes
-  # We wrap this in a tryCatch to provide an informative error if it fails
+  # Standardize predict output.
   preds <- tryCatch(
     predict(model, newdata, ...),
     error = function(e) {
@@ -124,8 +121,7 @@ predict_adapter.default <- function(model, newdata, ...) {
     }
   )
 
-  # Explicitly guard against non-standard outputs (e.g. lists, data frames, matrices)
-  # that some models return. These require specific predict_adapter implementations.
+  # Guard against non-standard prediction object returns.
   if (is.list(preds) || is.matrix(preds) || is.data.frame(preds)) {
     stop(
       sprintf(

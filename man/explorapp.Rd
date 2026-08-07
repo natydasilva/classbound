@@ -2,7 +2,7 @@
 % Please edit documentation in R/app.R
 \name{explorapp}
 \alias{explorapp}
-\title{Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios}
+\title{Shiny app to visually explore and compare classification boundaries for built-in, custom, and tidymodels algorithms in 2D}
 \usage{
 explorapp(data = NULL, target_col = NULL, custom_models = list())
 }
@@ -17,7 +17,7 @@ explorapp(data = NULL, target_col = NULL, custom_models = list())
 No return value, called for side effects. Shinyapp is launched.
 }
 \description{
-Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
+Shiny app to visually explore and compare classification boundaries for built-in, custom, and tidymodels algorithms in 2D
 }
 \examples{
 if (interactive()) {

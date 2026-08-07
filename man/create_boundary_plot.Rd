@@ -9,6 +9,7 @@ create_boundary_plot(
   data,
   title,
   class_levels = NULL,
+  class_colors = NULL,
   proj_matrix = NULL,
   proj_info = NULL,
   zoom_x = NULL,

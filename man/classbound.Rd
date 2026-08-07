@@ -9,6 +9,7 @@ classbound(
   formula,
   classifier,
   interface = c("formula", "matrix", "custom"),
+  projection = NULL,
   fit_args = list(),
   predict_args = list(),
   predfun = NULL,
@@ -20,7 +21,7 @@ classbound(
 \item{data}{A data frame containing the full training dataset. The specific variables
 used for modeling and plotting are strictly determined by the \code{formula}.}
 
-\item{formula}{A formula specifying the response and exactly two predictors for the 2D visualization.}
+\item{formula}{A formula specifying the response and predictors.}
 
 \item{classifier}{The classification function to use (e.g., \code{rpart::rpart}, \code{e1071::svm}).
 This works with any R package classification algorithm. If the classifier uses a non-standard
@@ -28,6 +29,8 @@ API, you can adapt it via the \code{predfun} argument.}
 
 \item{interface}{A string specifying how to invoke the classifier: \code{"formula"},
 \code{"matrix"}, or \code{"custom"}.}
+
+\item{projection}{An optional list (e.g., \code{list(basis=..., center=..., scale=...)}) specifying a 2D projection for high-dimensional data.}
 
 \item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
 

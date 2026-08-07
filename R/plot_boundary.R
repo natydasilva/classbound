@@ -33,6 +33,7 @@
 #' @param obs_alpha Numeric transparency level for overlaid observation points (0.0 to 1.0).
 #' @param obs_size Numeric size for overlaid observation points.
 #' @param render Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).
+#' @param colors Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
@@ -58,7 +59,8 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D",
                           show_gradient = FALSE,
                           agree_color = "#006666", disagree_color = "#FF8000",
-                          obs_alpha = 1.0, obs_size = 2.5, render = c("raster", "tile"), ...) {
+                          obs_alpha = 1.0, obs_size = 2.5, render = c("raster", "tile"),
+                          colors = NULL, ...) {
   render <- match.arg(render)
 
   if (!type %in% c("2D", "disagreement")) {
@@ -147,7 +149,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       p <- p +
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
-        ggplot2::scale_fill_discrete(drop = FALSE) +
+        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -163,7 +165,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       }
       p <- p +
         ggplot2::theme_minimal() +
-        ggplot2::scale_fill_discrete(drop = FALSE) +
+        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -238,7 +240,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
           size = obs_size, shape = 21, color = "white", stroke = 0.5
         ) +
-        ggplot2::scale_fill_discrete(drop = FALSE) +
+        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::scale_alpha_identity() +
         ggplot2::labs(fill = "True Class")
     } else {
@@ -265,7 +267,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
           size = obs_size, alpha = obs_alpha, shape = 21, color = "white", stroke = 0.5
         ) +
-        ggplot2::scale_fill_discrete(drop = FALSE) +
+        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::labs(fill = "True Class")
     }
   }

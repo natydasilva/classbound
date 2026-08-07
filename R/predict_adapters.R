@@ -10,10 +10,8 @@
 #' @importFrom stats predict
 #' @export
 predict_adapter.rpart <- function(model, newdata, ...) {
-  # Predict classes (discrete labels)
   preds <- predict(model, newdata, type = "class", ...)
 
-  # Predict probabilities (continuous matrix)
   probs <- predict(model, newdata, type = "prob", ...)
 
   list(
@@ -55,14 +53,12 @@ predict_adapter.randomForest <- function(model, newdata, ...) {
 #' @importFrom stats predict
 #' @export
 predict_adapter.PPtreeExtclass <- function(model, newdata, ...) {
-  # Predict classes
   preds_raw <- predict(model, newdata, ...)
   if (is.null(preds_raw$predict.class)) {
     stop("Unexpected prediction output from PPtreeExt model: 'predict.class' not found.", call. = FALSE)
   }
   preds <- as.factor(preds_raw$predict.class)
 
-  # Probability output is typically not provided natively by PPtreeExtclass
   probs <- NULL
 
   list(
@@ -85,10 +81,8 @@ predict_adapter.PPtreeExtclass <- function(model, newdata, ...) {
 predict_adapter.PPtreeclass <- function(model, newdata, ...) {
   newdata_df <- as.data.frame(newdata)
 
-  # Predict classes
   preds <- as.factor(predict(model, newdata = newdata_df, ...))
 
-  # PPtreeViz does not support probability predictions natively
   probs <- NULL
 
   list(
@@ -109,16 +103,11 @@ predict_adapter.PPtreeclass <- function(model, newdata, ...) {
 #' @importFrom stats predict
 #' @export
 predict_adapter.PPforest <- function(model, newdata, ...) {
-  # Ensure newdata only contains features used in model
-  # The training data was saved in the model but without .label.
-  # But PPforest predict requires just the features.
+  # Subset newdata to model features.
 
-  # remove any non-numeric columns if PPforest expects it,
-  # or just pass newdata directly since our pipeline guarantees matching features.
   newdata_df <- as.data.frame(newdata)
 
-  # PPforest has a known internal bug where foreach/codetools emits a false-positive
-  # warning about `...` being used in an incorrect context. We muffle only this specific warning.
+  # Suppress PPforest codetools false-positive warning.
   preds_raw <- withCallingHandlers(
     predict(model, newdata = newdata_df, ...),
     warning = function(w) {
@@ -133,7 +122,6 @@ predict_adapter.PPforest <- function(model, newdata, ...) {
     stop("Unexpected prediction output from PPforest model.", call. = FALSE)
   }
 
-  # The predicted classes are in the 3rd element of the list
   preds <- as.factor(preds_raw[[3]])
 
   list(

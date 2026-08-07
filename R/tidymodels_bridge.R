@@ -52,7 +52,6 @@ tidymodels_bridge <- function(data, response, models, range = NULL, resolution =
     rlang::abort("The `models` argument cannot be empty.")
   }
 
-  # Strict duplicate rejection design decision
   if (length(models) != length(unique(models))) {
     rlang::abort("Duplicate models detected. The `models` argument must contain unique engine names.")
   }
@@ -175,6 +174,7 @@ fit_model.model_spec <- function(data, formula, classifier, ...) {
 
 #' @export
 fit_model.model_fit <- function(data, formula, classifier, ...) {
+  # Reconstruct model frame to retrieve true labels
   mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
   y <- stats::model.response(mf)
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
@@ -191,4 +191,15 @@ fit_model.model_fit <- function(data, formula, classifier, ...) {
     ),
     class = "classbound"
   )
+}
+
+#' @export
+fit_model.workflow <- function(data, formula, classifier, ...) {
+  rlang::check_installed("workflows")
+  
+  # Workflows embed a fixed preprocessing formula. 
+  # Extract the underlying parsnip spec to allow refitting with the internal canvas formula (Sim ~ .).
+  spec <- workflows::extract_spec_parsnip(classifier)
+  
+  fit_model(data, formula, spec, ...)
 }

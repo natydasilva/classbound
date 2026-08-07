@@ -8,11 +8,13 @@ test_that("boundary_compute slicing works with imputation", {
   model <- fit_model(data = train_data, formula = species ~ ., classifier = rpart::rpart)
 
   # Request 2D boundary on bill_length and bill_depth
-  boundary_res <- boundary_compute(
-    model,
-    range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
-    resolution = 10
-  )
+  expect_warning({
+    boundary_res <- boundary_compute(
+      model,
+      range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+      resolution = 10
+    )
+  }, "The following high-dimensional features were not provided and were automatically imputed")
 
   # Verify boundary features are stored
   expect_equal(boundary_res$boundary_features, c("bill_length_mm", "bill_depth_mm"))

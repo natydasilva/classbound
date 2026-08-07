@@ -1,4 +1,4 @@
-#' Shiny app to compare PPtree, PPtreeExt and rpart boundaries in 2D with different simulation scenarios
+#' Shiny app to visually explore and compare classification boundaries for built-in, custom, and tidymodels algorithms in 2D
 #'
 #' @param data Optional data frame to import directly into the app.
 #' @param target_col Optional string specifying the column in `data` that contains the true class labels.
@@ -115,19 +115,16 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       shiny::sidebarPanel(
         shiny::wellPanel(
           shiny::radioButtons("data_mode", "Data Mode", choices = if(!is.null(data)) c("Import Data", "Simulate Data", "Draw Data") else c("Simulate Data", "Draw Data"), selected = if (!is.null(data)) "Import Data" else "Simulate Data"),
-
           shiny::conditionalPanel(
-            condition = "input.data_mode == 'Simulate Data'",
-            shiny::radioButtons("sim_engine", "Simulation Engine", choices = c("Multivariate Normal (MVN)" = "mvn", "MixSim" = "mixsim"))
+            condition = "input.data_mode == 'Draw Data'",
+            shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Navigate", "Draw Point", "Draw Cluster")),
+            shiny::helpText("Tip: Brush on any plot to zoom in, and double-click to reset the view.")
           ),
-
-          shiny::hr(),
-          shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Navigate", "Draw Point", "Draw Cluster")),
-          shiny::helpText("Tip: Brush on any plot to zoom in, and double-click to reset the view."),
 
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Simulate Data'",
             shiny::hr(),
+            shiny::radioButtons("sim_engine", "Simulation Engine", choices = c("Multivariate Normal (MVN)" = "mvn", "MixSim" = "mixsim")),
             shiny::conditionalPanel(
               condition = "input.sim_engine == 'mvn'",
               shiny::numericInput("sim_n_classes", "Number of Classes", value = 3, min = 2, max = 10),
@@ -156,8 +153,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             condition = "input.data_mode == 'Draw Data'",
             shiny::hr(),
             shiny::p("Click or brush on any plot to add data."),
-            shiny::numericInput("draw_total_classes", "Total Classes", value = 3, min = 1, max = 26, step = 1),
-            shiny::radioButtons("draw_class", "Active Class", choices = c("Class 1", "Class 2", "Class 3")),
+            shiny::div(
+              title = "Auto-generates numbered classes (Class 1, Class 2, etc.). You can also add custom named classes below.",
+              shiny::numericInput("draw_total_classes", "Base Classes", value = 3, min = 1, step = 1)
+            ),
+            shiny::selectInput("draw_class", "Active Class", choices = c("Class 1", "Class 2", "Class 3"), selected = "Class 1"),
             shiny::div(
               style = "display: flex; gap: 10px; align-items: baseline; margin-bottom: 15px;",
               shiny::textInput("new_class_name", label = NULL, placeholder = "New class name...", width = "100%"),
@@ -177,47 +177,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             shiny::p("Using dataset provided via console."),
             shiny::hr(),
             shiny::actionButton("clone_to_draw_imp", "Clone to Draw Canvas", icon = shiny::icon("copy"), class = "btn-warning")
-          )
+          ),
+          
         ),
-        shiny::wellPanel(
-          shiny::tags$details(
-            shiny::tags$summary("Model Configuration", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
-              shiny::checkboxGroupInput(
-                "selected_models",
-                "Models to Compare",
-                choices = names(app_methods),
-                selected = c("RandomForest", "Rpart")
-              ),
-            shiny::uiOutput("prob_surface_ui"),
-            shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
-            shiny::conditionalPanel(
-              condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
-              shiny::hr(),
-              shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1)
-            ),
-            shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('PPtreeExtclass') > -1",
-              shiny::numericInput("stop", "PPtreeExt: Stopping Rule", value = 4, min = 1)
-            ),
-            shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('Rpart') > -1",
-              shiny::hr(),
-              shiny::numericInput("rpart_cp", "Rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01)
-            ),
-            shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
-              shiny::hr(),
-              shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50)
-            ),
-            lapply(names(custom_uis), function(m_name) {
-              shiny::conditionalPanel(
-                condition = sprintf("input.selected_models && input.selected_models.indexOf('%s') > -1", m_name),
-                shiny::hr(),
-                custom_uis[[m_name]]
-              )
-            })
-          )
-        ),
+        
+        shiny::uiOutput("tour_panel"),
+        
         shiny::wellPanel(
           shiny::tags$details(
             shiny::tags$summary("Outlier Injection", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
@@ -232,19 +197,64 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             )
           )
         ),
+        
         shiny::wellPanel(
           shiny::tags$details(
             shiny::tags$summary("Import Workspace Models", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
-            shiny::helpText("This feature looks for fitted `workflow`, `model_fit`, or `model_spec` objects in your R Global Environment."),
+            shiny::helpText("This feature imports `workflow`, `model_fit`, or `model_spec` objects from your R Global Environment."),
             shiny::uiOutput("workspace_import_ui")
           )
         ),
+
+        shiny::wellPanel(
+          shiny::tags$details(
+            shiny::tags$summary("Model Configuration", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
+              shiny::checkboxGroupInput(
+                "selected_models",
+                "Models to Compare",
+                choices = names(app_methods),
+                selected = c("RandomForest", "Rpart")
+              ),
+            shiny::uiOutput("prob_surface_ui"),
+            shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
+              shiny::hr(),
+              shiny::div(title = "Defines the mathematical projection index used to separate the classes. 1 = LDA, 2 = PDA, 3 = Lr (etc.).", 
+                         shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1))
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('PPtreeExtclass') > -1",
+              shiny::div(title = "Controls when the tree stops splitting. Higher values result in smaller, simpler trees.", 
+                         shiny::numericInput("stop", "PPtreeExt: Stopping Rule", value = 4, min = 1))
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('Rpart') > -1",
+              shiny::hr(),
+              shiny::div(title = "Complexity parameter. Lower values (e.g. 0.001) produce larger, more complex decision trees that risk overfitting.", 
+                         shiny::numericInput("rpart_cp", "Rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01))
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
+              shiny::hr(),
+              shiny::div(title = "Total number of decision trees to grow. Higher numbers increase accuracy but take longer to compute.", 
+                         shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50))
+            ),
+            lapply(names(custom_uis), function(m_name) {
+              shiny::conditionalPanel(
+                condition = sprintf("input.selected_models && input.selected_models.indexOf('%s') > -1", m_name),
+                shiny::hr(),
+                custom_uis[[m_name]]
+              )
+            })
+          )
+        ),
+        
         shiny::wellPanel(
           shiny::h4("Export Results", style = "margin-top: 0;"),
           shiny::actionButton("open_export_wizard", "Export Results...", class = "btn-success", icon = shiny::icon("download", lib = "font-awesome")),
           shiny::helpText(shiny::em("Customize export formats (PNG, PDF, etc.)"))
-        ),
-        shiny::uiOutput("tour_panel")
+        )
       ),
       shiny::mainPanel(
         shiny::uiOutput("data_stats_ui"),
@@ -278,7 +288,19 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       numeric_cols[which(colnames(initial_imp_data) == "Sim")] <- TRUE
       initial_imp_data <- initial_imp_data[, numeric_cols, drop = FALSE]
 
-      initial_imp_classes <- as.character(unique(initial_imp_data$Sim))
+      if (is.factor(initial_imp_data$Sim)) {
+        initial_imp_classes <- levels(initial_imp_data$Sim)
+      } else {
+        natural_sort <- function(x) {
+          nums <- suppressWarnings(as.numeric(gsub(".*?(\\d+)$", "\\1", x)))
+          if (all(!is.na(nums))) {
+            prefix <- gsub("\\d+$", "", x)
+            return(x[order(prefix, nums)])
+          }
+          sort(x)
+        }
+        initial_imp_classes <- natural_sort(unique(as.character(initial_imp_data$Sim)))
+      }
       if (length(initial_imp_classes) == 0) {
         initial_imp_classes <- c("Class 1", "Class 2", "Class 3")
       }
@@ -287,18 +309,74 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     initial_drawn_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
     initial_drawn_classes <- c("Class 1", "Class 2", "Class 3")
 
-    # Generate initial simulated dataset using simu_n helper
-    initial_sim_data <- tryCatch({
-      simu_n(
-        means = list(c(-1, 0), c(1, 0)),
-        covs = list(diag(c(1, 1)), diag(c(1, 1))),
-        ns = c(50, 50),
-        class_names = c("Class 1", "Class 2")
-      )
-    }, error = function(e) {
-      data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
-    })
-    initial_sim_classes <- c("Class 1", "Class 2")
+    # Start with empty simulated data; the observer below will auto-fetch UI defaults.
+    initial_sim_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
+    initial_sim_classes <- character()
+    
+    # Auto-fetch simulation data on first view of the Simulate Data tab
+    auto_fetch_obs <- shiny::observe(suspended = TRUE, {
+        shiny::req(input$data_mode)
+        # Do not run simulation math if the user is importing data or drawing data
+        if (input$data_mode != "Simulate Data") return()
+        
+        shiny::req(input$sim_n_classes)
+        shiny::req(input$sim_mean_1, input$sim_sd_1, input$sim_cor_1, input$sim_n_1)
+        
+        n <- input$sim_n_classes
+        if (is.na(n) || n < 1) return()
+        
+        means <- list()
+        covs <- list()
+        ns <- c()
+
+        for (i in 1:n) {
+          m_str <- input[[paste0("sim_mean_", i)]]
+          s_str <- input[[paste0("sim_sd_", i)]]
+          if (is.null(m_str) || is.null(s_str)) return()
+          
+          m <- suppressWarnings(as.numeric(unlist(strsplit(m_str, ","))))
+          sds <- suppressWarnings(as.numeric(unlist(strsplit(s_str, ","))))
+          rho <- input[[paste0("sim_cor_", i)]]
+          ns <- c(ns, input[[paste0("sim_n_", i)]])
+          
+          means[[i]] <- m
+          dim_m <- length(m)
+          if (length(sds) != dim_m) return()
+          
+          cov_mat <- matrix(rho, nrow = dim_m, ncol = dim_m)
+          diag(cov_mat) <- 1
+          sd_diag <- diag(sds, dim_m)
+          cov_mat <- sd_diag %*% cov_mat %*% sd_diag
+          covs[[i]] <- cov_mat
+        }
+        
+        lengths <- sapply(means, length)
+        if (length(unique(lengths)) > 1) return()
+        if (any(is.na(unlist(means))) || any(is.na(unlist(covs)))) return()
+        
+        new_data <- tryCatch({
+          simu_n(means = means, covs = covs, ns = ns)
+        }, error = function(e) { NULL })
+        
+        if (!is.null(new_data)) {
+          new_classes <- unique(as.character(new_data$Sim))
+          
+          # Store safely in the background state
+          mode_states[["Simulate Data"]]$data <- new_data
+          mode_states[["Simulate Data"]]$classes <- new_classes
+          
+          # Only overwrite the active canvas if the user is actually on the Simulate tab
+          if (is.null(input$data_mode) || input$data_mode == "Simulate Data") {
+            current_data(new_data)
+            injected_outliers(data.frame())
+            class_choices(new_classes)
+          }
+        }
+        
+        # Destroy the observer permanently so it never runs again
+        auto_fetch_obs$destroy()
+      })
+      auto_fetch_obs$resume()
 
     injected_outliers <- shiny::reactiveVal(data.frame())
     undo_history <- shiny::reactiveVal(list())
@@ -309,6 +387,14 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (!is.null(inj) && nrow(inj) > 0) {
         dat <- rbind(dat, inj)
       }
+      
+      # Filter out inactive classes (e.g. if user reduced Base Classes)
+      # This ensures models are only trained on active classes and hides deleted points
+      active <- class_choices()
+      if (length(active) > 0 && "Sim" %in% colnames(dat)) {
+        dat <- dat[dat$Sim %in% active, , drop = FALSE]
+      }
+      
       dat
     })
 
@@ -328,13 +414,70 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     class_choices <- shiny::reactiveVal(init_classes)
     zoom_xlim <- shiny::reactiveVal(NULL)
     zoom_ylim <- shiny::reactiveVal(NULL)
+    ws_update_trigger <- shiny::reactiveVal(0)
+
+    # Strip ANSI escape codes to prevent UI rendering artifacts.
+    clean_err_msg <- function(msg) {
+      gsub("\033\\[[0-9;]*m", "", msg)
+    }
+
+    # Curated palette: 20 maximally distinct colors.
+    curated_colors <- c(
+      "#E6194B", "#3CB44B", "#4363D8", "#F58231", "#911EB4",
+      "#BFEF45", "#F032E6", "#469990", "#9A6324", "#FABED4",
+      "#808000", "#2E8B57", "#FF69B4", "#DCBEFF", "#800000",
+      "#42D4F4", "#A9A9A9", "#AAFFC3", "#000075", "#FFE119"
+    )
+
+    # Deterministic color generator for classes beyond the curated palette.
+    # Uses golden-angle (~137.5°) hue spacing to maximize perceptual distance.
+    # Minimum hue gap degrades as ~360/N; visually similar pairs appear around class ~55.
+    get_palette_color <- function(idx) {
+      if (idx <= length(curated_colors)) return(curated_colors[idx])
+      overflow_idx <- idx - length(curated_colors)
+      hue <- (overflow_idx * 0.618033988749895) %% 1
+      grDevices::hcl(h = hue * 360, c = 65, l = 55)
+    }
+
+    # Name-based color cache for stable assignment across UI reordering.
+    # Use non-reactive environment for cache.
+    color_cache <- new.env(parent = emptyenv())
+    color_cache$assignments <- list()
+    color_cache$next_idx <- 1L
+
+    # Reset color cache.
+    reset_color_cache <- function() {
+      color_cache$assignments <- list()
+      color_cache$next_idx <- 1L
+    }
+
+    # Map class names to colors.
+    color_palette <- shiny::reactive({
+      levs <- class_choices()
+      if (length(levs) == 0) return(stats::setNames(character(0), character(0)))
+
+      # Assign colors to uncached classes.
+      for (cls in levs) {
+        if (is.null(color_cache$assignments[[cls]])) {
+          idx <- color_cache$next_idx
+          color_cache$assignments[[cls]] <- get_palette_color(idx)
+          color_cache$next_idx <- idx + 1L
+        }
+      }
+
+      # Return colors for active classes.
+      cols <- vapply(levs, function(cls) color_cache$assignments[[cls]], character(1))
+      stats::setNames(cols, levs)
+    })
 
     shiny::observe({
       choices <- class_choices()
       if (length(choices) > 0) {
         choices <- c("Random", choices)
       }
-      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "outlier_class", choices = choices)
+      selected <- shiny::isolate(input$outlier_class)
+      if (is.null(selected) || !(selected %in% choices)) selected <- "Random"
+      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "outlier_class", choices = choices, selected = selected)
     })
 
     shiny::observeEvent(input$inject_outlier_btn, {
@@ -358,13 +501,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           }
         }
 
-        # Add slight variation to magnitude relative to the chosen magnitude
-        # This prevents outliers at the same corner from perfectly overlapping
-        # We base the cycle on total_index so manual clicks also receive the variance
+        # Jitter magnitude to prevent point occlusion.
         total_index <- start_idx + i - 1
         cycle <- floor((total_index - 1) / 4)
 
-        # Increase step_size to 10% for a more noticeable gap between cycles
         step_size <- input$outlier_magnitude * 0.1
         mag <- input$outlier_magnitude + (cycle * step_size)
         generate_extreme_outlier(cd, target_class, mag, target_col = "Sim", index = total_index)
@@ -389,24 +529,30 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       n_obs <- nrow(dat)
       dims <- ncol(dat) - 1
-      classes <- class_choices()
+      # Filter to active classes.
+      # Preserve factor ordering. 
+      pal <- color_palette()
+      present_classes <- unique(as.character(dat$Sim))
+      classes <- intersect(class_choices(), present_classes)
 
-      colors <- scales::hue_pal()(length(classes))
-      legend_items <- lapply(seq_along(classes), function(i) {
+      legend_items <- lapply(classes, function(cls) {
+        col <- if (cls %in% names(pal)) pal[[cls]] else "#999999"
+        cls_count <- sum(as.character(dat$Sim) == cls)
         shiny::span(
           style = "display: inline-flex; align-items: center; margin-left: 10px;",
-          shiny::tags$span(style = sprintf("display: inline-block; width: 12px; height: 12px; border-radius: 50%%; margin-right: 5px; background-color: %s;", colors[i])),
-          classes[i]
+          shiny::tags$span(style = sprintf("display: inline-block; width: 12px; height: 12px; border-radius: 50%%; margin-right: 5px; background-color: %s;", col)),
+          sprintf("%s (%d)", cls, cls_count)
         )
       })
 
       shiny::div(
-        style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: center;",
+        style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 15px;",
         shiny::div(shiny::tags$b("N Observations: "), n_obs),
         shiny::div(shiny::tags$b("Dimensions: "), dims),
         shiny::div(
+          style = "display: flex; align-items: center; flex-wrap: wrap;",
           shiny::tags$b("Target Classes: "),
-          shiny::div(style = "display: inline-flex;", legend_items)
+          shiny::div(style = "display: inline-flex; flex-wrap: wrap; gap: 5px;", legend_items)
         )
       )
     })
@@ -447,7 +593,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       )
     })
 
-    shiny::observeEvent(input$data_mode, {
+    shiny::observeEvent(input$data_mode, priority = 1, {
       zoom_xlim(NULL)
       zoom_ylim(NULL)
 
@@ -462,6 +608,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         mode_states[[old_mode]]$projection <- current_projection()
         mode_states[[old_mode]]$projection_info <- current_projection_info()
         mode_states[[old_mode]]$outliers <- injected_outliers()
+        mode_states[[old_mode]]$tour_var <- input$tour_var
+        mode_states[[old_mode]]$tour_angle <- input$tour_angle
+        mode_states[[old_mode]]$tour_path <- current_path()
       }
 
       # Load state from new mode
@@ -472,27 +621,26 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         if (is.null(saved_outliers)) saved_outliers <- data.frame()
         injected_outliers(saved_outliers)
 
+        # Reset color cache to release curated colors.
+        reset_color_cache()
         class_choices(mode_states[[new_mode]]$classes)
 
         current_basis(mode_states[[new_mode]]$basis)
         current_projection(mode_states[[new_mode]]$projection)
         current_projection_info(mode_states[[new_mode]]$projection_info)
+        current_path(mode_states[[new_mode]]$tour_path)
 
         # Reset UI element for drawing
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1])
+        shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1])
       }
 
       previous_data_mode(new_mode)
 
-      # Dynamically update interaction mode choices
-      if (new_mode == "Draw Data") {
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "interaction_mode", choices = c("Navigate", "Draw Point", "Draw Cluster"))
-      } else {
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "interaction_mode", choices = c("Navigate"))
+      if (new_mode != "Draw Data") {
+        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "interaction_mode", selected = "Navigate")
       }
     })
 
-    # Clone to Draw Canvas logic
     do_clone_to_draw <- function() {
       cd <- current_data()
       if (is.null(cd) || nrow(cd) == 0) {
@@ -500,7 +648,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         return()
       }
 
-      # Copy data and outliers to Draw Data cache directly
+      # Clone current state to Draw Canvas cache.
       mode_states[["Draw Data"]]$data <- cd
       mode_states[["Draw Data"]]$classes <- class_choices()
 
@@ -508,7 +656,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (is.null(inj)) inj <- data.frame()
       mode_states[["Draw Data"]]$outliers <- inj
 
-      # Switch mode (the data_mode observer will handle loading the updated cache)
+      # Trigger mode switch.
       shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "data_mode", selected = "Draw Data")
       shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "interaction_mode", selected = "Navigate")
       shiny::showNotification("Data and outliers copied to Draw Canvas!", type = "message")
@@ -523,7 +671,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (new_class != "" && !(new_class %in% class_choices())) {
         updated_choices <- c(class_choices(), new_class)
         class_choices(updated_choices)
-        shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class",
+        shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class",
           choices = updated_choices,
           selected = new_class
         )
@@ -531,23 +679,48 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
     })
 
-    # Dynamic Simulation UI
+    # Dynamic Simulation UI (Single View with DOM Preservation)
     output$sim_params_ui <- shiny::renderUI({
       shiny::req(input$sim_n_classes)
       n <- input$sim_n_classes
       if (is.na(n) || n < 1) {
         return(NULL)
       }
+      
+      active_i <- shiny::isolate(input$sim_edit_class)
+      if (is.null(active_i) || suppressWarnings(as.numeric(active_i)) > n || is.na(as.numeric(active_i))) {
+        active_i <- "1"
+      }
 
-      lapply(1:n, function(i) {
-        shiny::wellPanel(
-          shiny::h5(paste("Class", i)),
-          shiny::textInput(paste0("sim_mean_", i), "Mean (comma separated)", value = if (i == 1) "-1,0" else if (i == 2) "1,0" else "0,1"),
-          shiny::textInput(paste0("sim_sd_", i), "Standard Deviations (comma separated)", value = "1,1"),
-          shiny::numericInput(paste0("sim_cor_", i), "Correlation (rho)", value = 0, min = -0.99, max = 0.99, step = 0.1),
-          shiny::numericInput(paste0("sim_n_", i), "Sample Size", value = 100, min = 10)
-        )
-      })
+      shiny::div(
+        shiny::selectInput("sim_edit_class", "Active Class to Edit:", 
+                           choices = setNames(as.character(1:n), paste("Class", 1:n)), 
+                           selected = active_i),
+        shiny::hr(style = "margin-top: 10px; margin-bottom: 15px;"),
+        lapply(1:n, function(i) {
+          # Read existing inputs if they exist to prevent wiping user data when `n` changes
+          curr_mean <- shiny::isolate(input[[paste0("sim_mean_", i)]])
+          curr_sd <- shiny::isolate(input[[paste0("sim_sd_", i)]])
+          curr_rho <- shiny::isolate(input[[paste0("sim_cor_", i)]])
+          curr_n <- shiny::isolate(input[[paste0("sim_n_", i)]])
+          
+          if (is.null(curr_mean)) curr_mean <- if (i == 1) "-1,0" else if (i == 2) "1,0" else "0,1"
+          if (is.null(curr_sd)) curr_sd <- "1,1"
+          if (is.null(curr_rho)) curr_rho <- 0
+          if (is.null(curr_n)) curr_n <- 100
+          
+          shiny::conditionalPanel(
+            condition = paste0("input.sim_edit_class == '", i, "'"),
+            shiny::wellPanel(
+              style = "margin-bottom: 0px;",
+              shiny::textInput(paste0("sim_mean_", i), "Mean (comma separated)", value = curr_mean),
+              shiny::textInput(paste0("sim_sd_", i), "Standard Deviations (comma separated)", value = curr_sd),
+              shiny::numericInput(paste0("sim_cor_", i), "Correlation (rho)", value = curr_rho, min = -0.99, max = 0.99, step = 0.1),
+              shiny::numericInput(paste0("sim_n_", i), "Sample Size", value = curr_n, min = 10)
+            )
+          )
+        })
+      )
     })
 
     shiny::observeEvent(input$sim_do, {
@@ -566,7 +739,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         m_str <- input[[paste0("sim_mean_", i)]]
         s_str <- input[[paste0("sim_sd_", i)]]
 
-        # Guard against NULL inputs if UI hasn't fully rendered
         if (is.null(m_str) || is.null(s_str)) return()
 
         m <- suppressWarnings(as.numeric(unlist(strsplit(m_str, ","))))
@@ -579,7 +751,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         # Construct covariance matrix using SDs and exchangeable correlation
         dim_m <- length(m)
         if (length(sds) != dim_m) {
-          shiny::showNotification(sprintf("Class %d: Length of SDs must match length of means.", i), type = "error")
+          shiny::showNotification(sprintf("Error in Class %d: Mean has %d dimension(s), but SD has %d dimension(s).", i, dim_m, length(sds)), type = "error")
           return()
         }
 
@@ -595,18 +767,28 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       lengths <- sapply(means, length)
       if (length(unique(lengths)) > 1) {
-        shiny::showNotification("Error: All mean vectors must have the same number of dimensions.", type = "error")
-        return()
+        # Find the first class that doesn't match Class 1 to give a highly specific error
+        target_dim <- lengths[1]
+        for (i in 2:length(lengths)) {
+          if (lengths[i] != target_dim) {
+            shiny::showNotification(sprintf("Error: Class 1 has %d dimension(s), but Class %d has %d dimension(s). All classes must match.", target_dim, i, lengths[i]), type = "error")
+            return()
+          }
+        }
       }
-      if (any(is.na(unlist(means))) || any(is.na(unlist(covs)))) {
-        shiny::showNotification("Error: Invalid numeric input in mean or SDs.", type = "error")
-        return()
+      
+      for (i in 1:length(means)) {
+        if (any(is.na(means[[i]])) || any(is.na(covs[[i]]))) {
+          shiny::showNotification(sprintf("Error in Class %d: Contains invalid text or missing numbers in Mean or SD.", i), type = "error")
+          return()
+        }
       }
 
       new_data <- tryCatch({
         simu_n(means = means, covs = covs, ns = ns)
       }, error = function(e) {
-        shiny::showNotification(paste("Data generation failed:", e$message), type = "error")
+        clean_msg <- clean_err_msg(e$message)
+        shiny::showNotification(paste("Data generation failed:", clean_msg), type = "error")
         NULL
       })
 
@@ -616,7 +798,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       injected_outliers(data.frame())
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
+      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
       zoom_xlim(NULL)
       zoom_ylim(NULL)
     })
@@ -633,7 +815,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           MaxOmega = input$sim_mixsim_omega
         )
       }, error = function(e) {
-        shiny::showNotification(paste("MixSim data generation failed:", e$message), type = "error")
+        clean_msg <- clean_err_msg(e$message)
+        shiny::showNotification(paste("MixSim data generation failed:", clean_msg), type = "error")
         NULL
       })
 
@@ -643,7 +826,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       injected_outliers(data.frame())
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
+      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
       zoom_xlim(NULL)
       zoom_ylim(NULL)
     })
@@ -661,31 +844,96 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     shiny::observeEvent(input$clear, {
       current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
       injected_outliers(data.frame())
+      reset_color_cache()
 
       new_classes <- c("Class 1", "Class 2", "Class 3")
       mode_states[["Draw Data"]]$classes <- new_classes
       class_choices(new_classes)
 
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = "Class 1")
+      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = "Class 1")
       zoom_xlim(NULL)
       zoom_ylim(NULL)
     }, ignoreInit = TRUE)
 
+    last_valid_draw_classes <- shiny::reactiveVal(3)
+    pending_draw_classes <- shiny::reactiveVal(NULL)
+
     shiny::observeEvent(input$draw_total_classes, {
       shiny::req(input$draw_total_classes > 0)
       n <- as.integer(input$draw_total_classes)
-
+      old_n <- last_valid_draw_classes()
+      
+      if (n == old_n) return()
+      
       new_classes <- paste0("Class ", 1:n)
-
-      mode_states[["Draw Data"]]$classes <- new_classes
-      class_choices(new_classes)
-
-      # Update UI to select first class
-      shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "draw_class",
-        choices = new_classes,
-        selected = new_classes[1]
-      )
+      old_classes <- class_choices()
+      custom_classes <- old_classes[!grepl("^Class \\d+$", old_classes)]
+      final_classes <- unique(c(new_classes, custom_classes))
+      
+      dat <- current_data()
+      inj <- injected_outliers()
+      
+      removed_classes <- setdiff(old_classes, final_classes)
+      has_removed_data <- FALSE
+      if (length(removed_classes) > 0) {
+        if ("Sim" %in% colnames(dat) && any(dat$Sim %in% removed_classes)) has_removed_data <- TRUE
+        if ("Sim" %in% colnames(inj) && any(inj$Sim %in% removed_classes)) has_removed_data <- TRUE
+      }
+      
+      if (has_removed_data) {
+        pending_draw_classes(n)
+        shiny::updateNumericInput(shiny::getDefaultReactiveDomain(), "draw_total_classes", value = old_n)
+        
+        shiny::showModal(shiny::modalDialog(
+          title = "Warning: Data Deletion",
+          "Reducing the number of base classes will permanently delete the points drawn for the removed classes. Are you sure you want to proceed?",
+          footer = shiny::tagList(
+            shiny::actionButton("cancel_remove_classes", "Cancel"),
+            shiny::actionButton("confirm_remove_classes", "Yes, Delete Data", class = "btn-danger", style = "color: white; background-color: #d9534f; border-color: #d43f3a;")
+          )
+        ))
+      } else {
+        last_valid_draw_classes(n)
+        mode_states[["Draw Data"]]$classes <- final_classes
+        class_choices(final_classes)
+        shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class",
+          choices = final_classes, selected = final_classes[1]
+        )
+      }
     }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$cancel_remove_classes, {
+      shiny::removeModal()
+    })
+
+    shiny::observeEvent(input$confirm_remove_classes, {
+      shiny::removeModal()
+      n <- pending_draw_classes()
+      shiny::req(n)
+      
+      last_valid_draw_classes(n)
+      shiny::updateNumericInput(shiny::getDefaultReactiveDomain(), "draw_total_classes", value = n)
+      
+      new_classes <- paste0("Class ", 1:n)
+      old_classes <- class_choices()
+      custom_classes <- old_classes[!grepl("^Class \\d+$", old_classes)]
+      final_classes <- unique(c(new_classes, custom_classes))
+      
+      # Hard delete data
+      dat <- current_data()
+      inj <- injected_outliers()
+      if ("Sim" %in% colnames(dat)) dat <- dat[dat$Sim %in% final_classes, , drop = FALSE]
+      if ("Sim" %in% colnames(inj)) inj <- inj[inj$Sim %in% final_classes, , drop = FALSE]
+      
+      current_data(dat)
+      injected_outliers(inj)
+      
+      mode_states[["Draw Data"]]$classes <- final_classes
+      class_choices(final_classes)
+      shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class",
+        choices = final_classes, selected = final_classes[1]
+      )
+    })
 
     shiny::observeEvent(input$plot_click, {
       if (input$data_mode == "Draw Data" && input$interaction_mode == "Draw Point") {
@@ -737,13 +985,16 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           feat_cols <- setdiff(colnames(cd), "Sim")
           pts <- data.frame(Sim = rep(shiny::isolate(input$draw_class), n))
 
-          # Use mvrnorm to generate a Gaussian cluster in the brushed area
           mu_x <- (b$xmin + b$xmax) / 2
           mu_y <- (b$ymin + b$ymax) / 2
           sd_x <- (b$xmax - b$xmin) / 4
           sd_y <- (b$ymax - b$ymin) / 4
+          
+          # Prevent straight-line snapping on perfectly flat brushes or single clicks
+          if (sd_x == 0) sd_x <- 0.05
+          if (sd_y == 0) sd_y <- 0.05
 
-          # Fallback to runif if SD is very small (brush too small)
+          # Fallback to uniform distribution for small brush areas.
           if (sd_x > 0 && sd_y > 0) {
             if (!requireNamespace("MASS", quietly = TRUE)) {
               shiny::showNotification("The 'MASS' package is required for this feature. Please install it.", type = "error")
@@ -772,8 +1023,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (is.null(dat) || nrow(dat) == 0) {
         return(DT::datatable(data.frame(Message = "No points drawn yet"), options = list(dom = 't'), rownames = FALSE))
       }
-      # Show only the drawn points (which we'll assume is the current_data)
-      # Format numeric columns
       num_cols <- sapply(dat, is.numeric)
       dat[num_cols] <- lapply(dat[num_cols], round, 2)
 
@@ -833,8 +1082,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         } else {
           shiny::showNotification(paste("Updated existing model", obj_name, "from workspace."), type = "message")
         }
+
+        # Invalidate comparison_state to force re-fit.
+        ws_update_trigger(ws_update_trigger() + 1)
       }, error = function(e) {
-        shiny::showNotification(paste("Failed to import model:", e$message), type = "error")
+        clean_msg <- clean_err_msg(e$message)
+        shiny::showNotification(paste("Failed to import model:", clean_msg), type = "error")
       })
     })
 
@@ -872,11 +1125,24 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     output$tour_panel <- shiny::renderUI({
       dat <- current_data()
       if (ncol(dat) > 3) {
+        mode <- shiny::isolate(input$data_mode)
+        saved_var <- mode_states[[mode]]$tour_var
+        saved_angle <- mode_states[[mode]]$tour_angle
+        
+        choices <- setdiff(colnames(dat), "Sim")
+        if (is.null(saved_var) || !(saved_var %in% choices)) {
+           saved_var <- choices[1]
+        }
+        if (is.null(saved_angle)) saved_angle <- 0
+
         shiny::wellPanel(
-          shiny::h4("Manual Tour Steering"),
-          shiny::p("High-dimensional data detected. Use the controls below to steer the 2D projection plane."),
-          shiny::selectInput("tour_var", "Manipulation Variable", choices = setdiff(colnames(dat), "Sim")),
-          shiny::sliderInput("tour_angle", "Rotation Angle", min = 0, max = 1, value = 0, step = 0.01)
+          shiny::tags$details(
+            open = "open",
+            shiny::tags$summary("Manual Tour Steering", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
+            shiny::p("High-dimensional data detected. Use the controls below to steer the 2D projection plane."),
+            shiny::selectInput("tour_var", "Manipulation Variable", choices = choices, selected = saved_var),
+            shiny::sliderInput("tour_angle", "Rotation Angle", min = 0, max = 1, value = saved_angle, step = 0.01)
+          )
         )
       }
     })
@@ -919,8 +1185,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       num_cols <- setdiff(colnames(dat), "Sim")
       var_idx <- which(num_cols == input$tour_var)
 
-      # Following tourr::radial_tour logic to find the target basis:
-      # Zero out the variable's contribution and orthonormalize
+      # Orthonormalize target basis.
       start_basis <- current_basis()
       target_basis <- start_basis
       target_basis[var_idx, ] <- 0
@@ -945,6 +1210,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     })
 
     comparison_state <- shiny::reactive({
+      ws_update_trigger() # Take dependency to re-fit if an existing workspace model is updated
       models <- input$selected_models
       dat <- combined_training_data()
       if (is.null(models) || length(models) == 0 || nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
@@ -979,8 +1245,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               predict_args = pred_args
             )
           }, error = function(e) {
-            warning(paste("Model", m, "failed to fit:", e$message))
-            shiny::showNotification(paste("Model", m, "failed to fit:", e$message), type = "error", duration = 10)
+            clean_msg <- clean_err_msg(e$message)
+            shiny::showNotification(paste("Model", m, "failed to fit:", clean_msg), type = "error", duration = 10)
           })
         }
       }
@@ -1029,7 +1295,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
             if (nrow(dat) > 0) {
               p <- p + ggplot2::geom_point(ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]], color = .data$Sim), size = 3) +
-                ggplot2::scale_color_discrete(drop = FALSE)
+                ggplot2::scale_color_manual(values = color_palette(), drop = FALSE)
             }
 
             if (!is.null(zoom_xlim()) && !is.null(zoom_ylim())) {
@@ -1059,6 +1325,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 data = dat,
                 title = title,
                 class_levels = class_choices(),
+                class_colors = color_palette(),
                 proj_matrix = current_projection(),
                 proj_info = current_projection_info(),
                 zoom_x = zoom_xlim(),
@@ -1069,8 +1336,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               )
             },
             error = function(e) {
-              # Graceful fallback if model fails (e.g. data is degenerate)
-              err_msg <- gsub("\033\\[[0-9;]*m", "", e$message)
+              # Handle degenerate data gracefully.
+              err_msg <- clean_err_msg(e$message)
               err_text <- paste(strwrap(paste("Error:", err_msg), width = 40), collapse = "\n")
 
               ggplot2::ggplot() +
@@ -1199,8 +1466,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::checkboxGroupInput(
           "export_includes",
           "Include in Export:",
-          choices = c("Plots", "Data", "Performance Metrics", "Fitted Models", "Session Info"),
-          selected = c("Plots", "Data", "Performance Metrics", "Fitted Models", "Session Info")
+          choices = c("Data", "Fitted Models", "Plots", "Grid Predictions", "Performance Metrics", "Reproduce Script", "Configuration", "Session Info"),
+          selected = c("Data", "Fitted Models", "Plots", "Performance Metrics", "Reproduce Script")
         ),
         shiny::conditionalPanel(
           condition = "input.export_includes.indexOf('Plots') > -1",
@@ -1228,7 +1495,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         paste("classbound_export_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip", sep = "")
       },
       content = function(file) {
-        # Close the modal upon clicking download
         shiny::removeModal()
 
         temp_dir <- tempdir()
@@ -1240,19 +1506,16 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         metrics <- metrics_df()
         includes <- input$export_includes
 
-        # 1. Export Data
         if ("Data" %in% includes && !is.null(dat) && nrow(dat) > 0) {
           export_data_csv(dat, file.path(export_dir, "data.csv"))
         }
 
         if (!is.null(state) && length(state$models) > 0) {
-          # 2. Export Models
           if ("Fitted Models" %in% includes) {
             mod_list <- lapply(state$models, function(x) x$model)
             export_models_rds(mod_list, file.path(export_dir, "models.rds"))
           }
 
-          # 3. Export Plots
           if ("Plots" %in% includes) {
             plots <- lapply(names(state$models), function(m) {
               title <- switch(m,
@@ -1269,6 +1532,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                   data = dat,
                   title = title,
                   class_levels = class_choices(),
+                  class_colors = color_palette(),
                   proj_matrix = current_projection(),
                   proj_info = current_projection_info(),
                   zoom_x = zoom_xlim(),
@@ -1295,20 +1559,83 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           }
         }
 
-        # 4. Export Metrics
         if ("Performance Metrics" %in% includes && !is.null(metrics)) {
           export_metrics_csv(metrics, file.path(export_dir, "metrics.csv"))
         }
 
-        # 5. Export Session Info
         if ("Session Info" %in% includes) {
           utils::capture.output(utils::sessionInfo(), file = file.path(export_dir, "session_info.txt"))
         }
 
-        # Zip files
+        # Export grid predictions for each model as CSV.
+        if ("Grid Predictions" %in% includes && !is.null(state) && length(state$models) > 0) {
+          grid_dir <- file.path(export_dir, "grid_predictions")
+          dir.create(grid_dir)
+          res_val <- if (!is.null(input$grid_resolution)) input$grid_resolution else 100
+          for (m in names(state$models)) {
+            safe_name <- gsub("[^A-Za-z0-9_.-]", "_", m)
+            export_grid_csv(
+              cb_mod = state$models[[m]]$model,
+              data = dat,
+              resolution = res_val,
+              proj_matrix = current_projection(),
+              proj_info = current_projection_info(),
+              predict_args = state$models[[m]]$predict_args,
+              file = file.path(grid_dir, paste0(safe_name, ".csv"))
+            )
+          }
+        }
+
+        # Export current UI configuration as JSON for reproducibility.
+        if ("Configuration" %in% includes) {
+          all_inputs <- shiny::isolate(shiny::reactiveValuesToList(input))
+          safe_inputs <- Filter(function(x) is.numeric(x) || is.character(x) || is.logical(x), all_inputs)
+          
+          exclude_pattern <- "^(export_|open_export|refresh_ws|sim_do|sim_mixsim_do|clone_|add_class|clear|undo|inject_|new_class_name)"
+          safe_inputs <- safe_inputs[!grepl(exclude_pattern, names(safe_inputs))]
+
+          config_vals <- list(
+            ui_state = safe_inputs,
+            timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+            r_version = paste(R.version$major, R.version$minor, sep = "."),
+            classbound_version = as.character(utils::packageVersion("classbound"))
+          )
+          
+          n_classes <- input$sim_n_classes
+          if (!is.null(n_classes) && !is.na(n_classes) && input$data_mode == "Simulate Data" && input$sim_engine == "mvn") {
+            mvn_params <- list()
+            for (i in seq_len(n_classes)) {
+              mvn_params[[paste0("class_", i)]] <- list(
+                mean = input[[paste0("sim_mean_", i)]],
+                sd = input[[paste0("sim_sd_", i)]],
+                cor = input[[paste0("sim_cor_", i)]],
+                n = input[[paste0("sim_n_", i)]]
+              )
+            }
+            config_vals$sim_mvn_params <- mvn_params
+          }
+          
+          if (!is.null(state) && length(state$models) > 0) {
+            config_vals$fitted_models <- names(state$models)
+          }
+          export_config_json(config_vals, file.path(export_dir, "config.json"))
+        }
+
+        # Export a self-contained R script to reproduce the results.
+        if ("Reproduce Script" %in% includes && !is.null(state) && length(state$models) > 0) {
+          proj <- current_projection()
+          proj_info <- current_projection_info()
+          if (!is.null(proj)) {
+            saveRDS(list(basis = proj, center = proj_info$center, scale = proj_info$scale),
+                    file.path(export_dir, "projection.rds"))
+          }
+          export_reproduce_script(names(state$models), has_projection = !is.null(proj),
+                                  file = file.path(export_dir, "reproduce.R"))
+        }
+
         owd <- setwd(export_dir)
         on.exit(setwd(owd))
-        utils::zip(zipfile = file, files = list.files(export_dir), extras = "-q")
+        utils::zip(zipfile = file, files = list.files(export_dir, recursive = TRUE), extras = "-q")
       }
     )
   }
@@ -1331,7 +1658,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 #' @param predict_args Arguments passed to predict
 #' @return A ggplot object.
 #' @keywords internal
-create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list()) {
+create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list()) {
   if (!is.null(proj_matrix)) {
     proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
     x_mat <- as.matrix(data[, rownames(proj_matrix)])
@@ -1339,9 +1666,14 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, proj_
     if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
     z_mat <- x_mat %*% proj_matrix
 
+    r1 <- range(z_mat[, 1])
+    r2 <- range(z_mat[, 2])
+    pad1 <- max(diff(r1) * 0.06, 0.5)
+    pad2 <- max(diff(r2) * 0.06, 0.5)
+    
     range_list <- list(
-      PC1 = range(z_mat[, 1]) + c(-0.5, 0.5),
-      PC2 = range(z_mat[, 2]) + c(-0.5, 0.5)
+      PC1 = r1 + c(-pad1, pad1),
+      PC2 = r2 + c(-pad2, pad2)
     )
     cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
     x_col_label <- "PC1"
@@ -1350,9 +1682,15 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, proj_
     feat_cols <- setdiff(colnames(data), "Sim")
     x_name <- feat_cols[1]
     y_name <- feat_cols[2]
+    
+    r1 <- range(data[[x_name]])
+    r2 <- range(data[[y_name]])
+    pad1 <- max(diff(r1) * 0.06, 0.5)
+    pad2 <- max(diff(r2) * 0.06, 0.5)
+
     range_list <- list()
-    range_list[[x_name]] <- range(data[[x_name]]) + c(-0.5, 0.5)
-    range_list[[y_name]] <- range(data[[y_name]]) + c(-0.5, 0.5)
+    range_list[[x_name]] <- r1 + c(-pad1, pad1)
+    range_list[[y_name]] <- r2 + c(-pad2, pad2)
 
     cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, predict_args = predict_args)
     x_col_label <- x_name
@@ -1365,11 +1703,10 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, proj_
     cb_bound$boundary_data$prediction <- factor(cb_bound$boundary_data$prediction, levels = class_levels)
   }
 
-  # Render plot
-  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs) +
+  # Render plot with explicit color palette to stay in sync with the UI legend
+  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors) +
     ggplot2::ggtitle(title) +
-    ggplot2::theme(aspect.ratio = 1, legend.position = "none") +
-    ggplot2::scale_color_discrete(drop = FALSE)
+    ggplot2::theme(aspect.ratio = 1, legend.position = "none")
 
   if (!is.null(zoom_x) && !is.null(zoom_y)) {
     p <- suppressMessages(p + ggplot2::coord_cartesian(xlim = zoom_x, ylim = zoom_y, expand = FALSE))
@@ -1399,19 +1736,26 @@ generate_extreme_outlier <- function(data, class_label, magnitude, target_col = 
   class_offset <- suppressWarnings(sum(utf8ToInt(as.character(class_label))))
   corner <- (index + class_offset) %% 4
 
-  # Determine class-based magnitude offset to prevent different classes from overlapping at the same corner
   class_levels <- if (is.factor(data[[target_col]])) levels(data[[target_col]]) else unique(data[[target_col]])
   class_idx <- match(class_label, class_levels)
   if (is.na(class_idx)) class_idx <- length(class_levels) + 1
 
-  # Apply a larger fraction of the magnitude (e.g. 3% per class index) to visibly separate classes
   class_sub_step <- (class_idx - 1) * 0.03 * magnitude
+  
+  # Subset the dataset to only include observations belonging to the target class.
+  # This ensures the outlier is positioned relative to the specific class distribution
+  # rather than the global bounding box of all classes combined.
+  target_data <- data[data[[target_col]] == class_label, , drop = FALSE]
+  if (nrow(target_data) == 0) {
+    # Fallback to the global dataset distribution if the target class is empty.
+    target_data <- data 
+  }
 
   for (col in feat_cols) {
     if (is.numeric(data[[col]])) {
       if (length(num_cols) >= 2 && col %in% num_cols[1:2]) {
-        min_val <- min(data[[col]], na.rm = TRUE)
-        max_val <- max(data[[col]], na.rm = TRUE)
+        min_val <- min(target_data[[col]], na.rm = TRUE)
+        max_val <- max(target_data[[col]], na.rm = TRUE)
         range_val <- diff(c(min_val, max_val))
         if (range_val == 0) range_val <- 1
 
@@ -1430,7 +1774,7 @@ generate_extreme_outlier <- function(data, class_label, magnitude, target_col = 
           outlier[[col]] <- min_val - expansion
         }
       } else {
-        outlier[[col]] <- stats::median(data[[col]], na.rm = TRUE)
+        outlier[[col]] <- stats::median(target_data[[col]], na.rm = TRUE)
       }
     } else {
       freqs <- table(data[[col]])

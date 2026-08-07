@@ -64,17 +64,14 @@ boundary_workflow_set <- function(wf_set, data, range = NULL, response, resoluti
   model_list <- lapply(wf_set$wflow_id, function(id) {
     wf <- workflowsets::extract_workflow(wf_set, id)
 
-    # Fit the workflow if it is not already trained
     if (!workflows::is_trained_workflow(wf)) {
       wf <- parsnip::fit(wf, data = data)
     }
 
-    # Wrap the fitted workflow into the classbound pipeline
     as_classbound(wf, data = data, response = response)
   })
 
   names(model_list) <- wf_set$wflow_id
 
-  # Delegate completely to the multi-model pipeline in boundary_compute
   boundary_compute(model_list, range = range, resolution = resolution, ...)
 }

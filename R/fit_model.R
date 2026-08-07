@@ -49,7 +49,6 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
   interface <- match.arg(interface)
 
   # Extract labels based on formula
-  # model.frame handles NAs implicitly, but our preprocess_data strictly rejects them.
   mf <- model.frame(formula, data = data, na.action = na.pass)
   y <- model.response(mf)
 
@@ -57,17 +56,16 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
     stop("Could not extract response variable from formula.", call. = FALSE)
   }
 
-  # Capture original class levels before preprocessing drops unused levels
+  # Capture original class levels.
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
 
-  # Centralized validation and preprocessing
+  # Preprocess data.
   processed <- preprocess_data(data, y)
   data <- processed$data
   y <- processed$labels
 
-  # Update mf with preprocessed data
   mf <- model.frame(formula, data = data)
-  # Route fitting based on selected interface
+  # Dispatch to model interface.
   if (interface == "formula") {
     model_fit <- do.call(classifier, c(list(formula = formula, data = mf), fit_args))
   } else if (interface == "matrix") {
@@ -77,12 +75,12 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
     model_fit <- do.call(classifier, fit_args)
   }
 
-  # Extract feature metadata using the processed model frame (excluding response)
+  # Extract feature metadata.
   response_var <- all.vars(formula[[2]])
   predictors_df <- mf[, setdiff(colnames(mf), response_var), drop = FALSE]
   feature_meta <- extract_feature_metadata(predictors_df)
 
-  # Wrap the fitted model and metadata in the single public 'classbound' class
+  # Wrap as classbound object.
   structure(
     list(
       fit = model_fit,
@@ -105,11 +103,10 @@ fit_model.function <- function(data, formula, classifier, interface = c("formula
 #' @export
 #' @rdname fit_model
 fit_model.character <- function(data, formula, classifier, interface = c("formula", "matrix", "custom"), fit_args = list(), ...) {
-  # Try to evaluate the string (e.g., "rpart::rpart") to a function
+  # Resolve classifier to function.
   fn <- tryCatch(
     eval(str2lang(classifier)),
     error = function(e) {
-      # Fallback to match.fun if evaluation fails
       match.fun(classifier)
     }
   )

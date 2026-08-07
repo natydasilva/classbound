@@ -32,11 +32,11 @@ test_that("generate_extreme_outlier handles high-dimensional and categorical dat
   outlier <- generate_extreme_outlier(df, "B", magnitude = 5, target_col = "Sim")
   
   # B is class index 2. sub-step = 1 * 0.03 * 5 = 0.15. Magnitude = 5.15
-  # X1: max 5, range 4 -> 5 + (5.15 * 4 * 0.1) = 7.06
-  expect_equal(outlier$X1, 7.06)
+  # X1 (Class B): max 4, range 2 -> 4 + (5.15 * 2 * 0.1) = 5.03
+  expect_equal(outlier$X1, 5.03)
   
-  # X2: min 10, range 40, magnitude 5.15 -> 10 - (5.15 * 40 * 0.1) = -10.6
-  expect_equal(outlier$X2, -10.6)
+  # X2 (Class B): min 20, range 20, magnitude 5.15 -> 20 - (5.15 * 20 * 0.1) = 9.7
+  expect_equal(outlier$X2, 9.7)
   
   # X3: > 2nd dimension, should use median (300)
   expect_equal(outlier$X3, 300)
