@@ -19,6 +19,7 @@ plot_boundary(
   obs_size = 2.5,
   render = c("raster", "tile"),
   colors = NULL,
+  highlight_outliers = TRUE,
   ...
 )
 }
@@ -56,6 +57,8 @@ surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
 \item{render}{Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).}
 
 \item{colors}{Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.}
+
+\item{highlight_outliers}{Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).}
 
 \item{...}{Additional visualization parameters.}
 }

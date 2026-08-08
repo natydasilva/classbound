@@ -16,7 +16,9 @@ create_boundary_plot(
   zoom_y = NULL,
   show_probs = FALSE,
   resolution = 100,
-  predict_args = list()
+  predict_args = list(),
+  n_outliers = 0,
+  highlight_outliers = TRUE
 )
 }
 \arguments{

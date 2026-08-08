@@ -30,7 +30,6 @@ Imports:
     parsnip,
     rlang,
     ggnewscale,
-    scales,
     shiny,
     DT,
     tourr
@@ -41,7 +40,7 @@ Suggests:
     roxygen2 (>= 7.3.0),
     PPtreeViz,
     PPtreeExt,
-    PPforest,
+    ppforest2,
     randomForest,
     testthat (>= 3.0.0),
     knitr,
@@ -55,5 +54,4 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

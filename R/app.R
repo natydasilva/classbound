@@ -40,26 +40,25 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     }
   }
 
+
+
   # UI to Package API Mapping
   app_methods <- list(
-    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "Rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE),
-    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
-    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "RandomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE),
-    "PPforest"        = list(fn = function(formula, data, ...) {
-      y_name <- all.vars(formula[[2]])
-      PPforest::PPforest(data = as.data.frame(data), y = y_name, ...)
-    }, args = list(PPmethod = "LDA", size.tr = 1, size.p = 1), supports_prob = FALSE)
+    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "PPforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE)
   )
 
   predict_args <- list(
-    "PPtreeViz"       = function(ru) list(Rule = ru),
     "Rpart"           = function(...) list(),
-    "PPtreeExt_split" = function(ru) list(Rule = ru),
-    "PPtreeExtclass"  = function(...) list(),
     "RandomForest"    = function(...) list(),
-    "PPforest"        = function(...) list()
+    "PPtreeViz"       = function(ru) list(Rule = ru),
+    "PPtreeExtclass"  = function(...) list(),
+    "PPtreeExt_split" = function(ru) list(Rule = ru),
+    "PPforest2"       = function(...) list()
   )
 
   # Dynamically add Tidymodels presets
@@ -68,7 +67,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       "rpart" = "Decision Tree (rpart)",
       "randomForest" = "Random Forest",
       "kernlab" = "SVM (kernlab)",
-      "nnet" = "Neural Net (nnet)"
+      "nnet" = "Neural Net (nnet)",
+      "ppforest2" = "PP Forest (ppforest2)"
     )
     for (m_key in names(.tidymodels_registry)) {
       friendly_name <- paste0("Tidymodels: ", if (m_key %in% names(tm_friendly)) tm_friendly[[m_key]] else m_key)
@@ -109,7 +109,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
   # UI
   ui <- shiny::fluidPage(
-    shiny::tags$head(shiny::tags$style(shiny::HTML(".col-sm-4 { max-height: 90vh; overflow-y: auto; }"))),
+    shiny::tags$head(
+      shiny::tags$style(shiny::HTML("
+        .col-sm-4 { height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+      "))
+    ),
     shiny::titlePanel("Classbound Exploration & Comparison"),
     shiny::sidebarLayout(
       shiny::sidebarPanel(
@@ -186,15 +190,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::wellPanel(
           shiny::tags$details(
             shiny::tags$summary("Outlier Injection", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
-            shiny::helpText("Add extreme outliers to see how different models react to them."),
+            shiny::helpText("Add outliers to see how different models react to them."),
             shiny::selectInput("outlier_class", "Outlier Class", choices = c("Random", "Class 1", "Class 2", "Class 3")),
-            shiny::sliderInput("outlier_magnitude", "Outlier Magnitude", min = 2, max = 15, value = 5, step = 0.5),
+            shiny::sliderInput("outlier_magnitude", "Outlier Magnitude", min = 0, max = 10, value = 1.5, step = 0.5),
+            shiny::helpText("Controls how far the outlier is placed from its class distribution.", style = "font-size: 0.85em; margin-top: -10px; margin-bottom: 15px;"),
             shiny::numericInput("outlier_count", "Number of Outliers", value = 1, min = 1, max = 20, step = 1),
+            shiny::checkboxInput("highlight_outliers", "Highlight Outliers (Diamonds)", value = TRUE),
             shiny::div(
-              style = "display: flex; gap: 10px;",
+              style = "display: flex; gap: 10px; margin-bottom: 10px;",
               shiny::actionButton("inject_outlier_btn", "Inject Outliers", class = "btn-danger"),
               shiny::actionButton("clear_outliers_btn", "Clear", class = "btn-default")
-            )
+            ),
+            shiny::htmlOutput("outlier_status_ui")
           )
         ),
         
@@ -213,15 +220,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 "selected_models",
                 "Models to Compare",
                 choices = names(app_methods),
-                selected = c("RandomForest", "Rpart")
+                selected = c("RandomForest", "PPforest2")
               ),
-            shiny::uiOutput("prob_surface_ui"),
+            shiny::hr(),
             shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
+            shiny::uiOutput("prob_surface_ui"),
             shiny::conditionalPanel(
               condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
               shiny::div(title = "Defines the mathematical projection index used to separate the classes. 1 = LDA, 2 = PDA, 3 = Lr (etc.).", 
-                         shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1))
+                         shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1)),
+              shiny::div(title = "The projection index strategy.", 
+                         shiny::selectInput("pp_method", "PPtree: PPmethod", choices = c("LDA", "PDA"), selected = "LDA"))
             ),
             shiny::conditionalPanel(
               condition = "input.selected_models && input.selected_models.indexOf('PPtreeExtclass') > -1",
@@ -238,7 +248,17 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
               shiny::hr(),
               shiny::div(title = "Total number of decision trees to grow. Higher numbers increase accuracy but take longer to compute.", 
-                         shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50))
+                         shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50)),
+              shiny::div(title = "Number of variables randomly sampled as candidates at each split. Leave blank for default (sqrt of total features).", 
+                         shiny::numericInput("rf_mtry", "Random Forest: mtry", value = NA, min = 1, step = 1))
+            ),
+            shiny::conditionalPanel(
+              condition = "input.selected_models && input.selected_models.indexOf('PPforest2') > -1",
+              shiny::hr(),
+              shiny::div(title = "Total number of projection pursuit trees to grow. Higher numbers increase accuracy but take longer to compute.", 
+                         shiny::numericInput("pprf_size", "PPforest2: Number of Trees", value = 100, min = 10, step = 10)),
+              shiny::div(title = "Penalty parameter (lambda) for the Projection Pursuit PDA index.",
+                         shiny::sliderInput("pprf_lambda", "PPforest2: PDA Lambda", min = 0, max = 1, value = 0.5, step = 0.1))
             ),
             lapply(names(custom_uis), function(m_name) {
               shiny::conditionalPanel(
@@ -379,6 +399,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       auto_fetch_obs$resume()
 
     injected_outliers <- shiny::reactiveVal(data.frame())
+    outlier_last_action <- shiny::reactiveVal(list(action = "None", coords = ""))
     undo_history <- shiny::reactiveVal(list())
 
     combined_training_data <- shiny::reactive({
@@ -389,7 +410,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
       
       # Filter out inactive classes (e.g. if user reduced Base Classes)
-      # This ensures models are only trained on active classes and hides deleted points
       active <- class_choices()
       if (length(active) > 0 && "Sim" %in% colnames(dat)) {
         dat <- dat[dat$Sim %in% active, , drop = FALSE]
@@ -491,9 +511,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       start_idx <- nrow(inj) + 1
 
       count <- if (is.numeric(input$outlier_count) && input$outlier_count > 0) floor(input$outlier_count) else 1
+      target_class_orig <- input$outlier_class
 
       new_pts <- do.call(rbind, lapply(1:count, function(i) {
-        target_class <- input$outlier_class
+        target_class <- target_class_orig
         if (target_class == "Random") {
           avail_classes <- class_choices()
           if (length(avail_classes) > 0) {
@@ -501,13 +522,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           }
         }
 
-        # Jitter magnitude to prevent point occlusion.
+        # Pass the strict statistical magnitude without jittering it.
+        # The corner logic inside the function uses `total_index` to separate points spatially
+        # (e.g. by picking different corners) without altering their statistical distance.
         total_index <- start_idx + i - 1
-        cycle <- floor((total_index - 1) / 4)
-
-        step_size <- input$outlier_magnitude * 0.1
-        mag <- input$outlier_magnitude + (cycle * step_size)
-        generate_extreme_outlier(cd, target_class, mag, target_col = "Sim", index = total_index)
+        mag <- input$outlier_magnitude
+        generate_outlier(cd, target_class, mag, target_col = "Sim", index = total_index)
       }))
 
       if (nrow(inj) == 0) {
@@ -515,10 +535,70 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       } else {
         injected_outliers(rbind(inj, new_pts))
       }
+      
+      feat_cols <- setdiff(colnames(cd), "Sim")
+      num_cols <- names(which(sapply(cd[feat_cols], is.numeric)))
+      vis_cols <- if (length(num_cols) >= 2) num_cols[1:2] else num_cols
+      
+      coord_text <- ""
+      if (length(vis_cols) > 0) {
+        if (count == 1) {
+          coord_str <- paste(sapply(vis_cols, function(col) sprintf("%s = %.2f", col, new_pts[[col]][1])), collapse = ", ")
+          coord_text <- sprintf("<strong>Coordinates:</strong> %s", coord_str)
+        } else {
+          range_str <- paste(sapply(vis_cols, function(col) {
+            rng <- range(new_pts[[col]], na.rm = TRUE)
+            sprintf("%s = [%.2f, %.2f]", col, rng[1], rng[2])
+          }), collapse = ", ")
+          
+          pts_html <- paste(sapply(1:nrow(new_pts), function(r) {
+             row_vals <- paste(sapply(vis_cols, function(c) sprintf("%.2f", new_pts[[c]][r])), collapse=", ")
+             sprintf("<li>Pt %d: (%s)</li>", r, row_vals)
+          }), collapse="")
+          
+          coord_text <- sprintf(
+            "<strong>Coordinate Range:</strong> %s<br/>
+            <details style='margin-top: 5px;'>
+              <summary style='cursor: pointer; outline: none; display: list-item;'>Show Exact Coordinates</summary>
+              <ul style='margin-top: 5px; padding-left: 20px; max-height: 120px; overflow-y: auto; margin-bottom: 0;'>
+                %s
+              </ul>
+            </details>",
+            range_str, pts_html
+          )
+        }
+      }
+      
+      outlier_last_action(list(
+        action = sprintf("Added %d %s outlier(s)", count, target_class_orig),
+        coords = coord_text
+      ))
     })
 
     shiny::observeEvent(input$clear_outliers_btn, {
       injected_outliers(data.frame())
+      outlier_last_action(list(action = "Cleared outliers", coords = ""))
+    })
+    
+    output$outlier_status_ui <- shiny::renderUI({
+      inj <- injected_outliers()
+      last <- outlier_last_action()
+      n <- nrow(inj)
+      
+      coords_html <- if (is.list(last) && !is.null(last$coords) && last$coords != "") {
+        paste0("<br/>", last$coords)
+      } else {
+        ""
+      }
+      action_text <- if (is.list(last)) last$action else last
+      
+      shiny::HTML(sprintf(
+        "<div style='margin-top: 5px; font-size: 0.9em; color: #555;'>
+          <strong>Outliers injected:</strong> %d<br/>
+          <strong>Last action:</strong> %s%s
+        </div>",
+        n, action_text, coords_html
+      ))
     })
 
     output$data_stats_ui <- shiny::renderUI({
@@ -587,7 +667,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           shiny::div(
             style = "opacity: 0.6; pointer-events: none;",
             title = "None of the selected classifiers support probability outputs. Falling back to hard decision boundaries.",
-            shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = current_val)
+            shiny::checkboxInput("show_probs_disabled", "Show Probability Surface", value = FALSE)
           )
         }
       )
@@ -694,7 +774,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       shiny::div(
         shiny::selectInput("sim_edit_class", "Active Class to Edit:", 
-                           choices = setNames(as.character(1:n), paste("Class", 1:n)), 
+                           choices = stats::setNames(as.character(1:n), paste("Class", 1:n)), 
                            selected = active_i),
         shiny::hr(style = "margin-top: 10px; margin-bottom: 15px;"),
         lapply(1:n, function(i) {
@@ -1223,10 +1303,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         config <- app_methods[[m]]
         if (!is.null(config)) {
           plot_opts <- list()
-          if (m == "PPtreeExtclass") plot_opts <- list(stop = input$stop)
-          if (m == "Rpart") plot_opts <- list(control = rpart::rpart.control(cp = input$rpart_cp))
-          if (m == "RandomForest") plot_opts <- list(ntree = input$rf_ntree)
-
+          if (m == "PPtreeViz") plot_opts <- list(PPmethod = input$pp_method)
+          if (m == "PPtreeExt_split") plot_opts <- list(PPmethod = input$pp_method)
           if (!is.null(config$fit_args_fn) && is.function(config$fit_args_fn)) {
             custom_opts <- config$fit_args_fn(input)
             plot_opts <- c(plot_opts, custom_opts)
@@ -1332,7 +1410,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 zoom_y = zoom_ylim(),
                 show_probs = isTRUE(input$show_probs),
                 resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
-                predict_args = state$models[[m]]$predict_args
+                predict_args = state$models[[m]]$predict_args,
+                n_outliers = nrow(injected_outliers()),
+                highlight_outliers = isTRUE(input$highlight_outliers)
               )
             },
             error = function(e) {
@@ -1539,7 +1619,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                   zoom_y = zoom_ylim(),
                   show_probs = isTRUE(input$show_probs),
                   resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
-                  predict_args = state$models[[m]]$predict_args
+                  predict_args = state$models[[m]]$predict_args,
+                  n_outliers = nrow(injected_outliers()),
+                  highlight_outliers = isTRUE(input$highlight_outliers)
                 )
               }, error = function(e) NULL)
             })
@@ -1658,7 +1740,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 #' @param predict_args Arguments passed to predict
 #' @return A ggplot object.
 #' @keywords internal
-create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list()) {
+create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list(), n_outliers = 0, highlight_outliers = TRUE) {
   if (!is.null(proj_matrix)) {
     proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
     x_mat <- as.matrix(data[, rownames(proj_matrix)])
@@ -1703,8 +1785,14 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
     cb_bound$boundary_data$prediction <- factor(cb_bound$boundary_data$prediction, levels = class_levels)
   }
 
+  # Tag outlier rows for visual differentiation (only at plot time, not during model fitting)
+  if (n_outliers > 0) {
+    data$is_outlier <- FALSE
+    data$is_outlier[(nrow(data) - n_outliers + 1):nrow(data)] <- TRUE
+  }
+
   # Render plot with explicit color palette to stay in sync with the UI legend
-  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors) +
+  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors, highlight_outliers = highlight_outliers) +
     ggplot2::ggtitle(title) +
     ggplot2::theme(aspect.ratio = 1, legend.position = "none")
 
@@ -1724,72 +1812,135 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
 #' @param index An integer index used to cycle through bounding box corners.
 #' @return A one-row data frame with the generated outlier.
 #' @keywords internal
-generate_extreme_outlier <- function(data, class_label, magnitude, target_col = "Sim", index = 1) {
+generate_outlier <- function(data, class_label, magnitude, target_col = "Sim", index = 1) {
   outlier <- data[1, , drop = FALSE]
   outlier[[target_col]] <- class_label
-
+  
   feat_cols <- setdiff(colnames(data), target_col)
   num_cols <- names(which(sapply(data[feat_cols], is.numeric)))
-
-  # Determine which corner to use (0 to 3) based on the index and class
-  # Offset the index by a class hash so different classes start at different corners
+  
   class_offset <- suppressWarnings(sum(utf8ToInt(as.character(class_label))))
   corner <- (index + class_offset) %% 4
-
-  class_levels <- if (is.factor(data[[target_col]])) levels(data[[target_col]]) else unique(data[[target_col]])
-  class_idx <- match(class_label, class_levels)
-  if (is.na(class_idx)) class_idx <- length(class_levels) + 1
-
-  class_sub_step <- (class_idx - 1) * 0.03 * magnitude
   
-  # Subset the dataset to only include observations belonging to the target class.
-  # This ensures the outlier is positioned relative to the specific class distribution
-  # rather than the global bounding box of all classes combined.
   target_data <- data[data[[target_col]] == class_label, , drop = FALSE]
   if (nrow(target_data) == 0) {
-    # Fallback to the global dataset distribution if the target class is empty.
     target_data <- data 
   }
 
-  for (col in feat_cols) {
-    if (is.numeric(data[[col]])) {
-      if (length(num_cols) >= 2 && col %in% num_cols[1:2]) {
-        min_val <- min(target_data[[col]], na.rm = TRUE)
-        max_val <- max(target_data[[col]], na.rm = TRUE)
-        range_val <- diff(c(min_val, max_val))
-        if (range_val == 0) range_val <- 1
-
-        expansion <- (magnitude + class_sub_step) * range_val * 0.1
-
-        # Corner mapping:
-        # 0: max X1, max X2
-        # 1: min X1, max X2
-        # 2: min X1, min X2
-        # 3: max X1, min X2
-        use_max <- if (col == num_cols[1]) (corner %in% c(0, 3)) else (corner %in% c(0, 1))
-
-        if (use_max) {
-          outlier[[col]] <- max_val + expansion
-        } else {
-          outlier[[col]] <- min_val - expansion
+  visual_cols <- if (length(num_cols) >= 2) num_cols[1:2] else num_cols
+  
+  apply_tukey <- function(col_name, is_x) {
+    valid_vals <- target_data[[col_name]][!is.na(target_data[[col_name]])]
+    
+    # Degenerate 1: Target class is completely missing values for this feature
+    if (length(valid_vals) == 0) {
+      global_vals <- data[[col_name]][!is.na(data[[col_name]])]
+      if (length(global_vals) == 0) return(NA_real_)
+      base_val <- stats::median(global_vals)
+      scale <- max(global_vals) - min(global_vals)
+      if (scale == 0) return(unname(base_val))
+      
+      use_max <- if (is_x) (corner %in% c(0, 3)) else (corner %in% c(0, 1))
+      if (use_max) return(unname(base_val + magnitude * scale))
+      return(unname(base_val - magnitude * scale))
+    }
+    
+    # Calculate target class Tukey stats
+    q1 <- stats::quantile(valid_vals, 0.25)
+    q3 <- stats::quantile(valid_vals, 0.75)
+    iqr <- q3 - q1
+    
+    # Degenerate 2: Zero IQR in target class
+    if (iqr == 0) {
+      iqr <- max(valid_vals) - min(valid_vals)
+    }
+    
+    # Degenerate 3: Zero variance (collinear) in target class or insufficient samples
+    if (iqr == 0) {
+      # Use global scale but originate from the class's constant value
+      global_vals <- data[[col_name]][!is.na(data[[col_name]])]
+      if (length(global_vals) > 0) {
+        global_scale <- max(global_vals) - min(global_vals)
+        if (global_scale > 0) {
+          use_max <- if (is_x) (corner %in% c(0, 3)) else (corner %in% c(0, 1))
+          base_val <- valid_vals[1]
+          if (use_max) return(unname(base_val + magnitude * global_scale))
+          return(unname(base_val - magnitude * global_scale))
         }
+      }
+      return(unname(valid_vals[1]))
+    }
+    
+    # Valid Tukey
+    use_max <- if (is_x) (corner %in% c(0, 3)) else (corner %in% c(0, 1))
+    if (use_max) return(unname(q3 + magnitude * iqr))
+    return(unname(q1 - magnitude * iqr))
+  }
+  
+  if (length(visual_cols) == 2) {
+    mat <- as.matrix(target_data[, visual_cols])
+    mat_clean <- mat[stats::complete.cases(mat), , drop = FALSE]
+    
+    # Require genuinely valid, finite, invertible 2D covariance matrix (n > 2 for full rank)
+    if (nrow(mat_clean) > 2) {
+      mu <- colMeans(mat_clean)
+      Sigma <- tryCatch(stats::cov(mat_clean), error = function(e) NULL)
+      
+      # Check if singular, zero variance, or invalid
+      if (is.null(Sigma) || any(is.na(Sigma)) || any(diag(Sigma) == 0) || abs(det(Sigma)) < 1e-10) {
+        outlier[[visual_cols[1]]] <- apply_tukey(visual_cols[1], TRUE)
+        outlier[[visual_cols[2]]] <- apply_tukey(visual_cols[2], FALSE)
       } else {
-        outlier[[col]] <- stats::median(target_data[[col]], na.rm = TRUE)
+        eig <- eigen(Sigma)
+        val <- eig$values
+        vec <- eig$vectors
+        
+        # Directions: 0 = +major, 1 = -major, 2 = +minor, 3 = -minor
+        if (corner %in% c(0, 1)) {
+          dir <- vec[, 1]
+          scale <- sqrt(val[1])
+          sign_mult <- if (corner == 0) 1 else -1
+        } else {
+          dir <- vec[, 2]
+          scale <- sqrt(val[2])
+          sign_mult <- if (corner == 2) 1 else -1
+        }
+        
+        pt <- mu + sign_mult * magnitude * scale * dir
+        outlier[[visual_cols[1]]] <- unname(pt[1])
+        outlier[[visual_cols[2]]] <- unname(pt[2])
       }
     } else {
+      # Insufficient data for 2D covariance -> fallback to Tukey
+      outlier[[visual_cols[1]]] <- apply_tukey(visual_cols[1], TRUE)
+      outlier[[visual_cols[2]]] <- apply_tukey(visual_cols[2], FALSE)
+    }
+  } else if (length(visual_cols) == 1) {
+    outlier[[visual_cols[1]]] <- apply_tukey(visual_cols[1], TRUE)
+  }
+  
+  # Non-visualized numeric columns
+  for (col in setdiff(num_cols, visual_cols)) {
+    outlier[[col]] <- stats::median(target_data[[col]], na.rm = TRUE)
+  }
+  
+  # Categorical columns
+  for (col in setdiff(feat_cols, num_cols)) {
+    freqs <- table(target_data[[col]])
+    if (length(freqs) == 0 || max(freqs) == 0) {
       freqs <- table(data[[col]])
-      if (length(freqs) > 0) {
-        mode_val <- names(freqs)[which.max(freqs)]
-        if (is.factor(data[[col]])) {
-          outlier[[col]] <- factor(mode_val, levels = levels(data[[col]]))
-        } else {
-          outlier[[col]] <- mode_val
-        }
+    }
+    if (length(freqs) > 0) {
+      mode_val <- names(freqs)[which.max(freqs)]
+      if (is.factor(data[[col]])) {
+        outlier[[col]] <- factor(mode_val, levels = levels(data[[col]]))
       } else {
-        outlier[[col]] <- NA
+        outlier[[col]] <- mode_val
       }
+    } else {
+      outlier[[col]] <- NA
     }
   }
-
+  
   return(outlier)
 }

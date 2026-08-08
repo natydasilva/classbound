@@ -91,42 +91,48 @@ predict_adapter.PPtreeclass <- function(model, newdata, ...) {
   )
 }
 
-#' Predict using a fitted PPforest model
+#' Predict using a fitted ppforest2 model
 #'
-#' @description Adapter function to generate standardized predictions from a PPforest model.
+#' @description Adapter function to generate standardized predictions from a ppforest2 model.
 #'
-#' @param model A fitted \code{PPforest} object.
+#' \strong{Developer Note:} During development, an issue was observed with
+#' \code{ppforest2} v0.1.3 when training data is contiguous by class but
+#' ordered so that the lowest class does not occur first (e.g.,
+#' \code{Class 3, Class 3, Class 1, Class 1}). In this case, the underlying
+#' C++ code can produce \code{Grouping::init: partition must be rooted at row 0}.
+#' \code{classbound} does not reorder or otherwise modify the training data
+#' specifically to avoid this behavior. If a future version of \code{ppforest2}
+#' changes this behavior, no corresponding change to \code{classbound} is
+#' expected to be necessary.
+#' @param model A fitted \code{pprf_classification} object.
 #' @param newdata A data frame of new observations to predict on.
 #' @param ... Additional arguments passed to \code{predict()}.
 #'
-#' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities, NULL for PPforest).
+#' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities).
 #' @importFrom stats predict
 #' @export
-predict_adapter.PPforest <- function(model, newdata, ...) {
-  # Subset newdata to model features.
-
+predict_adapter.pprf_classification <- function(model, newdata, ...) {
   newdata_df <- as.data.frame(newdata)
 
-  # Suppress PPforest codetools false-positive warning.
-  preds_raw <- withCallingHandlers(
-    predict(model, newdata = newdata_df, ...),
-    warning = function(w) {
-      if (grepl("may be used in an incorrect context", w$message)) {
-        invokeRestart("muffleWarning")
-      }
+  expected_preds <- colnames(model$x)
+  if (!is.null(expected_preds) && all(expected_preds %in% colnames(newdata_df))) {
+    new_data_mat <- as.matrix(newdata_df[, expected_preds, drop = FALSE])
+  } else {
+    # Fallback if expected_preds cannot be resolved
+    target <- all.vars(model$formula)[1]
+    if (!is.null(target) && !(target %in% colnames(newdata_df))) {
+      dummy_val <- if (!is.null(model$groups)) model$groups[1] else 1
+      newdata_df[[target]] <- dummy_val
     }
-  )
-
-  # Validate prediction output structure
-  if (!is.list(preds_raw) || length(preds_raw) < 3) {
-    stop("Unexpected prediction output from PPforest model.", call. = FALSE)
+    new_data_mat <- newdata_df
   }
 
-  preds <- as.factor(preds_raw[[3]])
+  preds <- predict(model, new_data_mat, type = "class", ...)
+  probs <- as.matrix(predict(model, new_data_mat, type = "prob", ...))
 
   list(
     class = preds,
-    probs = NULL
+    probs = probs
   )
 }
 
@@ -162,7 +168,9 @@ predict_adapter.model_fit <- function(model, newdata, ...) {
 
   preds_prob <- tryCatch(
     {
-      as.matrix(predict(model, newdata, type = "prob"))
+      p_mat <- as.matrix(predict(model, newdata, type = "prob"))
+      colnames(p_mat) <- gsub("^\\.pred_", "", colnames(p_mat))
+      p_mat
     },
     error = function(e) {
       NULL

@@ -12,11 +12,11 @@ S3method(fit_model,workflow)
 S3method(plot,classbound)
 S3method(predict,classbound)
 S3method(predict,classbound_multi)
-S3method(predict_adapter,PPforest)
 S3method(predict_adapter,PPtreeExtclass)
 S3method(predict_adapter,PPtreeclass)
 S3method(predict_adapter,default)
 S3method(predict_adapter,model_fit)
+S3method(predict_adapter,pprf_classification)
 S3method(predict_adapter,randomForest)
 S3method(predict_adapter,rpart)
 S3method(predict_adapter,workflow)
@@ -42,9 +42,11 @@ export(preprocess_data)
 export(simu_n)
 export(simulate_mixsim)
 importFrom(rlang,.data)
-importFrom(stats,model.frame)
-importFrom(stats,model.matrix)
-importFrom(stats,model.response)
-importFrom(stats,na.pass)
-importFrom(stats,predict)
+importFrom(stats,
+  model.frame,
+  model.matrix,
+  model.response,
+  na.pass,
+  predict
+)
 importFrom(utils,str)

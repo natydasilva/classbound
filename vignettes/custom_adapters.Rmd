@@ -51,15 +51,15 @@ my_model <- classbound(
 
 ## 3. Officially Supported Classifiers (Built-in Adapters)
 
-We maintain a very small set of built-in S3 adapters (e.g., `rpart`, `randomForest`, `PPforest`) because their documented APIs require model-specific handling (such as passing `type = "class"` or muffling specific warnings). If you use these classifiers, `classbound` will automatically route them to their built-in adapter. You do not need to provide a `predfun`.
+We maintain a very small set of built-in S3 adapters (e.g., `rpart`, `randomForest`, `ppforest2`) because their documented APIs require model-specific handling (such as passing `type = "class"`). If you use these classifiers, `classbound` will automatically route them to their built-in adapter. You do not need to provide a `predfun`.
 
 ```{r setup_builtin, eval=FALSE}
-# PPforest requires model-specific handling for prediction warnings & list outputs,
+# ppforest2 requires model-specific handling for prediction lists & probabilities,
 # but classbound provides a built-in adapter for it natively.
 my_model <- classbound(
   data = my_data,
   formula = y ~ x1 + x2,
-  classifier = PPforest::PPforest
+  classifier = ppforest2::pprf
 )
 ```
 

@@ -50,18 +50,16 @@ test_that("boundary_compute works correctly with randomForest model", {
   expect_true(all(abs(probs_sum - 1) < 1e-6))
 })
 
-test_that("boundary_compute works correctly with PPforest model", {
-  skip_if_not_installed("PPforest")
+test_that("boundary_compute works correctly with ppforest2 model", {
+  skip_if_not_installed("ppforest2")
   library(palmerpenguins)
   penguins <- as.data.frame(na.omit(penguins[, -c(2, 7, 8)]))
   train_data <- penguins[, c("bill_length_mm", "bill_depth_mm", "species")]
 
   model <- fit_model(
     data = train_data,
-    formula = species ~ .,
-    classifier = PPforest::PPforest,
-    interface = "custom",
-    fit_args = list(data = train_data, y = "species", m = 10, size.tr = 1, size.p = 1, PPmethod = "LDA")
+    formula = species ~ bill_length_mm + bill_depth_mm,
+    classifier = ppforest2::pprf
   )
 
   feature_range <- list(
@@ -77,8 +75,10 @@ test_that("boundary_compute works correctly with PPforest model", {
   expect_equal(nrow(res), 100)
   expect_true(is.factor(res$prediction))
 
-  # PPforest adapter does not provide probabilities
-  expect_false("Adelie" %in% colnames(res))
+  # ppforest2 adapter provides probabilities natively
+  expect_true(all(c("Adelie", "Chinstrap", "Gentoo") %in% colnames(res)))
+  probs_sum <- rowSums(res[, c("Adelie", "Chinstrap", "Gentoo")])
+  expect_true(all(abs(probs_sum - 1) < 1e-6))
 })
 
 test_that("boundary_compute works correctly with PPtreeViz model", {

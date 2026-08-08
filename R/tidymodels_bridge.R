@@ -29,6 +29,10 @@
   "nnet" = function() {
     rlang::check_installed("parsnip")
     parsnip::set_engine(parsnip::mlp(mode = "classification"), "nnet")
+  },
+  "ppforest2" = function() {
+    rlang::check_installed(c("parsnip", "ppforest2"))
+    parsnip::set_engine(ppforest2::pp_rand_forest(mode = "classification"), "ppforest2")
   }
 )
 

@@ -34,6 +34,7 @@
 #' @param obs_size Numeric size for overlaid observation points.
 #' @param render Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).
 #' @param colors Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.
+#' @param highlight_outliers Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
@@ -60,7 +61,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           show_gradient = FALSE,
                           agree_color = "#006666", disagree_color = "#FF8000",
                           obs_alpha = 1.0, obs_size = 2.5, render = c("raster", "tile"),
-                          colors = NULL, ...) {
+                          colors = NULL, highlight_outliers = TRUE, ...) {
   render <- match.arg(render)
 
   if (!type %in% c("2D", "disagreement")) {
@@ -127,13 +128,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       }
 
       has_any_probs <- any(!is.na(boundary$probability))
-
-      if (!has_any_probs) {
-        warning(
-          "show_gradient = TRUE was requested, but no models contain class probabilities. Falling back to a flat decision boundary.",
-          call. = FALSE
-        )
-      }
     } else {
       has_any_probs <- FALSE
     }
@@ -147,7 +141,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         p <- p + ggplot2::geom_tile(ggplot2::aes(fill = .data$prediction, alpha = .data$probability))
       }
       p <- p +
-        ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0, 1), na.value = 0.3, guide = "none") +
+        ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0.1, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
         { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::labs(
@@ -216,6 +210,12 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         y_val = z_mat[, 2],
         true_class = obs_data[[true_label]]
       )
+      
+      if (highlight_outliers) {
+        obs_df$is_outlier <- if ("is_outlier" %in% colnames(obs_data)) obs_data$is_outlier else FALSE
+      } else {
+        obs_df$is_outlier <- FALSE
+      }
 
       # Depth fading (opacity scaling)
       # Reconstruct high-dimensional points from the 2D plane
@@ -236,9 +236,14 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggnewscale::new_scale_fill() +
         ggnewscale::new_scale("alpha") +
         ggplot2::geom_point(
-          data = obs_df,
+          data = obs_df[!obs_df$is_outlier, , drop = FALSE],
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
           size = obs_size, shape = 21, color = "white", stroke = 0.5
+        ) +
+        ggplot2::geom_point(
+          data = obs_df[obs_df$is_outlier, , drop = FALSE],
+          ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
+          size = obs_size, shape = 23, color = "black", stroke = 1.2, show.legend = FALSE
         ) +
         { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::scale_alpha_identity() +
@@ -259,13 +264,24 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
 
       obs_df <- obs_data[, c(x_col, y_col, true_label)]
       colnames(obs_df) <- c("x_val", "y_val", "true_class")
+      
+      if (highlight_outliers) {
+        obs_df$is_outlier <- if ("is_outlier" %in% colnames(obs_data)) obs_data$is_outlier else FALSE
+      } else {
+        obs_df$is_outlier <- FALSE
+      }
 
       p <- p +
         ggnewscale::new_scale_fill() +
         ggplot2::geom_point(
-          data = obs_df,
+          data = obs_df[!obs_df$is_outlier, , drop = FALSE],
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
           size = obs_size, alpha = obs_alpha, shape = 21, color = "white", stroke = 0.5
+        ) +
+        ggplot2::geom_point(
+          data = obs_df[obs_df$is_outlier, , drop = FALSE],
+          ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
+          size = obs_size, alpha = 1, shape = 23, color = "black", stroke = 1.2, show.legend = FALSE
         ) +
         { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
         ggplot2::labs(fill = "True Class")
@@ -273,13 +289,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
   }
 
   if (is.null(facet_col) && inherits(model, "classbound_multi") && type == "2D") {
-    warning(
-      paste0(
-        "This model contains multiple boundaries. ",
-        "Automatically setting facet_col = 'model' to prevent overlapping plots."
-      ),
-      call. = FALSE
-    )
+    message("This model contains multiple boundaries. Automatically setting facet_col = 'model' to prevent overlapping plots.")
     facet_col <- "model"
   }
 
