@@ -11,7 +11,7 @@ test_that("boundary_compute slicing works with imputation", {
   expect_warning({
     boundary_res <- boundary_compute(
       model,
-      range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+      feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
       resolution = 10
     )
   }, "The following high-dimensional features were not provided and were automatically imputed")
@@ -41,7 +41,7 @@ test_that("boundary_compute slicing works with explicit reference", {
   # Request 2D boundary with references
   boundary_res <- boundary_compute(
     model,
-    range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+    feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
     reference = list(flipper_length_mm = 200, body_mass_g = 4000, island = "Biscoe"),
     resolution = 10
   )
@@ -60,13 +60,13 @@ test_that("boundary_compute slicing validation catches errors", {
 
   # Invalid reference feature name
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)), reference = list(fake_feat = 10)),
+    boundary_compute(model, feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)), reference = list(fake_feat = 10)),
     "Names in `reference` do not match training features."
   )
 
   # Invalid factor level
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)), reference = list(island = "FakeIsland")),
+    boundary_compute(model, feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)), reference = list(island = "FakeIsland")),
     "Reference value 'FakeIsland' for feature 'island' is not a valid level."
   )
 })

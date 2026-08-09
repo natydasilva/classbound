@@ -4,7 +4,7 @@
 #'
 #' @param data A data frame containing the training features and response.
 #' @param formula A formula specifying the response and predictors.
-#' @param classifier The classification function to use (e.g., \code{rpart::rpart}).
+#' @param classifier The classification function to use (e.g., \code{rpart::rpart}). When passing a string, it must precisely match the case-sensitive name of the function.
 #' @param interface A string specifying how to invoke the classifier.
 #' \itemize{
 #'   \item \code{"formula"} (default): For classifiers that accept a formula and data frame natively

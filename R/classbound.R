@@ -87,7 +87,7 @@ classbound <- function(data,
 
   model <- boundary_compute(
     model = model,
-    range = feature_range,
+    feature_range = feature_range,
     resolution = resolution,
     predfun = predfun,
     projection = projection,

@@ -6,7 +6,7 @@
 \usage{
 boundary_compute(
   model,
-  range = NULL,
+  feature_range = NULL,
   resolution = 100,
   predfun = NULL,
   projection = NULL,
@@ -17,7 +17,7 @@ boundary_compute(
 \arguments{
 \item{model}{A fitted model object of class \code{classbound}.}
 
-\item{range}{An optional named list defining the feature ranges (e.g., \code{list(V1 = c(4, 8), V2 = c(2, 5))}),
+\item{feature_range}{An optional named list defining the feature ranges (e.g., \code{list(V1 = c(4, 8), V2 = c(2, 5))}),
 or a character vector of two feature names to automatically compute bounds from the training data.
 If \code{NULL} and the model has exactly two numeric features, it will automatically use their ranges.}
 
@@ -32,10 +32,10 @@ of predicted classes, or a list containing \code{class} (predicted labels) and \
 Must contain \code{basis} (a numeric matrix defining the projection frame, which MUST be orthonormal).
 Optionally contains \code{center} and \code{scale} (numeric vectors) to reverse visual normalization.
 Projection is only supported for models trained exclusively on numeric features.
-If provided, \code{range} defines the limits of the 2D projected space, and the grid
+If provided, \code{feature_range} defines the limits of the 2D projected space, and the grid
 is inversely projected back to the original feature space before prediction.}
 
-\item{reference}{An optional named list of fixed values to use for features not specified in \code{range}.
+\item{reference}{An optional named list of fixed values to use for features not specified in \code{feature_range}.
 If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.}
 
 \item{...}{Additional computation parameters.}
@@ -68,7 +68,7 @@ rownames(basis) <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
 
 m_peng_proj <- boundary_compute(
   m_peng, 
-  range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+  feature_range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
   resolution = 50,
   projection = list(basis = basis)
 )

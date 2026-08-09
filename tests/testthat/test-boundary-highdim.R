@@ -13,7 +13,7 @@ test_that("boundary_compute validates projection object correctly", {
   # Missing projection for high-dimensional model (using invalid features z1/z2)
   expect_error(
     boundary_compute(model, list(z1 = c(-1, 1), z2 = c(-1, 1))),
-    "Names in `range` do not match the training features."
+    "Names in `feature_range` do not match the training features."
   )
 
   # Model with a factor feature
@@ -124,7 +124,7 @@ test_that("boundary_compute works with a valid projection", {
   projection <- list(basis = basis, center = center)
   range_z <- list(z1 = c(-10, 10), z2 = c(-5, 5))
 
-  res_model <- boundary_compute(model, range = range_z, resolution = 10, projection = projection)
+  res_model <- boundary_compute(model, feature_range = range_z, resolution = 10, projection = projection)
   res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")
@@ -135,7 +135,7 @@ test_that("boundary_compute works with a valid projection", {
   expect_true(all(levels(penguins_data$species) %in% colnames(res)))
 
   # Test without center
-  res_no_center_model <- boundary_compute(model, range = range_z, resolution = 10, projection = list(basis = basis))
+  res_no_center_model <- boundary_compute(model, feature_range = range_z, resolution = 10, projection = list(basis = basis))
   res_no_center <- res_no_center_model$boundary_data
   expect_s3_class(res_no_center, "data.frame")
   expect_equal(nrow(res_no_center), 100)
@@ -153,7 +153,7 @@ test_that("projection reduces mathematically to 2D workflow", {
   )
 
   # Compute standard 2D boundary
-  res_standard_model <- boundary_compute(model_2d, range = range_2d, resolution = 10)
+  res_standard_model <- boundary_compute(model_2d, feature_range = range_2d, resolution = 10)
   res_standard <- res_standard_model$boundary_data
 
   # Compute boundary via inverse projection identity mapping
@@ -166,7 +166,7 @@ test_that("projection reduces mathematically to 2D workflow", {
 
   res_projected_model <- boundary_compute(
     model_2d,
-    range = range_2d,
+    feature_range = range_2d,
     resolution = 10,
     projection = projection_identity
   )

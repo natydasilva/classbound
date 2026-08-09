@@ -35,7 +35,7 @@ test_that("tidymodels adapter works", {
   # 3. Test workflow_set native helper
   wf_set <- workflow_set(preproc = list(rec = rec), models = list(tree = spec))
   # boundary_workflow_set should auto-fit since this is unfitted
-  grid_wfs_model <- boundary_workflow_set(wf_set, data = df, range = list(V1 = c(-1, 1), V2 = c(-1, 1)), response = "Y", resolution = 10)
+  grid_wfs_model <- boundary_workflow_set(wf_set, data = df, feature_range = list(V1 = c(-1, 1), V2 = c(-1, 1)), response = "Y", resolution = 10)
   grid_wfs <- grid_wfs_model$boundary_data
   expect_true(all(c("model", "x", "y", "prediction") %in% colnames(grid_wfs)))
   expect_equal(grid_wfs$model[1], "rec_tree")

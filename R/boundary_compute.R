@@ -3,7 +3,7 @@
 #' @description Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
 #'
 #' @param model A fitted model object of class `classbound`.
-#' @param range An optional named list defining the feature ranges (e.g., `list(V1 = c(4, 8), V2 = c(2, 5))`),
+#' @param feature_range An optional named list defining the feature ranges (e.g., `list(V1 = c(4, 8), V2 = c(2, 5))`),
 #'   or a character vector of two feature names to automatically compute bounds from the training data.
 #'   If `NULL` and the model has exactly two numeric features, it will automatically use their ranges.
 #' @param resolution An integer specifying the grid resolution.
@@ -15,9 +15,9 @@
 #'   Must contain `basis` (a numeric matrix defining the projection frame, which MUST be orthonormal).
 #'   Optionally contains `center` and `scale` (numeric vectors) to reverse visual normalization.
 #'   Projection is only supported for models trained exclusively on numeric features.
-#'   If provided, `range` defines the limits of the 2D projected space, and the grid
+#'   If provided, `feature_range` defines the limits of the 2D projected space, and the grid
 #'   is inversely projected back to the original feature space before prediction.
-#' @param reference An optional named list of fixed values to use for features not specified in `range`.
+#' @param reference An optional named list of fixed values to use for features not specified in `feature_range`.
 #'   If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.
 #' @param ... Additional computation parameters.
 #'
@@ -44,13 +44,13 @@
 #' 
 #' m_peng_proj <- boundary_compute(
 #'   m_peng, 
-#'   range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+#'   feature_range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
 #'   resolution = 50,
 #'   projection = list(basis = basis)
 #' )
 #' }
 #' @export
-boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
+boundary_compute <- function(model, feature_range = NULL, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
   is_multi <- FALSE
   is_bare_list <- is.list(model) && (class(model)[1] == "list")
 
@@ -72,39 +72,43 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
     stop("Model metadata is missing. Please retrain the model.", call. = FALSE)
   }
 
-  if (is.null(range) || is.character(range)) {
+  if (is.null(feature_range) || is.character(feature_range)) {
     avail_features <- first_model$metadata$features$names
     avail_numeric <- avail_features[
       vapply(first_model$metadata$features$types, function(x) any(c("numeric", "integer", "double") %in% x), logical(1))
     ]
     
-    if (is.character(range)) {
-      if (length(range) != 2) stop("If `range` is a character vector, it must specify exactly 2 feature names.", call. = FALSE)
-      target_features <- range
+    if (is.character(feature_range)) {
+      if (length(feature_range) != 2) stop("If `feature_range` is a character vector, it must specify exactly 2 feature names.", call. = FALSE)
+      target_features <- feature_range
     } else {
       if (length(avail_numeric) == 2) {
         target_features <- avail_numeric
       } else {
-        stop("Cannot auto-compute `range`: model does not have exactly 2 numeric features. Please provide `range` explicitly.", call. = FALSE)
+        stop("Cannot auto-compute `feature_range`: model does not have exactly 2 numeric features. Please provide `feature_range` explicitly.", call. = FALSE)
       }
     }
     
-    range <- list()
+    feature_range <- list()
     for (f in target_features) {
       rng <- first_model$metadata$features$range[[f]]
       if (is.null(rng)) stop(sprintf("Could not find numeric range for feature '%s'.", f), call. = FALSE)
-      range[[f]] <- rng
+      feature_range[[f]] <- rng
     }
   }
 
-  if (!is.list(range) || length(range) != 2 || is.null(names(range))) {
-    stop("range must be a named list of length 2 specifying feature ranges.", call. = FALSE)
+  if (!is.list(feature_range) || length(feature_range) != 2 || is.null(names(feature_range))) {
+    stop("feature_range must be a named list of length 2 specifying feature ranges.", call. = FALSE)
   }
 
-  var_names <- names(range)
+  if (!is.numeric(resolution) || resolution < 2) {
+    stop("`resolution` must be an integer >= 2 to generate a valid rendering grid.", call. = FALSE)
+  }
+
+  var_names <- names(feature_range)
 
   if (any(duplicated(var_names))) {
-    stop("Duplicate feature names found in `range`.", call. = FALSE)
+    stop("Duplicate feature names found in `feature_range`.", call. = FALSE)
   }
 
   expected_names <- first_model$metadata$features$names
@@ -158,7 +162,7 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
 
   if (is.null(projection)) {
     if (length(invalid_names) > 0) {
-      msg <- "Names in `range` do not match the training features."
+      msg <- "Names in `feature_range` do not match the training features."
       if (length(invalid_names) > 0) {
         msg <- paste0(msg, "\nInvalid features: ", paste(invalid_names, collapse = ", "))
       }
@@ -221,8 +225,8 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
   if (any(!is_numeric)) {
     stop("Boundary generation requires numeric features. Categorical ranges are not supported.", call. = FALSE)
   }
-  seq_x <- seq(from = min(range[[1]]), to = max(range[[1]]), length.out = resolution)
-  seq_y <- seq(from = min(range[[2]]), to = max(range[[2]]), length.out = resolution)
+  seq_x <- seq(from = min(feature_range[[1]]), to = max(feature_range[[1]]), length.out = resolution)
+  seq_y <- seq(from = min(feature_range[[2]]), to = max(feature_range[[2]]), length.out = resolution)
 
   # Generate grid.
   grid_df <- expand.grid(seq_x, seq_y)
@@ -321,12 +325,13 @@ boundary_compute <- function(model, range = NULL, resolution = 100, predfun = NU
         projection = projection,
         boundary_features = var_names
       ),
-      class = c("classbound_multi", "classbound")
+      class = c("classbound_boundary", "classbound_multi", "classbound")
     )
   } else {
     first_model$boundary_data <- final_boundary
     first_model$projection <- projection
     first_model$boundary_features <- var_names
+    class(first_model) <- c("classbound_boundary", class(first_model))
     first_model
   }
 }

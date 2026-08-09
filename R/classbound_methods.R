@@ -57,6 +57,19 @@ plot.classbound <- function(x, ...) {
   plot_boundary(model = x, ...)
 }
 
+#' Plot a computed boundary
+#'
+#' @description An S3 plot method that delegates to `plot_boundary()` for 
+#' objects that have had boundaries computed via `boundary_compute()`.
+#'
+#' @param x A `classbound_boundary` object.
+#' @param ... Additional arguments passed to `plot_boundary()`.
+#' @return A `ggplot2` object.
+#' @export
+plot.classbound_boundary <- function(x, ...) {
+  plot_boundary(model = x, ...)
+}
+
 #' Summarize a classbound model
 #'
 #' @description For single models, delegates the summary function directly to the native model

@@ -41,7 +41,7 @@ fit_model(data, formula, classifier, ...)
 
 \item{formula}{A formula specifying the response and predictors.}
 
-\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}).}
+\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}). When passing a string, it must precisely match the case-sensitive name of the function.}
 
 \item{...}{Additional arguments passed to methods.}
 

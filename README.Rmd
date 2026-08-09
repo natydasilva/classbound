@@ -58,7 +58,7 @@ feature_range <- list(
   bill_length_mm = c(30.0, 60.0),
   bill_depth_mm = c(10.0, 25.0)
 )
-model <- boundary_compute(model, range = feature_range, resolution = 100)
+model <- boundary_compute(model, feature_range = feature_range, resolution = 100)
 
 # 4. Plot the decision boundary
 plot_boundary(

@@ -12,7 +12,7 @@ test_that("tidymodels_bridge creates a multi-model grid for valid engines", {
     data = data,
     response = "species",
     models = models,
-    range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+    feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
     resolution = 10
   )
 

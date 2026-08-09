@@ -66,3 +66,22 @@ test_that("plot_boundary handles errors gracefully", {
     "obs_data must contain column"
   )
 })
+
+test_that("plot.classbound_boundary S3 method delegates to plot_boundary", {
+  boundary_data <- data.frame(
+    x = rep(1:10, 10),
+    y = rep(1:10, each = 10),
+    prediction = factor(sample(c("A", "B"), 100, replace = TRUE))
+  )
+
+  mock_model <- structure(list(boundary_data = boundary_data), class = c("classbound_boundary", "classbound"))
+
+  
+  # Call plot() using S3 dispatch
+  p <- plot(mock_model)
+  
+  expect_s3_class(p, "ggplot")
+  
+  # Verify the plot builds successfully without error
+  expect_silent(suppressWarnings(ggplot2::ggplot_build(p)))
+})

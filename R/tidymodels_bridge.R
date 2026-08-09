@@ -44,12 +44,12 @@
 #' @param data A data frame containing the features and target.
 #' @param response A string representing the name of the target column.
 #' @param models A character vector of engine names (e.g., `c("rpart", "nnet")`).
-#' @param range Optional list of axis limits.
+#' @param feature_range Optional list of axis limits.
 #' @param resolution Numeric grid resolution.
 #'
 #' @return A classbound object containing a multi-model grid.
 #' @noRd
-tidymodels_bridge <- function(data, response, models, range = NULL, resolution = 100) {
+tidymodels_bridge <- function(data, response, models, feature_range = NULL, resolution = 100) {
   rlang::check_installed(c("parsnip", "workflowsets"))
 
   if (length(models) == 0) {
@@ -92,7 +92,7 @@ tidymodels_bridge <- function(data, response, models, range = NULL, resolution =
     wf_set,
     data = data,
     response = response,
-    range = range,
+    feature_range = feature_range,
   )
 }
 
@@ -105,67 +105,47 @@ tidymodels_bridge <- function(data, response, models, range = NULL, resolution =
 #' @noRd
 find_workspace_models <- function(env = .GlobalEnv) {
   objs <- ls(envir = env)
-  if (length(objs) == 0) return(character(0))
-  
+  if (length(objs) == 0) {
+    return(character(0))
+  }
+
   is_model <- vapply(objs, function(x) {
     obj <- get(x, envir = env)
     inherits(obj, c("workflow", "model_fit", "model_spec"))
   }, logical(1))
-  
+
   objs[is_model]
 }
 
 #' @export
 fit_model.workflow <- function(data, formula, classifier, ...) {
-  rlang::check_installed(c("parsnip", "workflows"))
-  
-  mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
-  y <- stats::model.response(mf)
-  orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
-  
-  processed <- preprocess_data(data, y)
-  data <- processed$data
-  
-  # A fresh workflow from workflow() %>% add_model() lacks a preprocessor (formula).
-  # If it lacks a preprocessor, we add the provided formula.
-  has_pre <- tryCatch({ workflows::extract_preprocessor(classifier); TRUE }, error = function(e) FALSE)
-  if (!has_pre) {
-    classifier <- workflows::add_formula(classifier, formula)
-  }
-  
-  model_fit <- parsnip::fit(classifier, data = data)
-  
-  response_var <- all.vars(formula[[2]])
-  predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
-  feature_meta <- extract_feature_metadata(predictors_df)
-  
-  structure(
-    list(
-      fit = model_fit,
-      metadata = list(features = feature_meta, class_levels = orig_class_levels),
-      boundary_data = NULL
-    ),
-    class = "classbound"
-  )
+  rlang::check_installed("workflows")
+
+  # Workflows embed a fixed preprocessing formula.
+  # Extract the underlying parsnip spec to allow refitting with the internal canvas formula (Sim ~ .).
+  spec <- workflows::extract_spec_parsnip(classifier)
+
+  fit_model(data, formula, spec, ...)
 }
+
 
 #' @export
 fit_model.model_spec <- function(data, formula, classifier, ...) {
   rlang::check_installed("parsnip")
-  
+
   mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
   y <- stats::model.response(mf)
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
-  
+
   processed <- preprocess_data(data, y)
   data <- processed$data
-  
+
   model_fit <- parsnip::fit(classifier, formula, data = data)
-  
+
   response_var <- all.vars(formula[[2]])
   predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
   feature_meta <- extract_feature_metadata(predictors_df)
-  
+
   structure(
     list(
       fit = model_fit,
@@ -182,11 +162,11 @@ fit_model.model_fit <- function(data, formula, classifier, ...) {
   mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
   y <- stats::model.response(mf)
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
-  
+
   response_var <- all.vars(formula[[2]])
   predictors_df <- data[, setdiff(colnames(data), response_var), drop = FALSE]
   feature_meta <- extract_feature_metadata(predictors_df)
-  
+
   structure(
     list(
       fit = classifier,
@@ -195,15 +175,4 @@ fit_model.model_fit <- function(data, formula, classifier, ...) {
     ),
     class = "classbound"
   )
-}
-
-#' @export
-fit_model.workflow <- function(data, formula, classifier, ...) {
-  rlang::check_installed("workflows")
-  
-  # Workflows embed a fixed preprocessing formula. 
-  # Extract the underlying parsnip spec to allow refitting with the internal canvas formula (Sim ~ .).
-  spec <- workflows::extract_spec_parsnip(classifier)
-  
-  fit_model(data, formula, spec, ...)
 }

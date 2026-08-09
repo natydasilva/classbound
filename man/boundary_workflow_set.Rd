@@ -7,7 +7,7 @@
 boundary_workflow_set(
   wf_set,
   data,
-  range = NULL,
+  feature_range = NULL,
   response,
   resolution = 100,
   ...
@@ -19,7 +19,7 @@ boundary_workflow_set(
 \item{data}{A data frame containing the training data. This is required to extract feature
 metadata and to fit any workflows that are not yet trained.}
 
-\item{range}{An optional named list specifying the minimum and maximum values for each feature,
+\item{feature_range}{An optional named list specifying the minimum and maximum values for each feature,
 or a character vector of feature names. If \code{NULL}, the ranges are automatically computed from the training data
 (if there are exactly 2 numeric features).}
 

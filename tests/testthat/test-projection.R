@@ -13,7 +13,7 @@ test_that("boundary_compute correctly saves projection", {
   model <- fit_model(data, Y ~ V1 + V2 + V3, rpart::rpart)
 
   # Compute boundary with projection
-  res <- boundary_compute(model, range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
+  res <- boundary_compute(model, feature_range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
 
   # Check that projection is saved at the top level
   expect_false(is.null(res$projection))
@@ -31,7 +31,7 @@ test_that("plot_boundary handles projection forward mapping correctly", {
 
   data <- data.frame(V1 = rnorm(10), V2 = rnorm(10), V3 = rnorm(10), Y = factor(sample(c("A", "B"), 10, replace = TRUE)))
   model <- fit_model(data, Y ~ V1 + V2 + V3, rpart::rpart)
-  model <- boundary_compute(model, range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
+  model <- boundary_compute(model, feature_range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
 
   # Plot with obs_data
   p <- plot_boundary(model, obs_data = data, true_label = "Y")
@@ -62,7 +62,7 @@ test_that("plot_boundary fails gracefully if projection features are missing", {
 
   data <- data.frame(V1 = rnorm(10), V2 = rnorm(10), V3 = rnorm(10), Y = factor(sample(c("A", "B"), 10, replace = TRUE)))
   model <- fit_model(data, Y ~ V1 + V2 + V3, rpart::rpart)
-  model <- boundary_compute(model, range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
+  model <- boundary_compute(model, feature_range = list(PC1 = c(-2, 2), PC2 = c(-2, 2)), projection = proj)
 
   bad_data <- data.frame(V1 = rnorm(10), Y = factor(sample(c("A", "B"), 10, replace = TRUE)))
 

@@ -20,12 +20,24 @@ generate_simulation <- function(n, type, ...) {
 #' @param p Number of dimensions.
 #' @param MaxOmega Maximum overlap between components.
 #' @param class_names Optional character vector of class labels.
+#' @param seed Optional integer for reproducibility.
+#' @param noise_ratio Numeric between 0 and 1. Proportion of `n` to add as uniform background noise.
 #'
 #' @return A data frame containing simulated features and a 'Sim' label column.
 #' @export
-simulate_mixsim <- function(n, K, p, MaxOmega, class_names = NULL) {
+simulate_mixsim <- function(n, K, p, MaxOmega, class_names = NULL, seed = NULL, noise_ratio = 0) {
   if (!requireNamespace("MixSim", quietly = TRUE)) {
     stop("Package 'MixSim' must be installed to use simulate_mixsim().", call. = FALSE)
+  }
+
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      old_seed <- globalenv()$.Random.seed
+      on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(rm(".Random.seed", envir = globalenv()), add = TRUE)
+    }
+    set.seed(seed)
   }
 
   if (is.null(class_names)) {
@@ -46,6 +58,17 @@ simulate_mixsim <- function(n, K, p, MaxOmega, class_names = NULL) {
   # Reorder columns to put 'Sim' first
   df <- df[, c("Sim", colnames(df)[-ncol(df)])]
 
+  if (noise_ratio > 0) {
+    n_noise <- ceiling(n * noise_ratio)
+    noise_df <- data.frame(matrix(
+      stats::runif(n_noise * p, min = apply(df[, -1, drop = FALSE], 2, min), max = apply(df[, -1, drop = FALSE], 2, max)), 
+      ncol = p, byrow = TRUE
+    ))
+    colnames(noise_df) <- colnames(df)[-1]
+    noise_df$Sim <- sample(levels(df$Sim), n_noise, replace = TRUE)
+    df <- rbind(df, noise_df[, colnames(df)])
+  }
+
   return(df)
 }
 
@@ -55,14 +78,26 @@ simulate_mixsim <- function(n, K, p, MaxOmega, class_names = NULL) {
 #' @param covs A list of covariance matrices for each class.
 #' @param ns A numeric vector of sample sizes for each class.
 #' @param class_names A character vector of class labels.
+#' @param seed Optional integer for reproducibility.
+#' @param noise_ratio Numeric between 0 and 1. Proportion of `sum(ns)` to add as uniform background noise.
 #'
 #' @return A data frame containing simulated features and a 'Sim' label column.
 #' @export
-simu_n <- function(means, covs, ns, class_names = NULL) {
+simu_n <- function(means, covs, ns, class_names = NULL, seed = NULL, noise_ratio = 0) {
   num_classes <- length(ns)
 
   if (!requireNamespace("MASS", quietly = TRUE)) {
     stop("Package 'MASS' must be installed to use simu_n().", call. = FALSE)
+  }
+  
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      old_seed <- globalenv()$.Random.seed
+      on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(rm(".Random.seed", envir = globalenv()), add = TRUE)
+    }
+    set.seed(seed)
   }
 
   if (is.null(class_names)) {
@@ -76,5 +111,20 @@ simu_n <- function(means, covs, ns, class_names = NULL) {
     df
   })
 
-  do.call(rbind, sim_data)
+  df <- do.call(rbind, sim_data)
+  df$Sim <- factor(df$Sim, levels = class_names)
+  
+  if (noise_ratio > 0) {
+    n_noise <- ceiling(sum(ns) * noise_ratio)
+    p <- ncol(df) - 1
+    noise_df <- data.frame(matrix(
+      stats::runif(n_noise * p, min = apply(df[, -1, drop = FALSE], 2, min), max = apply(df[, -1, drop = FALSE], 2, max)), 
+      ncol = p, byrow = TRUE
+    ))
+    colnames(noise_df) <- colnames(df)[-1]
+    noise_df$Sim <- sample(levels(df$Sim), n_noise, replace = TRUE)
+    df <- rbind(df, noise_df[, colnames(df)])
+  }
+  
+  return(df)
 }

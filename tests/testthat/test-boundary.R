@@ -18,7 +18,7 @@ test_that("boundary_compute works correctly with rpart model", {
   )
 
   # Compute boundary
-  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, feature_range = feature_range, resolution = 10)
   res <- res_model$boundary_data
 
   # Check structure
@@ -47,19 +47,19 @@ test_that("boundary_compute handles errors gracefully", {
 
   # Not a classbound object
   expect_error(
-    boundary_compute(model$fit, range = list(x = c(1, 2), y = c(1, 2)), resolution = 10),
+    boundary_compute(model$fit, feature_range = list(x = c(1, 2), y = c(1, 2)), resolution = 10),
     "model must be a 'classbound' object"
   )
 
   # Invalid range
   expect_error(
-    boundary_compute(model, range = c(1, 2, 3), resolution = 10),
+    boundary_compute(model, feature_range = c(1, 2, 3), resolution = 10),
     "range must be a named list of length 2"
   )
 
   # Unnamed list
   expect_error(
-    boundary_compute(model, range = list(c(1, 2), c(1, 2)), resolution = 10),
+    boundary_compute(model, feature_range = list(c(1, 2), c(1, 2)), resolution = 10),
     "range must be a named list of length 2"
   )
 })
@@ -73,18 +73,18 @@ test_that("boundary_compute handles metadata validation gracefully", {
 
   # Duplicate range names
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(1, 2), bill_length_mm = c(1, 2))),
-    "Duplicate feature names found in `range`."
+    boundary_compute(model, feature_range = list(bill_length_mm = c(1, 2), bill_length_mm = c(1, 2))),
+    "Duplicate feature names found in `feature_range`."
   )
 
   # Invalid name & Missing name
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
-    "Names in `range` do not match the training features."
+    boundary_compute(model, feature_range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
+    "Names in `feature_range` do not match the training features."
   )
 
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
+    boundary_compute(model, feature_range = list(bill_length_mm = c(1, 2), wrong_name = c(1, 2))),
     "Invalid features: wrong_name"
   )
 })
@@ -99,7 +99,7 @@ test_that("boundary_compute rejects categorical features", {
   model <- fit_model(data = train_data, formula = species ~ bill_length_mm + island, classifier = rpart::rpart)
 
   expect_error(
-    boundary_compute(model, range = list(bill_length_mm = c(30, 60), island = c(1, 2)), resolution = 10),
+    boundary_compute(model, feature_range = list(bill_length_mm = c(30, 60), island = c(1, 2)), resolution = 10),
     "Boundary generation requires numeric features. Categorical ranges are not supported."
   )
 })

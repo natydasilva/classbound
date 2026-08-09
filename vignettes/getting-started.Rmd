@@ -54,7 +54,7 @@ feature_range <- list(
 # Compute predictions over the grid
 model <- boundary_compute(
   model = model,
-  range = feature_range,
+  feature_range = feature_range,
   resolution = 100
 )
 

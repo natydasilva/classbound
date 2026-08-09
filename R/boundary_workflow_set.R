@@ -6,7 +6,7 @@
 #' @param wf_set A `workflow_set` object from the `workflowsets` package.
 #' @param data A data frame containing the training data. This is required to extract feature
 #'   metadata and to fit any workflows that are not yet trained.
-#' @param range An optional named list specifying the minimum and maximum values for each feature,
+#' @param feature_range An optional named list specifying the minimum and maximum values for each feature,
 #'   or a character vector of feature names. If `NULL`, the ranges are automatically computed from the training data
 #'   (if there are exactly 2 numeric features).
 #' @param response A string specifying the name of the response column in `data`.
@@ -38,7 +38,7 @@
 #' bounds <- boundary_workflow_set(wf_set, peng_data, response = "species", resolution = 30)
 #' }
 #' @export
-boundary_workflow_set <- function(wf_set, data, range = NULL, response, resolution = 100, ...) {
+boundary_workflow_set <- function(wf_set, data, feature_range = NULL, response, resolution = 100, ...) {
   if (!requireNamespace("workflowsets", quietly = TRUE)) {
     stop("Package 'workflowsets' is required to process workflow_set objects.", call. = FALSE)
   }
@@ -73,5 +73,5 @@ boundary_workflow_set <- function(wf_set, data, range = NULL, response, resoluti
 
   names(model_list) <- wf_set$wflow_id
 
-  boundary_compute(model_list, range = range, resolution = resolution, ...)
+  boundary_compute(model_list, feature_range = feature_range, resolution = resolution, ...)
 }

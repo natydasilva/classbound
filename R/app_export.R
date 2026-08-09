@@ -111,7 +111,7 @@ export_grid_csv <- function(cb_mod, data, resolution, proj_matrix = NULL, proj_i
         PC1 = range(z_mat[, 1]) + c(-0.5, 0.5),
         PC2 = range(z_mat[, 2]) + c(-0.5, 0.5)
       )
-      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
+      cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
     } else {
       feat_cols <- setdiff(colnames(data), "Sim")
       x_name <- feat_cols[1]
@@ -119,7 +119,7 @@ export_grid_csv <- function(cb_mod, data, resolution, proj_matrix = NULL, proj_i
       range_list <- list()
       range_list[[x_name]] <- range(data[[x_name]]) + c(-0.5, 0.5)
       range_list[[y_name]] <- range(data[[y_name]]) + c(-0.5, 0.5)
-      cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, predict_args = predict_args)
+      cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, predict_args = predict_args)
     }
     utils::write.csv(cb_bound$boundary_data, file = file, row.names = FALSE)
     invisible(file)
@@ -217,7 +217,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, file) {
       "for (model_name in names(models)) {",
       "  cat(\"\\nPlotting boundary for:\", model_name, \"\\n\")",
       "  cb_mod <- models[[model_name]]",
-      "  cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100, projection = proj)",
+      "  cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = 100, projection = proj)",
       "  p <- plot_boundary(cb_bound, obs_data = dat, x_col = \"PC1\", y_col = \"PC2\", true_label = \"Sim\") +",
       "    ggplot2::ggtitle(model_name)",
       "  print(p)",
@@ -236,7 +236,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, file) {
       "for (model_name in names(models)) {",
       "  cat(\"\\nPlotting boundary for:\", model_name, \"\\n\")",
       "  cb_mod <- models[[model_name]]",
-      "  cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = 100)",
+      "  cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = 100)",
       "  p <- plot_boundary(cb_bound, obs_data = dat, x_col = x_name, y_col = y_name, true_label = \"Sim\") +",
       "    ggplot2::ggtitle(model_name)",
       "  print(p)",

@@ -4,7 +4,15 @@
 \alias{simulate_mixsim}
 \title{Simulate data using Gaussian mixture models from MixSim}
 \usage{
-simulate_mixsim(n, K, p, MaxOmega, class_names = NULL)
+simulate_mixsim(
+  n,
+  K,
+  p,
+  MaxOmega,
+  class_names = NULL,
+  seed = NULL,
+  noise_ratio = 0
+)
 }
 \arguments{
 \item{n}{Sample size.}
@@ -16,6 +24,10 @@ simulate_mixsim(n, K, p, MaxOmega, class_names = NULL)
 \item{MaxOmega}{Maximum overlap between components.}
 
 \item{class_names}{Optional character vector of class labels.}
+
+\item{seed}{Optional integer for reproducibility.}
+
+\item{noise_ratio}{Numeric between 0 and 1. Proportion of \code{n} to add as uniform background noise.}
 }
 \value{
 A data frame containing simulated features and a 'Sim' label column.

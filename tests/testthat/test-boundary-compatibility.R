@@ -11,7 +11,7 @@ test_that("boundary_compute works correctly with pptree model", {
     bill_depth_mm = c(10.0, 25.0)
   )
 
-  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, feature_range = feature_range, resolution = 10)
   res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")
@@ -36,7 +36,7 @@ test_that("boundary_compute works correctly with randomForest model", {
     bill_depth_mm = c(10.0, 25.0)
   )
 
-  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, feature_range = feature_range, resolution = 10)
   res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")
@@ -67,7 +67,7 @@ test_that("boundary_compute works correctly with ppforest2 model", {
     bill_depth_mm = c(10.0, 25.0)
   )
 
-  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, feature_range = feature_range, resolution = 10)
   res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")
@@ -94,7 +94,7 @@ test_that("boundary_compute works correctly with PPtreeViz model", {
     bill_depth_mm = c(10.0, 25.0)
   )
 
-  res_model <- boundary_compute(model, range = feature_range, resolution = 10)
+  res_model <- boundary_compute(model, feature_range = feature_range, resolution = 10)
   res <- res_model$boundary_data
 
   expect_s3_class(res, "data.frame")

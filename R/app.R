@@ -45,8 +45,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   # UI to Package API Mapping
   app_methods <- list(
     "Rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE),
-    "RandomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE),
-    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
+    "randomforest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE),
+    "pptreeviz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
     "PPforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE)
@@ -54,8 +54,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
   predict_args <- list(
     "Rpart"           = function(...) list(),
-    "RandomForest"    = function(...) list(),
-    "PPtreeViz"       = function(ru) list(Rule = ru),
+    "randomforest"    = function(...) list(),
+    "pptreeviz"       = function(ru) list(Rule = ru),
     "PPtreeExtclass"  = function(...) list(),
     "PPtreeExt_split" = function(ru) list(Rule = ru),
     "PPforest2"       = function(...) list()
@@ -129,6 +129,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             condition = "input.data_mode == 'Simulate Data'",
             shiny::hr(),
             shiny::radioButtons("sim_engine", "Simulation Engine", choices = c("Multivariate Normal (MVN)" = "mvn", "MixSim" = "mixsim")),
+            shiny::numericInput("sim_seed", "Random Seed (Optional)", value = NA, min = 1, width = "100%"),
+            shiny::helpText("Set a seed to reproduce the same randomly generated dataset. Leave blank to generate a new random dataset each time."),
+            shiny::div(title = "Adds uniformly distributed random points across the feature space to test how well the classifier handles background contamination.",
+                       shiny::sliderInput("sim_noise", "Background Noise", min = 0, max = 100, value = 0, step = 5, post = "%", width = "100%")
+            ),
             shiny::conditionalPanel(
               condition = "input.sim_engine == 'mvn'",
               shiny::numericInput("sim_n_classes", "Number of Classes", value = 3, min = 2, max = 10),
@@ -220,13 +225,13 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 "selected_models",
                 "Models to Compare",
                 choices = names(app_methods),
-                selected = c("RandomForest", "PPforest2")
+                selected = c("randomforest", "PPforest2")
               ),
             shiny::hr(),
             shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
             shiny::uiOutput("prob_surface_ui"),
             shiny::conditionalPanel(
-              condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
+              condition = "input.selected_models && (input.selected_models.indexOf('pptreeviz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
               shiny::div(title = "Defines the mathematical projection index used to separate the classes. 1 = LDA, 2 = PDA, 3 = Lr (etc.).", 
                          shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1)),
@@ -245,7 +250,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                          shiny::numericInput("rpart_cp", "Rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01))
             ),
             shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('RandomForest') > -1",
+              condition = "input.selected_models && input.selected_models.indexOf('randomforest') > -1",
               shiny::hr(),
               shiny::div(title = "Total number of decision trees to grow. Higher numbers increase accuracy but take longer to compute.", 
                          shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50)),
@@ -293,7 +298,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   )
 
   # Server
-  server <- function(input, output) {
+  server <- function(input, output, session) {
     # Initialize current_data based on passed 'data'
     initial_imp_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
     initial_imp_classes <- c("Class 1", "Class 2", "Class 3")
@@ -419,9 +424,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     })
 
     mode_states <- shiny::reactiveValues(
-      "Import Data" = list(data = if (!is.null(data)) initial_imp_data else NULL, classes = if (!is.null(data)) initial_imp_classes else NULL, outliers = data.frame()),
-      "Draw Data" = list(data = initial_drawn_data, classes = initial_drawn_classes, outliers = data.frame()),
-      "Simulate Data" = list(data = initial_sim_data, classes = initial_sim_classes, outliers = data.frame())
+      "Import Data" = list(data = if (!is.null(data)) initial_imp_data else NULL, classes = if (!is.null(data)) initial_imp_classes else NULL, outliers = data.frame(), sim_config = NULL),
+      "Draw Data" = list(data = initial_drawn_data, classes = initial_drawn_classes, outliers = data.frame(), sim_config = NULL),
+      "Simulate Data" = list(data = initial_sim_data, classes = initial_sim_classes, outliers = data.frame(), sim_config = NULL)
     )
 
     init_mode <- if (!is.null(data)) "Import Data" else "Simulate Data"
@@ -431,6 +436,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     init_classes <- if (!is.null(data)) initial_imp_classes else initial_sim_classes
 
     current_data <- shiny::reactiveVal(init_data)
+    applied_sim_config <- shiny::reactiveVal(NULL)
     class_choices <- shiny::reactiveVal(init_classes)
     zoom_xlim <- shiny::reactiveVal(NULL)
     zoom_ylim <- shiny::reactiveVal(NULL)
@@ -691,6 +697,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         mode_states[[old_mode]]$tour_var <- input$tour_var
         mode_states[[old_mode]]$tour_angle <- input$tour_angle
         mode_states[[old_mode]]$tour_path <- current_path()
+        mode_states[[old_mode]]$sim_config <- applied_sim_config()
       }
 
       # Load state from new mode
@@ -712,6 +719,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
         # Reset UI element for drawing
         shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = mode_states[[new_mode]]$classes, selected = mode_states[[new_mode]]$classes[1])
+        applied_sim_config(mode_states[[new_mode]]$sim_config)
       }
 
       previous_data_mode(new_mode)
@@ -865,7 +873,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
 
       new_data <- tryCatch({
-        simu_n(means = means, covs = covs, ns = ns)
+        seed_val <- if (is.numeric(input$sim_seed) && !is.na(input$sim_seed)) as.integer(input$sim_seed) else NULL
+        noise_val <- if (is.numeric(input$sim_noise)) input$sim_noise / 100 else 0
+        simu_n(means = means, covs = covs, ns = ns, seed = seed_val, noise_ratio = noise_val)
       }, error = function(e) {
         clean_msg <- clean_err_msg(e$message)
         shiny::showNotification(paste("Data generation failed:", clean_msg), type = "error")
@@ -875,6 +885,23 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (is.null(new_data)) return()
 
       current_data(new_data)
+      
+      conf <- list(
+        engine = "mvn",
+        seed = seed_val,
+        noise_ratio = noise_val,
+        n_classes = n
+      )
+      for (i in 1:n) {
+        conf[[paste0("class_", i)]] <- list(
+          mean = input[[paste0("sim_mean_", i)]],
+          sd = input[[paste0("sim_sd_", i)]],
+          cor = input[[paste0("sim_cor_", i)]],
+          n = input[[paste0("sim_n_", i)]]
+        )
+      }
+      applied_sim_config(conf)
+      
       injected_outliers(data.frame())
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
@@ -888,11 +915,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       shiny::req(input$sim_mixsim_k, input$sim_mixsim_p, input$sim_mixsim_omega, input$sim_mixsim_n)
 
       new_data <- tryCatch({
+        seed_val <- if (is.numeric(input$sim_seed) && !is.na(input$sim_seed)) as.integer(input$sim_seed) else NULL
+        noise_val <- if (is.numeric(input$sim_noise)) input$sim_noise / 100 else 0
         simulate_mixsim(
           n = input$sim_mixsim_n,
           K = input$sim_mixsim_k,
           p = input$sim_mixsim_p,
-          MaxOmega = input$sim_mixsim_omega
+          MaxOmega = input$sim_mixsim_omega,
+          seed = seed_val,
+          noise_ratio = noise_val
         )
       }, error = function(e) {
         clean_msg <- clean_err_msg(e$message)
@@ -903,6 +934,17 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (is.null(new_data)) return()
 
       current_data(new_data)
+      
+      applied_sim_config(list(
+        engine = "mixsim",
+        seed = seed_val,
+        noise_ratio = noise_val,
+        n = input$sim_mixsim_n,
+        k = input$sim_mixsim_k,
+        p = input$sim_mixsim_p,
+        omega = input$sim_mixsim_omega
+      ))
+      
       injected_outliers(data.frame())
       new_classes <- unique(as.character(new_data$Sim))
       class_choices(new_classes)
@@ -1303,7 +1345,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         config <- app_methods[[m]]
         if (!is.null(config)) {
           plot_opts <- list()
-          if (m == "PPtreeViz") plot_opts <- list(PPmethod = input$pp_method)
+          if (m == "pptreeviz") plot_opts <- list(PPmethod = input$pp_method)
           if (m == "PPtreeExt_split") plot_opts <- list(PPmethod = input$pp_method)
           if (!is.null(config$fit_args_fn) && is.function(config$fit_args_fn)) {
             custom_opts <- config$fit_args_fn(input)
@@ -1346,10 +1388,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
           title <- switch(m,
             "Rpart" = "Decision Tree (Rpart)",
-            "PPtreeViz" = "PPtreeViz",
+            "pptreeviz" = "pptreeviz",
             "PPtreeExtclass" = "PPtreeExtclass",
             "PPtreeExt_split" = "PPtreeExt_split",
-            "RandomForest" = "Random Forest",
+            "randomforest" = "Random Forest",
             m
           )
 
@@ -1570,6 +1612,22 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       ))
     })
 
+    shiny::observeEvent(input$export_includes, {
+      shiny::req(input$export_includes)
+      includes <- input$export_includes
+      if ("Reproduce Script" %in% includes) {
+        required <- c("Data", "Fitted Models")
+        missing <- setdiff(required, includes)
+        if (length(missing) > 0) {
+          shiny::updateCheckboxGroupInput(
+            session = session,
+            inputId = "export_includes",
+            selected = unique(c(includes, required))
+          )
+        }
+      }
+    }, ignoreInit = TRUE)
+
     output$export_download <- shiny::downloadHandler(
       filename = function() {
         paste("classbound_export_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip", sep = "")
@@ -1600,10 +1658,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             plots <- lapply(names(state$models), function(m) {
               title <- switch(m,
                 "Rpart" = "Decision Tree (Rpart)",
-                "PPtreeViz" = "PPtreeViz",
+                "pptreeviz" = "pptreeviz",
                 "PPtreeExtclass" = "PPtreeExtclass",
                 "PPtreeExt_split" = "PPtreeExt_split",
-                "RandomForest" = "Random Forest",
+                "randomforest" = "Random Forest",
                 m
               )
               tryCatch({
@@ -1683,6 +1741,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             classbound_version = as.character(utils::packageVersion("classbound"))
           )
           
+          if (input$data_mode == "Simulate Data") {
+            if (!is.na(input$sim_seed)) {
+              config_vals$simulation_reproducible_from_settings <- TRUE
+            } else {
+              config_vals$simulation_reproducible_from_settings <- FALSE
+              config_vals$reproducibility_note <- "No random seed was provided. Regenerating the simulation from these settings will produce a new random realization. To reproduce the generated result exactly, export the Reproduce Script."
+            }
+          }
+          
           n_classes <- input$sim_n_classes
           if (!is.null(n_classes) && !is.na(n_classes) && input$data_mode == "Simulate Data" && input$sim_engine == "mvn") {
             mvn_params <- list()
@@ -1757,7 +1824,7 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
       PC1 = r1 + c(-pad1, pad1),
       PC2 = r2 + c(-pad2, pad2)
     )
-    cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
+    cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
     x_col_label <- "PC1"
     y_col_label <- "PC2"
   } else {
@@ -1774,7 +1841,7 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
     range_list[[x_name]] <- r1 + c(-pad1, pad1)
     range_list[[y_name]] <- r2 + c(-pad2, pad2)
 
-    cb_bound <- boundary_compute(cb_mod, range = range_list, resolution = resolution, predict_args = predict_args)
+    cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, predict_args = predict_args)
     x_col_label <- x_name
     y_col_label <- y_name
   }
