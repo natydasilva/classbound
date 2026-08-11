@@ -25,18 +25,17 @@ Depends:
     R (>= 4.3.0)
 Imports:
     ggplot2,
-    workflowsets,
-    workflows,
-    parsnip,
     rlang,
     ggnewscale,
     shiny,
-    DT,
-    tourr
+    DT
 Suggests:
     tidymodels,
+    workflowsets,
+    workflows,
+    parsnip,
+    tourr,
     rpart,
-    RColorBrewer,
     roxygen2 (>= 7.3.0),
     PPtreeViz,
     PPtreeExt,

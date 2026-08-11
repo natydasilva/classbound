@@ -38,27 +38,36 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     if (is.null(target_col) || !(target_col %in% colnames(data))) {
       stop("Please provide a valid 'target_col' that exists in 'data'.", call. = FALSE)
     }
+    
+    feat_cols <- setdiff(colnames(data), target_col)
+    if (length(feat_cols) < 2) {
+      stop("Classbound requires at least 2 feature columns (excluding the target column) for 2D visualization.", call. = FALSE)
+    }
   }
 
 
 
   # UI to Package API Mapping
   app_methods <- list(
-    "Rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE),
-    "randomforest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE),
-    "pptreeviz"       = list(fn = PPtreeViz::PPTreeclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
-    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(PPmethod = "LDA"), supports_prob = FALSE),
-    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(PPmethod = "LDA"), supports_prob = FALSE),
-    "PPforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE)
+    "rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(control = rpart::rpart.control(cp = input$rpart_cp))),
+    "randomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE, fit_args_fn = function(input) {
+      l <- list(ntree = input$rf_ntree)
+      if (!is.na(input$rf_mtry) && input$rf_mtry > 0) l$mtry <- input$rf_mtry
+      l
+    }),
+    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
+    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method, stop = input$stop)),
+    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
+    "ppforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(size = input$pprf_size, lambda = input$pprf_lambda))
   )
 
   predict_args <- list(
-    "Rpart"           = function(...) list(),
-    "randomforest"    = function(...) list(),
-    "pptreeviz"       = function(ru) list(Rule = ru),
+    "rpart"           = function(...) list(),
+    "randomForest"    = function(...) list(),
+    "PPtreeViz"       = function(ru) list(Rule = ru),
     "PPtreeExtclass"  = function(...) list(),
     "PPtreeExt_split" = function(ru) list(Rule = ru),
-    "PPforest2"       = function(...) list()
+    "ppforest2"       = function(...) list()
   )
 
   # Dynamically add Tidymodels presets
@@ -225,13 +234,13 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 "selected_models",
                 "Models to Compare",
                 choices = names(app_methods),
-                selected = c("randomforest", "PPforest2")
+                selected = c("randomForest", "ppforest2")
               ),
             shiny::hr(),
             shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
             shiny::uiOutput("prob_surface_ui"),
             shiny::conditionalPanel(
-              condition = "input.selected_models && (input.selected_models.indexOf('pptreeviz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
+              condition = "input.selected_models && (input.selected_models.indexOf('PPtreeViz') > -1 || input.selected_models.indexOf('PPtreeExtclass') > -1 || input.selected_models.indexOf('PPtreeExt_split') > -1)",
               shiny::hr(),
               shiny::div(title = "Defines the mathematical projection index used to separate the classes. 1 = LDA, 2 = PDA, 3 = Lr (etc.).", 
                          shiny::selectInput("rule", "PPtree: Projection Pursuit Rule", choices = 1:8, selected = 1)),
@@ -244,13 +253,13 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                          shiny::numericInput("stop", "PPtreeExt: Stopping Rule", value = 4, min = 1))
             ),
             shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('Rpart') > -1",
+              condition = "input.selected_models && input.selected_models.indexOf('rpart') > -1",
               shiny::hr(),
               shiny::div(title = "Complexity parameter. Lower values (e.g. 0.001) produce larger, more complex decision trees that risk overfitting.", 
-                         shiny::numericInput("rpart_cp", "Rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01))
+                         shiny::numericInput("rpart_cp", "rpart: Complexity Parameter", value = 0.01, min = 0, step = 0.01))
             ),
             shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('randomforest') > -1",
+              condition = "input.selected_models && input.selected_models.indexOf('randomForest') > -1",
               shiny::hr(),
               shiny::div(title = "Total number of decision trees to grow. Higher numbers increase accuracy but take longer to compute.", 
                          shiny::numericInput("rf_ntree", "Random Forest: Number of Trees", value = 500, min = 10, step = 50)),
@@ -258,12 +267,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                          shiny::numericInput("rf_mtry", "Random Forest: mtry", value = NA, min = 1, step = 1))
             ),
             shiny::conditionalPanel(
-              condition = "input.selected_models && input.selected_models.indexOf('PPforest2') > -1",
+              condition = "input.selected_models && input.selected_models.indexOf('ppforest2') > -1",
               shiny::hr(),
               shiny::div(title = "Total number of projection pursuit trees to grow. Higher numbers increase accuracy but take longer to compute.", 
-                         shiny::numericInput("pprf_size", "PPforest2: Number of Trees", value = 100, min = 10, step = 10)),
+                         shiny::numericInput("pprf_size", "ppforest2: Number of Trees", value = 100, min = 10, step = 10)),
               shiny::div(title = "Penalty parameter (lambda) for the Projection Pursuit PDA index.",
-                         shiny::sliderInput("pprf_lambda", "PPforest2: PDA Lambda", min = 0, max = 1, value = 0.5, step = 0.1))
+                         shiny::sliderInput("pprf_lambda", "ppforest2: PDA Lambda", min = 0, max = 1, value = 0.5, step = 0.1))
             ),
             lapply(names(custom_uis), function(m_name) {
               shiny::conditionalPanel(
@@ -386,15 +395,32 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         if (!is.null(new_data)) {
           new_classes <- unique(as.character(new_data$Sim))
           
+          conf <- list(
+            engine = "mvn",
+            seed = NULL,
+            noise_ratio = 0,
+            n_classes = n
+          )
+          for (i in 1:n) {
+            conf[[paste0("class_", i)]] <- list(
+              mean = input[[paste0("sim_mean_", i)]],
+              sd = input[[paste0("sim_sd_", i)]],
+              cor = input[[paste0("sim_cor_", i)]],
+              n = input[[paste0("sim_n_", i)]]
+            )
+          }
+          
           # Store safely in the background state
           mode_states[["Simulate Data"]]$data <- new_data
           mode_states[["Simulate Data"]]$classes <- new_classes
+          mode_states[["Simulate Data"]]$sim_config <- conf
           
           # Only overwrite the active canvas if the user is actually on the Simulate tab
           if (is.null(input$data_mode) || input$data_mode == "Simulate Data") {
             current_data(new_data)
             injected_outliers(data.frame())
             class_choices(new_classes)
+            applied_sim_config(conf)
           }
         }
         
@@ -735,6 +761,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         shiny::showNotification("No data to clone.", type = "warning")
         return()
       }
+      if (ncol(cd) < 3) {
+        shiny::showNotification("Classbound requires at least 2 feature columns. Cannot clone 1D data to the Draw Canvas.", type = "warning")
+        return()
+      }
 
       # Clone current state to Draw Canvas cache.
       mode_states[["Draw Data"]]$data <- cd
@@ -1026,6 +1056,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     shiny::observeEvent(input$cancel_remove_classes, {
       shiny::removeModal()
+      old_n <- last_valid_draw_classes()
+      shiny::updateNumericInput(shiny::getDefaultReactiveDomain(), "draw_total_classes", value = old_n)
     })
 
     shiny::observeEvent(input$confirm_remove_classes, {
@@ -1345,8 +1377,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         config <- app_methods[[m]]
         if (!is.null(config)) {
           plot_opts <- list()
-          if (m == "pptreeviz") plot_opts <- list(PPmethod = input$pp_method)
-          if (m == "PPtreeExt_split") plot_opts <- list(PPmethod = input$pp_method)
           if (!is.null(config$fit_args_fn) && is.function(config$fit_args_fn)) {
             custom_opts <- config$fit_args_fn(input)
             plot_opts <- c(plot_opts, custom_opts)
@@ -1385,13 +1415,16 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
         output[[safe_id]] <- shiny::renderPlot({
           dat <- combined_training_data()
+          if (!is.null(dat) && nrow(dat) > 0) {
+            shiny::validate(shiny::need(ncol(dat) >= 3, "Classbound requires at least 2 feature columns for 2D visualization."))
+          }
 
           title <- switch(m,
-            "Rpart" = "Decision Tree (Rpart)",
-            "pptreeviz" = "pptreeviz",
+            "rpart" = "Decision Tree (rpart)",
+            "PPtreeViz" = "PPtreeViz",
             "PPtreeExtclass" = "PPtreeExtclass",
             "PPtreeExt_split" = "PPtreeExt_split",
-            "randomforest" = "Random Forest",
+            "randomForest" = "Random Forest",
             m
           )
 
@@ -1657,11 +1690,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           if ("Plots" %in% includes) {
             plots <- lapply(names(state$models), function(m) {
               title <- switch(m,
-                "Rpart" = "Decision Tree (Rpart)",
-                "pptreeviz" = "pptreeviz",
+                "rpart" = "Decision Tree (rpart)",
+                "PPtreeViz" = "PPtreeViz",
                 "PPtreeExtclass" = "PPtreeExtclass",
                 "PPtreeExt_split" = "PPtreeExt_split",
-                "randomforest" = "Random Forest",
+                "randomForest" = "Random Forest",
                 m
               )
               tryCatch({
@@ -1731,7 +1764,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           all_inputs <- shiny::isolate(shiny::reactiveValuesToList(input))
           safe_inputs <- Filter(function(x) is.numeric(x) || is.character(x) || is.logical(x), all_inputs)
           
-          exclude_pattern <- "^(export_|open_export|refresh_ws|sim_do|sim_mixsim_do|clone_|add_class|clear|undo|inject_|new_class_name)"
+          exclude_pattern <- "^(export_|open_export|refresh_ws|sim_|clone_|add_class|clear|undo|inject_|outlier_|new_class_name)"
           safe_inputs <- safe_inputs[!grepl(exclude_pattern, names(safe_inputs))]
 
           config_vals <- list(
@@ -1741,27 +1774,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             classbound_version = as.character(utils::packageVersion("classbound"))
           )
           
-          if (input$data_mode == "Simulate Data") {
-            if (!is.na(input$sim_seed)) {
-              config_vals$simulation_reproducible_from_settings <- TRUE
+          sim_conf <- applied_sim_config()
+          if (!is.null(sim_conf)) {
+            if (!is.null(sim_conf$seed) && !is.na(sim_conf$seed)) {
+              sim_conf$reproducible_from_settings <- TRUE
             } else {
-              config_vals$simulation_reproducible_from_settings <- FALSE
-              config_vals$reproducibility_note <- "No random seed was provided. Regenerating the simulation from these settings will produce a new random realization. To reproduce the generated result exactly, export the Reproduce Script."
+              sim_conf$reproducible_from_settings <- FALSE
+              sim_conf$reproducibility_note <- "No random seed was provided. Regenerating the simulation from these settings will produce a new random realization. To reproduce the generated result exactly, export the Reproduce Script."
             }
-          }
-          
-          n_classes <- input$sim_n_classes
-          if (!is.null(n_classes) && !is.na(n_classes) && input$data_mode == "Simulate Data" && input$sim_engine == "mvn") {
-            mvn_params <- list()
-            for (i in seq_len(n_classes)) {
-              mvn_params[[paste0("class_", i)]] <- list(
-                mean = input[[paste0("sim_mean_", i)]],
-                sd = input[[paste0("sim_sd_", i)]],
-                cor = input[[paste0("sim_cor_", i)]],
-                n = input[[paste0("sim_n_", i)]]
-              )
-            }
-            config_vals$sim_mvn_params <- mvn_params
+            config_vals$simulation_settings <- sim_conf
           }
           
           if (!is.null(state) && length(state$models) > 0) {
