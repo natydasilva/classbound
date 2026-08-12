@@ -58,7 +58,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
     "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method, stop = input$stop)),
     "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
-    "ppforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(size = input$pprf_size, lambda = input$pprf_lambda))
+    "ppforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(size = input$pprf_size, lambda = input$pprf_lambda, vars = ppforest2::vars_all()))
   )
 
   predict_args <- list(
@@ -127,7 +127,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       ")),
       shiny::tags$script(shiny::HTML("
         var currentMode = 'Navigate';
-        var currentBrushRadius = 5;
+        var currentBrushRadius = 12;
         var activeStrokeSvg = null;
         var activeStrokePath = null;
         var activeStrokeD = '';
@@ -140,11 +140,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           }
           activeStrokePath = null;
           activeStrokeD = '';
-          activePlotId = null;
+        }
+        
+        function getBrushRadius() {
+          var slider = document.getElementById('brush_spread');
+          if (slider && slider.value && !isNaN(parseFloat(slider.value))) {
+            return Math.max(5, parseFloat(slider.value) * 400);
+          }
+          return currentBrushRadius;
         }
 
         function updateCursor() {
-           var r = currentMode === 'Draw Cluster' ? currentBrushRadius : 5;
+           var r = currentMode === 'Draw Cluster' ? getBrushRadius() : 5;
            var visualR = Math.min(r, 60); // Clamp to max 120px size (browsers drop cursors >128x128)
            var size = Math.round(visualR * 2 + 2);
            var svg = '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"' + size + '\" height=\"' + size + '\"><circle cx=\"' + (size/2) + '\" cy=\"' + (size/2) + '\" r=\"' + visualR + '\" stroke=\"black\" stroke-width=\"1\" fill=\"rgba(0,0,0,0.1)\" /></svg>';
@@ -197,7 +204,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             activeStrokeSvg.style.pointerEvents = 'none';
             activeStrokeSvg.style.zIndex = '9999';
             
-            var strokeW = currentMode === 'Draw Cluster' ? (currentBrushRadius * 2) : 10;
+            var strokeW = currentMode === 'Draw Cluster' ? (getBrushRadius() * 2) : 10;
             var opacity = '0.15';
             
             activeStrokePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -236,16 +243,66 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           clearVisualStroke();
         });
 
+        var wheelTimeout = null;
+        var accumulatedDelta = 0;
+        var isCtrlOverlayVisible = false;
+        
         document.addEventListener('wheel', function(e) {
           var plotEl = e.target.closest('.shiny-plot-output');
-          if (plotEl) {
-            e.preventDefault();
+          if (!plotEl) return;
+          
+          if (!e.ctrlKey && !e.metaKey) {
+            // Not pressing modifier key, allow normal page scroll
+            if (!isCtrlOverlayVisible) {
+                var overlay = document.getElementById('zoom-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'zoom-overlay';
+                    overlay.style.position = 'fixed';
+                    overlay.style.top = '20px';
+                    overlay.style.left = '50%';
+                    overlay.style.transform = 'translateX(-50%)';
+                    overlay.style.background = 'rgba(0,0,0,0.8)';
+                    overlay.style.color = 'white';
+                    overlay.style.padding = '12px 24px';
+                    overlay.style.borderRadius = '8px';
+                    overlay.style.zIndex = '10000';
+                    overlay.style.pointerEvents = 'none';
+                    overlay.style.transition = 'opacity 0.3s ease';
+                    overlay.style.fontSize = '16px';
+                    overlay.style.fontWeight = 'bold';
+                    overlay.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+                    overlay.innerText = 'Use Ctrl + Scroll to zoom the plot';
+                    document.body.appendChild(overlay);
+                }
+                overlay.style.opacity = '1';
+                isCtrlOverlayVisible = true;
+                
+                if (overlay.timeout) clearTimeout(overlay.timeout);
+                overlay.timeout = setTimeout(function() {
+                    overlay.style.opacity = '0';
+                    setTimeout(function() { isCtrlOverlayVisible = false; }, 300);
+                }, 1500);
+            }
+            return;
+          }
+          
+          e.preventDefault(); // Only prevent default if zooming
+          
+          accumulatedDelta += e.deltaY;
+          
+          if (wheelTimeout) clearTimeout(wheelTimeout);
+          wheelTimeout = setTimeout(function() {
+            var dir = accumulatedDelta > 0 ? 1 : -1;
+            var steps = Math.min(4, Math.max(1, Math.round(Math.abs(accumulatedDelta) / 100)));
+            
             Shiny.setInputValue('plot_wheel', {
               plot_id: plotEl.id,
-              direction: e.deltaY > 0 ? 1 : -1,
+              direction: dir * steps,
               nonce: Math.random()
             });
-          }
+            accumulatedDelta = 0;
+          }, 150); // Debounce to smooth out the jitter
         }, { passive: false });
       "))
     ),
@@ -257,7 +314,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Draw Data'",
             shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Navigate", "Draw Point", "Draw Cluster")),
-            shiny::helpText("Tip: Use the mouse wheel or crossbar to zoom, and double-click to reset the view.")
+            shiny::helpText("Tip: Use Ctrl + Mouse Wheel or crossbar to zoom, and double-click to reset the view.")
           ),
 
           shiny::conditionalPanel(
@@ -310,10 +367,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             shiny::conditionalPanel(
               condition = "input.interaction_mode == 'Draw Cluster'",
               shiny::div(title = "Controls how many observations are generated at each position along the path.",
-                shiny::numericInput("brush_size", "Point Density", value = 20, min = 1)
+                shiny::numericInput("brush_size", "Point Density", value = 5, min = 1)
               ),
               shiny::div(title = "Controls the physical size of the brush used to spread observations around the path. The brush remains visually consistent when zooming.",
-                shiny::sliderInput("brush_spread", "Brush Size", min = 0.01, max = 0.20, value = 0.05, step = 0.01)
+                shiny::sliderInput("brush_spread", "Brush Size", min = 0.01, max = 0.20, value = 0.03, step = 0.01)
               )
             ),
             shiny::div(
@@ -523,11 +580,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         if (any(is.na(unlist(means))) || any(is.na(unlist(covs)))) return()
         
         new_data <- tryCatch({
-          simu_n(means = means, covs = covs, ns = ns)
+          simu_n(means = means, covs = covs, ns = ns, test_ratio = 0.3)
         }, error = function(e) { NULL })
         
         if (!is.null(new_data)) {
-          new_classes <- unique(as.character(new_data$Sim))
+          train_dat <- if (is.list(new_data) && !is.data.frame(new_data)) new_data$train else new_data
+          new_classes <- unique(as.character(train_dat$Sim))
           
           conf <- list(
             engine = "mvn",
@@ -545,13 +603,20 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           }
           
           # Store safely in the background state
-          mode_states[["Simulate Data"]]$data <- new_data
+          if (is.list(new_data) && !is.data.frame(new_data)) {
+            mode_states[["Simulate Data"]]$data <- new_data$train
+            mode_states[["Simulate Data"]]$test_data <- new_data$test
+          } else {
+            mode_states[["Simulate Data"]]$data <- new_data
+            mode_states[["Simulate Data"]]$test_data <- NULL
+          }
           mode_states[["Simulate Data"]]$classes <- new_classes
           mode_states[["Simulate Data"]]$sim_config <- conf
           
           # Only overwrite the active canvas if the user is actually on the Simulate tab
           if (is.null(input$data_mode) || input$data_mode == "Simulate Data") {
-            current_data(new_data)
+            current_data(mode_states[["Simulate Data"]]$data)
+            current_test_data(mode_states[["Simulate Data"]]$test_data)
             injected_outliers(data.frame())
             class_choices(new_classes)
             applied_sim_config(conf)
@@ -603,6 +668,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     init_classes <- if (!is.null(data)) initial_imp_classes else initial_sim_classes
 
     current_data <- shiny::reactiveVal(init_data)
+    current_test_data <- shiny::reactiveVal(NULL)
     applied_sim_config <- shiny::reactiveVal(NULL)
     class_choices <- shiny::reactiveVal(init_classes)
     zoom_xlim <- shiny::reactiveVal(NULL)
@@ -856,6 +922,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       # Save state to old mode
       if (!is.null(old_mode)) {
         mode_states[[old_mode]]$data <- current_data()
+        mode_states[[old_mode]]$test_data <- current_test_data()
         mode_states[[old_mode]]$classes <- class_choices()
         mode_states[[old_mode]]$basis <- current_basis()
         mode_states[[old_mode]]$projection <- current_projection()
@@ -870,6 +937,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       # Load state from new mode
       if (!is.null(mode_states[[new_mode]]$data)) {
         current_data(mode_states[[new_mode]]$data)
+        current_test_data(mode_states[[new_mode]]$test_data)
 
         saved_outliers <- mode_states[[new_mode]]$outliers
         if (is.null(saved_outliers)) saved_outliers <- data.frame()
@@ -898,6 +966,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     do_clone_to_draw <- function() {
       cd <- current_data()
+      cd_test <- current_test_data()
       if (is.null(cd) || nrow(cd) == 0) {
         shiny::showNotification("No data to clone.", type = "warning")
         return()
@@ -909,6 +978,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       # Clone current state to Draw Canvas cache.
       mode_states[["Draw Data"]]$data <- cd
+      mode_states[["Draw Data"]]$test_data <- cd_test
       mode_states[["Draw Data"]]$classes <- class_choices()
 
       inj <- injected_outliers()
@@ -1046,7 +1116,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       new_data <- tryCatch({
         seed_val <- if (is.numeric(input$sim_seed) && !is.na(input$sim_seed)) as.integer(input$sim_seed) else NULL
         noise_val <- if (is.numeric(input$sim_noise)) input$sim_noise / 100 else 0
-        simu_n(means = means, covs = covs, ns = ns, seed = seed_val, noise_ratio = noise_val)
+        simu_n(means = means, covs = covs, ns = ns, seed = seed_val, noise_ratio = noise_val, test_ratio = 0.3)
       }, error = function(e) {
         clean_msg <- clean_err_msg(e$message)
         shiny::showNotification(paste("Data generation failed:", clean_msg), type = "error")
@@ -1055,7 +1125,13 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       if (is.null(new_data)) return()
 
-      current_data(new_data)
+      if (is.list(new_data) && !is.data.frame(new_data)) {
+        current_data(new_data$train)
+        current_test_data(new_data$test)
+      } else {
+        current_data(new_data)
+        current_test_data(NULL)
+      }
       
       conf <- list(
         engine = "mvn",
@@ -1074,7 +1150,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       applied_sim_config(conf)
       
       injected_outliers(data.frame())
-      new_classes <- unique(as.character(new_data$Sim))
+      train_dat <- if (is.list(new_data) && !is.data.frame(new_data)) new_data$train else new_data
+      new_classes <- unique(as.character(train_dat$Sim))
       class_choices(new_classes)
       shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
       zoom_xlim(NULL)
@@ -1094,7 +1171,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           p = input$sim_mixsim_p,
           MaxOmega = input$sim_mixsim_omega,
           seed = seed_val,
-          noise_ratio = noise_val
+          noise_ratio = noise_val,
+          test_ratio = 0.3
         )
       }, error = function(e) {
         clean_msg <- clean_err_msg(e$message)
@@ -1103,7 +1181,14 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       })
 
       if (is.null(new_data)) return()
-      current_data(new_data)
+      
+      if (is.list(new_data) && !is.data.frame(new_data)) {
+        current_data(new_data$train)
+        current_test_data(new_data$test)
+      } else {
+        current_data(new_data)
+        current_test_data(NULL)
+      }
       
       applied_sim_config(list(
         engine = "mixsim",
@@ -1116,7 +1201,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       ))
       
       injected_outliers(data.frame())
-      new_classes <- unique(as.character(new_data$Sim))
+      train_dat <- if (is.list(new_data) && !is.data.frame(new_data)) new_data$train else new_data
+      new_classes <- unique(as.character(train_dat$Sim))
       class_choices(new_classes)
       shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = new_classes[1])
       zoom_xlim(NULL)
@@ -1135,6 +1221,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     shiny::observeEvent(input$clear, {
       current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
+      current_test_data(NULL)
       injected_outliers(data.frame())
       reset_color_cache()
 
@@ -1245,7 +1332,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       curr_y <- zoom_ylim()
       if (is.null(curr_y)) curr_y <- c(h$domain$bottom, h$domain$top)
       
-      factor <- if (w$direction > 0) 1.25 else 0.8
+      factor <- if (w$direction > 0) 1.25 ^ w$direction else 0.8 ^ abs(w$direction)
       
       new_width <- abs(curr_x[2] - curr_x[1]) * factor
       new_height <- abs(curr_y[2] - curr_y[1]) * factor
@@ -1664,11 +1751,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             cb_mod <- fit_model(dat, Sim ~ ., classifier = config$fn, fit_args = fit_args)
             pred_args <- predict_args[[m]](as.numeric(input$rule))
             preds <- predict_model(cb_mod, dat, predict_args = pred_args)
+            
+            test_dat <- shiny::isolate(current_test_data())
+            test_preds <- NULL
+            if (!is.null(test_dat) && nrow(test_dat) > 0) {
+              test_preds <- predict_model(cb_mod, test_dat, predict_args = pred_args)
+            }
 
             state$models[[m]] <- list(
               model = cb_mod,
               predictions = preds,
-              predict_args = pred_args
+              predict_args = pred_args,
+              test_predictions = test_preds
             )
           }, error = function(e) {
             clean_msg <- clean_err_msg(e$message)
@@ -1827,13 +1921,25 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         pe <- sum((row_sums * col_sums) / sum(tab)^2)
         kappa <- if (is.nan(pe) || pe == 1) 1 else (acc - pe) / (1 - pe)
 
-        data.frame(
+        df_row <- data.frame(
           Model = m,
           `Training Accuracy` = round(acc, 4),
           `Training Error` = round(err, 4),
           `Training Kappa` = round(kappa, 4),
           check.names = FALSE
         )
+        
+        test_preds <- state$models[[m]]$test_predictions$class
+        if (!is.null(test_preds)) {
+          test_true <- shiny::isolate(current_test_data()$Sim)
+          if (!is.null(test_true) && length(test_preds) == length(test_true)) {
+             test_acc <- sum(test_preds == test_true) / length(test_true)
+             test_err <- 1 - test_acc
+             df_row$`Test Error` <- round(test_err, 4)
+          }
+        }
+        
+        df_row
       })
 
       do.call(rbind, metrics_list)
@@ -1967,6 +2073,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
         if ("Data" %in% includes && !is.null(dat) && nrow(dat) > 0) {
           export_data_csv(dat, file.path(export_dir, "data.csv"))
+          test_dat <- shiny::isolate(current_test_data())
+          if (!is.null(test_dat) && nrow(test_dat) > 0) {
+            export_data_csv(test_dat, file.path(export_dir, "test_data.csv"))
+          }
         }
 
         if (!is.null(state) && length(state$models) > 0) {
