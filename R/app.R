@@ -121,6 +121,132 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     shiny::tags$head(
       shiny::tags$style(shiny::HTML("
         .col-sm-4 { height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+        body.mode-draw .shiny-plot-output {
+          cursor: var(--brush-cursor, crosshair) !important;
+        }
+      ")),
+      shiny::tags$script(shiny::HTML("
+        var currentMode = 'Navigate';
+        var currentBrushRadius = 5;
+        var activeStrokeSvg = null;
+        var activeStrokePath = null;
+        var activeStrokeD = '';
+        var activePlotId = null;
+        
+        function clearVisualStroke() {
+          if (activeStrokeSvg) {
+            activeStrokeSvg.remove();
+            activeStrokeSvg = null;
+          }
+          activeStrokePath = null;
+          activeStrokeD = '';
+          activePlotId = null;
+        }
+
+        function updateCursor() {
+           var r = currentMode === 'Draw Cluster' ? currentBrushRadius : 5;
+           var visualR = Math.min(r, 60); // Clamp to max 120px size (browsers drop cursors >128x128)
+           var size = Math.round(visualR * 2 + 2);
+           var svg = '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"' + size + '\" height=\"' + size + '\"><circle cx=\"' + (size/2) + '\" cy=\"' + (size/2) + '\" r=\"' + visualR + '\" stroke=\"black\" stroke-width=\"1\" fill=\"rgba(0,0,0,0.1)\" /></svg>';
+           var encoded = btoa(svg);
+           document.documentElement.style.setProperty('--brush-cursor', 'url(data:image/svg+xml;base64,' + encoded + ') ' + Math.round(size/2) + ' ' + Math.round(size/2) + ', crosshair');
+        }
+
+        $(document).on('shiny:inputchanged', function(event) {
+          if (event.name === 'interaction_mode') {
+            currentMode = event.value;
+            if (currentMode === 'Draw Cluster' || currentMode === 'Draw Point') {
+              $('body').addClass('mode-draw');
+              if (currentMode === 'Draw Cluster') {
+                $('body').addClass('mode-draw-cluster');
+                $('body').removeClass('mode-draw-point');
+              } else {
+                $('body').addClass('mode-draw-point');
+                $('body').removeClass('mode-draw-cluster');
+              }
+              updateCursor();
+            } else {
+              $('body').removeClass('mode-draw mode-draw-cluster mode-draw-point');
+              clearVisualStroke();
+            }
+          } else if (event.name === 'data_mode') {
+             if (event.value !== 'Draw Data') {
+               $('body').removeClass('mode-draw mode-draw-cluster mode-draw-point');
+               currentMode = 'Navigate';
+               clearVisualStroke();
+             }
+          } else if (event.name === 'brush_spread') {
+             var r = Math.max(5, event.value * 400);
+             currentBrushRadius = r;
+             updateCursor();
+          }
+        });
+        
+        document.addEventListener('mousedown', function(e) {
+          var plotEl = e.target.closest('.shiny-plot-output');
+          if (plotEl && (currentMode === 'Draw Cluster' || currentMode === 'Draw Point') && $('body').hasClass('mode-draw')) {
+            e.stopPropagation();
+            
+            activePlotId = plotEl.id;
+            activeStrokeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            activeStrokeSvg.style.position = 'fixed';
+            activeStrokeSvg.style.top = '0';
+            activeStrokeSvg.style.left = '0';
+            activeStrokeSvg.style.width = '100vw';
+            activeStrokeSvg.style.height = '100vh';
+            activeStrokeSvg.style.pointerEvents = 'none';
+            activeStrokeSvg.style.zIndex = '9999';
+            
+            var strokeW = currentMode === 'Draw Cluster' ? (currentBrushRadius * 2) : 10;
+            var opacity = '0.15';
+            
+            activeStrokePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            activeStrokePath.setAttribute('fill', 'none');
+            activeStrokePath.setAttribute('stroke', 'rgba(0, 0, 0, ' + opacity + ')');
+            activeStrokePath.setAttribute('stroke-width', strokeW.toString());
+            activeStrokePath.setAttribute('stroke-linecap', 'round');
+            activeStrokePath.setAttribute('stroke-linejoin', 'round');
+            
+            activeStrokeD = 'M ' + e.clientX + ' ' + e.clientY;
+            activeStrokePath.setAttribute('d', activeStrokeD);
+            activeStrokeSvg.appendChild(activeStrokePath);
+            document.body.appendChild(activeStrokeSvg);
+            
+            Shiny.setInputValue('draw_stroke_start', {
+              plot_id: plotEl.id,
+              nonce: Math.random()
+            });
+          }
+        }, true);
+
+        document.addEventListener('mousemove', function(e) {
+          if (activePlotId && activeStrokePath) {
+             var hoveredPlot = e.target.closest('.shiny-plot-output');
+             if (hoveredPlot && hoveredPlot.id === activePlotId) {
+               activeStrokeD += ' L ' + e.clientX + ' ' + e.clientY;
+               activeStrokePath.setAttribute('d', activeStrokeD);
+             }
+          }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+          if (currentMode === 'Draw Cluster' || currentMode === 'Draw Point') {
+            Shiny.setInputValue('draw_stroke_end', Math.random());
+          }
+          clearVisualStroke();
+        });
+
+        document.addEventListener('wheel', function(e) {
+          var plotEl = e.target.closest('.shiny-plot-output');
+          if (plotEl) {
+            e.preventDefault();
+            Shiny.setInputValue('plot_wheel', {
+              plot_id: plotEl.id,
+              direction: e.deltaY > 0 ? 1 : -1,
+              nonce: Math.random()
+            });
+          }
+        }, { passive: false });
       "))
     ),
     shiny::titlePanel("Classbound Exploration & Comparison"),
@@ -131,7 +257,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           shiny::conditionalPanel(
             condition = "input.data_mode == 'Draw Data'",
             shiny::radioButtons("interaction_mode", "Interaction Mode", choices = c("Navigate", "Draw Point", "Draw Cluster")),
-            shiny::helpText("Tip: Brush on any plot to zoom in, and double-click to reset the view.")
+            shiny::helpText("Tip: Use the mouse wheel or crossbar to zoom, and double-click to reset the view.")
           ),
 
           shiny::conditionalPanel(
@@ -181,7 +307,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               shiny::textInput("new_class_name", label = NULL, placeholder = "New class name...", width = "100%"),
               shiny::actionButton("add_class", "Add Class", class = "btn-info")
             ),
-            shiny::numericInput("brush_size", "Brush Density (points/brush)", value = 20, min = 1),
+            shiny::conditionalPanel(
+              condition = "input.interaction_mode == 'Draw Cluster'",
+              shiny::div(title = "Controls how many observations are generated at each position along the path.",
+                shiny::numericInput("brush_size", "Point Density", value = 20, min = 1)
+              ),
+              shiny::div(title = "Controls the physical size of the brush used to spread observations around the path. The brush remains visually consistent when zooming.",
+                shiny::sliderInput("brush_spread", "Brush Size", min = 0.01, max = 0.20, value = 0.05, step = 0.01)
+              )
+            ),
             shiny::div(
               style = "display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;",
               shiny::actionButton("undo_draw", "Undo Last", icon = shiny::icon("undo"), class = "btn-default"),
@@ -432,6 +566,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     injected_outliers <- shiny::reactiveVal(data.frame())
     outlier_last_action <- shiny::reactiveVal(list(action = "None", coords = ""))
     undo_history <- shiny::reactiveVal(list())
+    
+    # Freehand drawing state
+    active_stroke_data <- shiny::reactiveVal(NULL)
+    draw_stroke_plot_id <- shiny::reactiveVal(NULL)
+    last_sample_pos <- shiny::reactiveVal(NULL)
 
     combined_training_data <- shiny::reactive({
       dat <- current_data()
@@ -448,6 +587,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       
       dat
     })
+
+    # Removed compute_baseline() in favor of screen-space brush conversion.
 
     mode_states <- shiny::reactiveValues(
       "Import Data" = list(data = if (!is.null(data)) initial_imp_data else NULL, classes = if (!is.null(data)) initial_imp_classes else NULL, outliers = data.frame(), sim_config = NULL),
@@ -962,7 +1103,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       })
 
       if (is.null(new_data)) return()
-
       current_data(new_data)
       
       applied_sim_config(list(
@@ -1089,30 +1229,46 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       )
     })
 
-    shiny::observeEvent(input$plot_click, {
-      if (input$data_mode == "Draw Data" && input$interaction_mode == "Draw Point") {
-        if (ncol(current_data()) > 3) {
-          return()
-        } # Prevent drawing on high-dim data
-        cd <- current_data()
-        feat_cols <- setdiff(colnames(cd), "Sim")
-        pt <- data.frame(Sim = input$draw_class)
-        pt[[feat_cols[1]]] <- input$plot_click$x
-        pt[[feat_cols[2]]] <- input$plot_click$y
-
-        # Save history
-        hist <- undo_history()
-        hist[[length(hist) + 1]] <- cd
-        undo_history(hist)
-
-        current_data(rbind(cd, pt))
-      }
+    shiny::observeEvent(input$plot_dblclick, {
+      zoom_xlim(NULL)
+      zoom_ylim(NULL)
     })
 
-    shiny::observeEvent(input$plot_dblclick, {
-      if (input$data_mode != "Draw Data" || input$interaction_mode == "Navigate") {
-        zoom_xlim(NULL)
-        zoom_ylim(NULL)
+    shiny::observeEvent(input$plot_wheel, {
+      w <- input$plot_wheel
+      shiny::req(w)
+      h <- input[[paste0("hover_", w$plot_id)]]
+      shiny::req(h)
+      
+      curr_x <- zoom_xlim()
+      if (is.null(curr_x)) curr_x <- c(h$domain$left, h$domain$right)
+      curr_y <- zoom_ylim()
+      if (is.null(curr_y)) curr_y <- c(h$domain$bottom, h$domain$top)
+      
+      factor <- if (w$direction > 0) 1.25 else 0.8
+      
+      new_width <- abs(curr_x[2] - curr_x[1]) * factor
+      new_height <- abs(curr_y[2] - curr_y[1]) * factor
+      
+      prop_x <- (h$x - min(curr_x)) / abs(curr_x[2] - curr_x[1])
+      prop_y <- (h$y - min(curr_y)) / abs(curr_y[2] - curr_y[1])
+      
+      new_xmin <- h$x - (new_width * prop_x)
+      new_xmax <- h$x + (new_width * (1 - prop_x))
+      
+      new_ymin <- h$y - (new_height * prop_y)
+      new_ymax <- h$y + (new_height * (1 - prop_y))
+      
+      if (curr_x[1] > curr_x[2]) {
+        zoom_xlim(c(max(new_xmin, new_xmax), min(new_xmin, new_xmax)))
+      } else {
+        zoom_xlim(c(min(new_xmin, new_xmax), max(new_xmin, new_xmax)))
+      }
+      
+      if (curr_y[1] > curr_y[2]) {
+        zoom_ylim(c(max(new_ymin, new_ymax), min(new_ymin, new_ymax)))
+      } else {
+        zoom_ylim(c(min(new_ymin, new_ymax), max(new_ymin, new_ymax)))
       }
     })
 
@@ -1126,50 +1282,170 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           zoom_xlim(c(b$xmin, b$xmax))
           zoom_ylim(c(b$ymin, b$ymax))
         }
-      } else if (input$data_mode == "Draw Data" && input$interaction_mode == "Draw Cluster") {
-        if (ncol(current_data()) > 3) {
-          return()
-        } # Prevent brushing on high-dim data
-        b <- input$plot_brush
-        n <- shiny::isolate(input$brush_size)
+      }
+    })
 
-        # Ensure we don't try to generate NA points
-        if (!is.null(b) && is.numeric(n) && n > 0) {
-          cd <- current_data()
-          feat_cols <- setdiff(colnames(cd), "Sim")
-          pts <- data.frame(Sim = rep(shiny::isolate(input$draw_class), n))
-
-          mu_x <- (b$xmin + b$xmax) / 2
-          mu_y <- (b$ymin + b$ymax) / 2
-          sd_x <- (b$xmax - b$xmin) / 4
-          sd_y <- (b$ymax - b$ymin) / 4
-          
-          # Prevent straight-line snapping on perfectly flat brushes or single clicks
-          if (sd_x == 0) sd_x <- 0.05
-          if (sd_y == 0) sd_y <- 0.05
-
-          # Fallback to uniform distribution for small brush areas.
-          if (sd_x > 0 && sd_y > 0) {
-            if (!requireNamespace("MASS", quietly = TRUE)) {
-              shiny::showNotification("The 'MASS' package is required for this feature. Please install it.", type = "error")
-              return()
-            }
-            cluster <- MASS::mvrnorm(n, mu = c(mu_x, mu_y), Sigma = diag(c(sd_x^2, sd_y^2)))
-            pts[[feat_cols[1]]] <- cluster[, 1]
-            pts[[feat_cols[2]]] <- cluster[, 2]
-          } else {
-            pts[[feat_cols[1]]] <- stats::runif(n, b$xmin, b$xmax)
-            pts[[feat_cols[2]]] <- stats::runif(n, b$ymin, b$ymax)
-          }
-
-          # Save history
-          hist <- undo_history()
-          hist[[length(hist) + 1]] <- cd
-          undo_history(hist)
-
-          current_data(rbind(cd, pts))
+    # Freehand Draw Observers (Cluster & Point)
+    shiny::observeEvent(input$draw_stroke_start, {
+      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      if (ncol(current_data()) > 3) return()
+      
+      plot_id <- input$draw_stroke_start$plot_id
+      draw_stroke_plot_id(plot_id)
+      active_stroke_data(data.frame())
+      last_sample_pos(NULL)
+    })
+    
+    shiny::observeEvent(input$draw_stroke_end, {
+      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      
+      stk <- active_stroke_data()
+      if (is.null(stk)) return()
+      
+      # Handle Click without movement: if stroke is empty, generate exactly one cluster/point at last known hover
+      if (nrow(stk) == 0) {
+         pid <- draw_stroke_plot_id()
+         if (!is.null(pid)) {
+           h <- input[[paste0("hover_", pid)]]
+           if (!is.null(h)) {
+             cd <- current_data()
+             feat_cols <- setdiff(colnames(cd), "Sim")
+             
+             is_cluster <- shiny::isolate(input$interaction_mode) == "Draw Cluster"
+             n <- if (is_cluster) shiny::isolate(input$brush_size) else 1
+             spread <- if (is_cluster) shiny::isolate(input$brush_spread) else 0.05
+             
+             # Screen-space Brush Conversion (used in both JS and R)
+             # Formula: R_pixels = max(5, spread * 400)
+             r_pixels <- max(5, spread * 400)
+             
+             pixel_width <- if (!is.null(h$range)) abs(h$range$right - h$range$left) else 500
+             pixel_height <- if (!is.null(h$range)) abs(h$range$bottom - h$range$top) else 500
+             data_width <- if (!is.null(h$domain)) abs(h$domain$right - h$domain$left) else 1
+             data_height <- if (!is.null(h$domain)) abs(h$domain$top - h$domain$bottom) else 1
+             
+             data_x_per_pixel <- data_width / pixel_width
+             data_y_per_pixel <- data_height / pixel_height
+             
+             sd_x <- r_pixels * data_x_per_pixel
+             sd_y <- r_pixels * data_y_per_pixel
+             if (!is_cluster) {
+               sd_x <- 0
+               sd_y <- 0
+             }
+             
+             pts <- data.frame(Sim = rep(shiny::isolate(input$draw_class), n))
+             pts[[feat_cols[1]]] <- stats::rnorm(n, mean = h$x, sd = sd_x)
+             pts[[feat_cols[2]]] <- stats::rnorm(n, mean = h$y, sd = sd_y)
+             stk <- pts
+           }
+         }
+      }
+      
+      # If the plot is auto-scaling (limits are NULL), lock the limits to exactly what the 
+      # user just saw so the newly drawn stroke isn't violently distorted by auto-scaling.
+      if (is.null(shiny::isolate(zoom_xlim()))) {
+        pid <- draw_stroke_plot_id()
+        h_end <- shiny::isolate(input[[paste0("hover_", pid)]])
+        if (!is.null(h_end$domain)) {
+          zoom_xlim(c(h_end$domain$left, h_end$domain$right))
+          zoom_ylim(c(h_end$domain$bottom, h_end$domain$top))
         }
       }
+      
+      if (nrow(stk) > 0) {
+        cd <- current_data()
+        hist <- undo_history()
+        hist[[length(hist) + 1]] <- cd
+        undo_history(hist)
+        
+        current_data(rbind(cd, stk))
+      }
+      
+      active_stroke_data(NULL)
+      draw_stroke_plot_id(NULL)
+      last_sample_pos(NULL)
+    })
+    
+    shiny::observe({
+      pid <- draw_stroke_plot_id()
+      shiny::req(pid)
+      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      
+      h <- input[[paste0("hover_", pid)]]
+      shiny::req(h)
+      
+      last_pos <- last_sample_pos()
+      
+      is_cluster <- shiny::isolate(input$interaction_mode) == "Draw Cluster"
+      spread <- if (is_cluster) shiny::isolate(input$brush_spread) else 0.05
+      
+      # Screen-space Brush Conversion (used in both JS and R)
+      # Formula: R_pixels = max(5, spread * 400)
+      r_pixels <- max(5, spread * 400)
+      
+      pixel_width <- if (!is.null(h$range)) abs(h$range$right - h$range$left) else 500
+      pixel_height <- if (!is.null(h$range)) abs(h$range$bottom - h$range$top) else 500
+      data_width <- if (!is.null(h$domain)) abs(h$domain$right - h$domain$left) else 1
+      data_height <- if (!is.null(h$domain)) abs(h$domain$top - h$domain$bottom) else 1
+      
+      data_x_per_pixel <- data_width / pixel_width
+      data_y_per_pixel <- data_height / pixel_height
+
+      if (!is.null(last_pos)) {
+        # Screen-space interpolation distance
+        pixel_dx <- (h$x - last_pos$x) / data_x_per_pixel
+        pixel_dy <- (h$y - last_pos$y) / data_y_per_pixel
+        pixel_dist <- sqrt(pixel_dx^2 + pixel_dy^2)
+        
+        # Fixed threshold of ~1% of plot's relevant pixel dimension
+        threshold_pixels <- max(pixel_width, pixel_height) * 0.01
+        if (pixel_dist < threshold_pixels) return()
+        
+        num_steps <- floor(pixel_dist / threshold_pixels)
+        if (num_steps > 100) num_steps <- 100
+        
+        centers <- data.frame(
+          x = seq(last_pos$x, h$x, length.out = num_steps + 1)[-1],
+          y = seq(last_pos$y, h$y, length.out = num_steps + 1)[-1]
+        )
+      } else {
+        centers <- data.frame(x = h$x, y = h$y)
+      }
+      
+      last_sample_pos(list(x = h$x, y = h$y))
+      
+      n <- if (is_cluster) shiny::isolate(input$brush_size) else 1
+      
+      sd_x <- r_pixels * data_x_per_pixel
+      sd_y <- r_pixels * data_y_per_pixel
+      if (!is_cluster) {
+        sd_x <- 0
+        sd_y <- 0
+      }
+      
+      cd <- shiny::isolate(current_data())
+      feat_cols <- setdiff(colnames(cd), "Sim")
+      
+      pts_list <- lapply(seq_len(nrow(centers)), function(i) {
+        p <- data.frame(Sim = rep(shiny::isolate(input$draw_class), n))
+        p[[feat_cols[1]]] <- stats::rnorm(n, mean = centers$x[i], sd = sd_x)
+        p[[feat_cols[2]]] <- stats::rnorm(n, mean = centers$y[i], sd = sd_y)
+        p
+      })
+      
+      pts <- do.call(rbind, pts_list)
+      
+      curr_stk <- shiny::isolate(active_stroke_data())
+      if (is.null(curr_stk)) curr_stk <- data.frame()
+      active_stroke_data(rbind(curr_stk, pts))
+    })
+    
+    # State reset on canvas clear, mode switch, dataset switch
+    shiny::observeEvent(c(input$clear, input$data_mode, input$interaction_mode), {
+      active_stroke_data(NULL)
+      draw_stroke_plot_id(NULL)
+      last_sample_pos(NULL)
     })
 
     output$drawn_points_table <- DT::renderDataTable({
@@ -1259,9 +1535,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           col_width,
           shiny::plotOutput(
             outputId = safe_id,
-            click = "plot_click",
             dblclick = "plot_dblclick",
-            brush = shiny::brushOpts(id = "plot_brush", resetOnNew = TRUE)
+            brush = shiny::brushOpts(id = "plot_brush", resetOnNew = TRUE),
+            hover = shiny::hoverOpts(id = paste0("hover_", safe_id), delay = 50, delayType = "throttle")
           )
         )
       })
@@ -1452,7 +1728,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             }
 
             if (!is.null(zoom_xlim()) && !is.null(zoom_ylim())) {
-              p <- p + ggplot2::coord_cartesian(xlim = zoom_xlim(), ylim = zoom_ylim())
+              p <- p + ggplot2::coord_cartesian(xlim = zoom_xlim(), ylim = zoom_ylim(), expand = FALSE)
             }
 
             return(p)
@@ -1473,7 +1749,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
           tryCatch(
             {
-              create_boundary_plot(
+              p <- create_boundary_plot(
                 cb_mod = cb_mod,
                 data = dat,
                 title = title,
@@ -1489,6 +1765,18 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 n_outliers = nrow(injected_outliers()),
                 highlight_outliers = isTRUE(input$highlight_outliers)
               )
+              
+              stk <- active_stroke_data()
+              if (!is.null(stk) && nrow(stk) > 0 && identical(draw_stroke_plot_id(), safe_id)) {
+                feat_cols <- setdiff(colnames(dat), "Sim")
+                x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
+                y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
+                
+                # Overlay active stroke points with transparency
+                p <- p + ggplot2::geom_point(data = stk, ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]]), color = "black", size = 1.5, alpha = 0.6)
+              }
+              
+              p
             },
             error = function(e) {
               # Handle degenerate data gracefully.
