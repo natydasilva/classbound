@@ -29,7 +29,8 @@ Imports:
     rlang,
     ggnewscale,
     shiny,
-    DT
+    DT,
+    RColorBrewer
 Suggests:
     tidymodels,
     workflowsets,

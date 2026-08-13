@@ -84,6 +84,37 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     stop("boundary must contain 'x', 'y', and 'prediction' columns.", call. = FALSE)
   }
 
+  levs <- if (is.factor(boundary$prediction)) levels(boundary$prediction) else unique(as.character(boundary$prediction))
+  if (type != "disagreement") {
+    if (!is.null(colors)) {
+      if (is.null(names(colors))) {
+        stop("The 'colors' argument must be a named vector (e.g., c('Class 1' = 'red')).", call. = FALSE)
+      }
+      missing_classes <- setdiff(levs, names(colors))
+      if (length(missing_classes) > 0) {
+        stop(sprintf("The 'colors' vector is missing colors for the following classes: %s", paste(missing_classes, collapse = ", ")), call. = FALSE)
+      }
+      unused_classes <- setdiff(names(colors), levs)
+      if (length(unused_classes) > 0) {
+        warning(sprintf("The 'colors' vector contains unused classes not present in the data: %s", paste(unused_classes, collapse = ", ")), call. = FALSE)
+      }
+      color_scale <- ggplot2::scale_fill_manual(values = colors, drop = FALSE)
+    } else if (!is.null(palette)) {
+      if (!palette %in% rownames(RColorBrewer::brewer.pal.info)) {
+        stop(sprintf("Invalid palette name: '%s'", palette), call. = FALSE)
+      }
+      max_colors <- RColorBrewer::brewer.pal.info[palette, "maxcolors"]
+      if (length(levs) > max_colors) {
+        warning(sprintf("Palette '%s' only supports %d classes but data has %d. Falling back to classbound_palette().", palette, max_colors, length(levs)), call. = FALSE)
+        color_scale <- ggplot2::scale_fill_manual(values = classbound_palette(levs), drop = FALSE)
+      } else {
+        color_scale <- ggplot2::scale_fill_brewer(palette = palette, drop = FALSE)
+      }
+    } else {
+      color_scale <- ggplot2::scale_fill_manual(values = classbound_palette(levs), drop = FALSE)
+    }
+  }
+
   default_x <- if (!is.null(model$boundary_features)) model$boundary_features[1] else "Feature 1"
   default_y <- if (!is.null(model$boundary_features)) model$boundary_features[2] else "Feature 2"
 
@@ -147,7 +178,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0.1, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
         ggplot2::theme(aspect.ratio = 1) +
-        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else if (!is.null(palette)) ggplot2::scale_fill_brewer(palette = palette, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
+        color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -164,7 +195,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       p <- p +
         ggplot2::theme_minimal() +
         ggplot2::theme(aspect.ratio = 1) +
-        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else if (!is.null(palette)) ggplot2::scale_fill_brewer(palette = palette, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
+        color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
           y = if (!is.null(y_col)) y_col else default_y,
@@ -250,7 +281,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class, alpha = .data$alpha_val),
           size = obs_size, shape = 23, color = "black", stroke = 1.2, show.legend = FALSE
         ) +
-        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else if (!is.null(palette)) ggplot2::scale_fill_brewer(palette = palette, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
+        color_scale +
         ggplot2::scale_alpha_identity() +
         ggplot2::labs(fill = "True Class")
     } else {
@@ -288,7 +319,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
           ggplot2::aes(x = .data$x_val, y = .data$y_val, fill = .data$true_class),
           size = obs_size, alpha = 1, shape = 23, color = "black", stroke = 1.2, show.legend = FALSE
         ) +
-        { if (!is.null(colors)) ggplot2::scale_fill_manual(values = colors, drop = FALSE) else if (!is.null(palette)) ggplot2::scale_fill_brewer(palette = palette, drop = FALSE) else ggplot2::scale_fill_discrete(drop = FALSE) } +
+        color_scale +
         ggplot2::labs(fill = "True Class")
     }
   }
