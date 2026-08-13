@@ -11,6 +11,8 @@ export_grid_csv(
   proj_matrix = NULL,
   proj_info = NULL,
   predict_args = list(),
+  slice_x = NULL,
+  slice_y = NULL,
   file
 )
 }

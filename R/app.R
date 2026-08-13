@@ -23,13 +23,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   if (!requireNamespace("shiny", quietly = TRUE)) {
     stop("Package 'shiny' must be installed to use explorapp().", call. = FALSE)
   }
-  if (!requireNamespace("MASS", quietly = TRUE)) {
-    stop("Package 'MASS' must be installed to use explorapp().", call. = FALSE)
-  }
-
-  if (!requireNamespace("MixSim", quietly = TRUE)) {
-    stop("Package 'MixSim' must be installed to use explorapp().", call. = FALSE)
-  }
   if (!requireNamespace("DT", quietly = TRUE)) {
     stop("Package 'DT' must be installed to use explorapp().", call. = FALSE)
   }
@@ -47,18 +40,72 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
 
 
-  # UI to Package API Mapping
+  # UI to Package API Mapping (lazy closures to defer namespace loading)
   app_methods <- list(
-    "rpart"           = list(fn = rpart::rpart, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(control = rpart::rpart.control(cp = input$rpart_cp))),
-    "randomForest"    = list(fn = randomForest::randomForest, args = list(), supports_prob = TRUE, fit_args_fn = function(input) {
-      l <- list(ntree = input$rf_ntree)
-      if (!is.na(input$rf_mtry) && input$rf_mtry > 0) l$mtry <- input$rf_mtry
-      l
-    }),
-    "PPtreeViz"       = list(fn = PPtreeViz::PPTreeclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
-    "PPtreeExtclass"  = list(fn = PPtreeExt::PPtreeExtclass, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method, stop = input$stop)),
-    "PPtreeExt_split" = list(fn = PPtreeExt::PPtreeExt_split, args = list(), supports_prob = FALSE, fit_args_fn = function(input) list(PPmethod = input$pp_method)),
-    "ppforest2"       = list(fn = ppforest2::pprf, args = list(), supports_prob = TRUE, fit_args_fn = function(input) list(size = input$pprf_size, lambda = input$pprf_lambda, vars = ppforest2::vars_all()))
+    "rpart" = list(
+      fn = function(...) {
+        if (!requireNamespace("rpart", quietly = TRUE))
+          stop("Package 'rpart' must be installed to use this model.", call. = FALSE)
+        rpart::rpart(...)
+      },
+      args = list(), supports_prob = TRUE,
+      fit_args_fn = function(input) {
+        if (!requireNamespace("rpart", quietly = TRUE)) return(list())
+        list(control = rpart::rpart.control(cp = input$rpart_cp))
+      }
+    ),
+    "randomForest" = list(
+      fn = function(...) {
+        if (!requireNamespace("randomForest", quietly = TRUE))
+          stop("Package 'randomForest' must be installed to use this model.", call. = FALSE)
+        randomForest::randomForest(...)
+      },
+      args = list(), supports_prob = TRUE,
+      fit_args_fn = function(input) {
+        l <- list(ntree = input$rf_ntree)
+        if (!is.na(input$rf_mtry) && input$rf_mtry > 0) l$mtry <- input$rf_mtry
+        l
+      }
+    ),
+    "PPtreeViz" = list(
+      fn = function(...) {
+        if (!requireNamespace("PPtreeViz", quietly = TRUE))
+          stop("Package 'PPtreeViz' must be installed to use this model.", call. = FALSE)
+        PPtreeViz::PPTreeclass(...)
+      },
+      args = list(), supports_prob = FALSE,
+      fit_args_fn = function(input) list(PPmethod = input$pp_method)
+    ),
+    "PPtreeExtclass" = list(
+      fn = function(...) {
+        if (!requireNamespace("PPtreeExt", quietly = TRUE))
+          stop("Package 'PPtreeExt' must be installed to use this model.", call. = FALSE)
+        PPtreeExt::PPtreeExtclass(...)
+      },
+      args = list(), supports_prob = FALSE,
+      fit_args_fn = function(input) list(PPmethod = input$pp_method, stop = input$stop)
+    ),
+    "PPtreeExt_split" = list(
+      fn = function(...) {
+        if (!requireNamespace("PPtreeExt", quietly = TRUE))
+          stop("Package 'PPtreeExt' must be installed to use this model.", call. = FALSE)
+        PPtreeExt::PPtreeExt_split(...)
+      },
+      args = list(), supports_prob = FALSE,
+      fit_args_fn = function(input) list(PPmethod = input$pp_method)
+    ),
+    "ppforest2" = list(
+      fn = function(...) {
+        if (!requireNamespace("ppforest2", quietly = TRUE))
+          stop("Package 'ppforest2' must be installed to use this model.", call. = FALSE)
+        ppforest2::pprf(...)
+      },
+      args = list(), supports_prob = TRUE,
+      fit_args_fn = function(input) {
+        if (!requireNamespace("ppforest2", quietly = TRUE)) return(list())
+        list(size = input$pprf_size, lambda = input$pprf_lambda, vars = ppforest2::vars_all())
+      }
+    )
   )
 
   predict_args <- list(
@@ -188,46 +235,75 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
              updateCursor();
           }
         });
-        
         document.addEventListener('mousedown', function(e) {
           var plotEl = e.target.closest('.shiny-plot-output');
           if (plotEl && (currentMode === 'Draw Cluster' || currentMode === 'Draw Point') && $('body').hasClass('mode-draw')) {
             e.stopPropagation();
             
             activePlotId = plotEl.id;
-            activeStrokeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            activeStrokeSvg.style.position = 'fixed';
-            activeStrokeSvg.style.top = '0';
-            activeStrokeSvg.style.left = '0';
-            activeStrokeSvg.style.width = '100vw';
-            activeStrokeSvg.style.height = '100vh';
-            activeStrokeSvg.style.pointerEvents = 'none';
-            activeStrokeSvg.style.zIndex = '9999';
             
-            var strokeW = currentMode === 'Draw Cluster' ? (getBrushRadius() * 2) : 10;
-            var opacity = '0.15';
+            if (currentMode === 'Draw Cluster') {
+              activeStrokeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+              activeStrokeSvg.style.position = 'fixed';
+              activeStrokeSvg.style.top = '0';
+              activeStrokeSvg.style.left = '0';
+              activeStrokeSvg.style.width = '100vw';
+              activeStrokeSvg.style.height = '100vh';
+              activeStrokeSvg.style.pointerEvents = 'none';
+              activeStrokeSvg.style.zIndex = '9999';
+              
+              var strokeW = (getBrushRadius() * 2);
+              var opacity = '0.15';
+              
+              activeStrokePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              activeStrokePath.setAttribute('fill', 'none');
+              activeStrokePath.setAttribute('stroke', 'rgba(0, 0, 0, ' + opacity + ')');
+              activeStrokePath.setAttribute('stroke-width', strokeW.toString());
+              activeStrokePath.setAttribute('stroke-linecap', 'round');
+              activeStrokePath.setAttribute('stroke-linejoin', 'round');
+              
+              activeStrokeD = 'M ' + e.clientX + ' ' + e.clientY;
+              activeStrokePath.setAttribute('d', activeStrokeD);
+              activeStrokeSvg.appendChild(activeStrokePath);
+              document.body.appendChild(activeStrokeSvg);
+              
+            }
             
-            activeStrokePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            activeStrokePath.setAttribute('fill', 'none');
-            activeStrokePath.setAttribute('stroke', 'rgba(0, 0, 0, ' + opacity + ')');
-            activeStrokePath.setAttribute('stroke-width', strokeW.toString());
-            activeStrokePath.setAttribute('stroke-linecap', 'round');
-            activeStrokePath.setAttribute('stroke-linejoin', 'round');
-            
-            activeStrokeD = 'M ' + e.clientX + ' ' + e.clientY;
-            activeStrokePath.setAttribute('d', activeStrokeD);
-            activeStrokeSvg.appendChild(activeStrokePath);
-            document.body.appendChild(activeStrokeSvg);
-            
-            Shiny.setInputValue('draw_stroke_start', {
-              plot_id: plotEl.id,
-              nonce: Math.random()
-            });
+            var mapped = null;
+            var img = $(plotEl).find('img');
+            var coordmap = $(plotEl).data('coordmap') || (img.length ? img.data('coordmap') : null);
+            if (coordmap && coordmap.panels && coordmap.panels.length > 0) {
+               var p = coordmap.panels[0];
+               var rect = (img.length ? img[0] : plotEl).getBoundingClientRect();
+               var ox = e.clientX - rect.left;
+               var oy = e.clientY - rect.top;
+               var dx = p.domain.right - p.domain.left;
+               var dy = p.domain.top - p.domain.bottom;
+               var rx = p.range.right - p.range.left;
+               var ry = p.range.top - p.range.bottom;
+               if (rx !== 0 && ry !== 0) {
+                  mapped = {
+                     x: p.domain.left + ((ox - p.range.left) / rx) * dx,
+                     y: p.domain.bottom + ((oy - p.range.bottom) / ry) * dy,
+                     domain: p.domain,
+                     range: p.range
+                  };
+               }
+            }
+
+            if (currentMode === 'Draw Cluster') {
+              Shiny.setInputValue('draw_stroke_start', {
+                plot_id: plotEl.id,
+                mapped: mapped
+              }, {priority: 'event'});
+            } else if (currentMode === 'Draw Point') {
+              Shiny.setInputValue('draw_point_click', mapped, {priority: 'event'});
+            }
           }
         }, true);
 
         document.addEventListener('mousemove', function(e) {
-          if (activePlotId && activeStrokePath) {
+          if (currentMode === 'Draw Cluster' && activePlotId && activeStrokePath) {
              var hoveredPlot = e.target.closest('.shiny-plot-output');
              if (hoveredPlot && hoveredPlot.id === activePlotId) {
                activeStrokeD += ' L ' + e.clientX + ' ' + e.clientY;
@@ -237,15 +313,14 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         });
 
         document.addEventListener('mouseup', function(e) {
-          if (currentMode === 'Draw Cluster' || currentMode === 'Draw Point') {
+          if (currentMode === 'Draw Cluster') {
             Shiny.setInputValue('draw_stroke_end', Math.random());
+            clearVisualStroke();
           }
-          clearVisualStroke();
         });
 
         var wheelTimeout = null;
         var accumulatedDelta = 0;
-        var isCtrlOverlayVisible = false;
         
         document.addEventListener('wheel', function(e) {
           var plotEl = e.target.closest('.shiny-plot-output');
@@ -253,37 +328,6 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           
           if (!e.ctrlKey && !e.metaKey) {
             // Not pressing modifier key, allow normal page scroll
-            if (!isCtrlOverlayVisible) {
-                var overlay = document.getElementById('zoom-overlay');
-                if (!overlay) {
-                    overlay = document.createElement('div');
-                    overlay.id = 'zoom-overlay';
-                    overlay.style.position = 'fixed';
-                    overlay.style.top = '20px';
-                    overlay.style.left = '50%';
-                    overlay.style.transform = 'translateX(-50%)';
-                    overlay.style.background = 'rgba(0,0,0,0.8)';
-                    overlay.style.color = 'white';
-                    overlay.style.padding = '12px 24px';
-                    overlay.style.borderRadius = '8px';
-                    overlay.style.zIndex = '10000';
-                    overlay.style.pointerEvents = 'none';
-                    overlay.style.transition = 'opacity 0.3s ease';
-                    overlay.style.fontSize = '16px';
-                    overlay.style.fontWeight = 'bold';
-                    overlay.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
-                    overlay.innerText = 'Use Ctrl + Scroll to zoom the plot';
-                    document.body.appendChild(overlay);
-                }
-                overlay.style.opacity = '1';
-                isCtrlOverlayVisible = true;
-                
-                if (overlay.timeout) clearTimeout(overlay.timeout);
-                overlay.timeout = setTimeout(function() {
-                    overlay.style.opacity = '0';
-                    setTimeout(function() { isCtrlOverlayVisible = false; }, 300);
-                }, 1500);
-            }
             return;
           }
           
@@ -1366,25 +1410,68 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
         # Allow zooming regardless of data size
         if (!is.null(b)) {
-          zoom_xlim(c(b$xmin, b$xmax))
-          zoom_ylim(c(b$ymin, b$ymax))
+          w <- b$xmax - b$xmin
+          h <- b$ymax - b$ymin
+          if (w > h) {
+            mid_y <- (b$ymax + b$ymin) / 2
+            zoom_ylim(c(mid_y - w/2, mid_y + w/2))
+            zoom_xlim(c(b$xmin, b$xmax))
+          } else {
+            mid_x <- (b$xmax + b$xmin) / 2
+            zoom_xlim(c(mid_x - h/2, mid_x + h/2))
+            zoom_ylim(c(b$ymin, b$ymax))
+          }
         }
       }
     })
 
-    # Freehand Draw Observers (Cluster & Point)
+    # Single Point Draw Observer
+    shiny::observeEvent(input$draw_point_click, {
+      if (input$data_mode != "Draw Data" || input$interaction_mode != "Draw Point") return()
+      if (ncol(current_data()) > 3) return()
+      
+      click <- input$draw_point_click
+      if (is.null(click) || is.null(click$x) || is.null(click$y)) return()
+      
+      cd <- current_data()
+      feat_cols <- setdiff(colnames(cd), "Sim")
+      
+      pts <- data.frame(Sim = shiny::isolate(input$draw_class))
+      pts[[feat_cols[1]]] <- click$x
+      pts[[feat_cols[2]]] <- click$y
+      
+      # If auto-scaling, lock limits to prevent jumping
+      if (is.null(shiny::isolate(zoom_xlim()))) {
+        if (!is.null(click$domain)) {
+          zoom_xlim(c(click$domain$left, click$domain$right))
+          zoom_ylim(c(click$domain$bottom, click$domain$top))
+        }
+      }
+      
+      hist <- undo_history()
+      hist[[length(hist) + 1]] <- cd
+      undo_history(hist)
+      current_data(rbind(cd, pts))
+    })
+
+    # Freehand Draw Observers (Cluster only)
     shiny::observeEvent(input$draw_stroke_start, {
-      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      if (input$data_mode != "Draw Data" || input$interaction_mode != "Draw Cluster") return()
       if (ncol(current_data()) > 3) return()
       
       plot_id <- input$draw_stroke_start$plot_id
       draw_stroke_plot_id(plot_id)
-      active_stroke_data(data.frame())
+      
+      if (!is.null(input$draw_stroke_start$mapped)) {
+        active_stroke_data(data.frame(x = input$draw_stroke_start$mapped$x, y = input$draw_stroke_start$mapped$y))
+      } else {
+        active_stroke_data(data.frame())
+      }
       last_sample_pos(NULL)
     })
     
     shiny::observeEvent(input$draw_stroke_end, {
-      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      if (input$data_mode != "Draw Data" || input$interaction_mode != "Draw Cluster") return()
       
       stk <- active_stroke_data()
       if (is.null(stk)) return()
@@ -1457,7 +1544,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     shiny::observe({
       pid <- draw_stroke_plot_id()
       shiny::req(pid)
-      if (input$data_mode != "Draw Data" || !(input$interaction_mode %in% c("Draw Cluster", "Draw Point"))) return()
+      if (input$data_mode != "Draw Data" || input$interaction_mode != "Draw Cluster") return()
       
       h <- input[[paste0("hover_", pid)]]
       shiny::req(h)
@@ -1608,20 +1695,23 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       })
     })
 
+    # Debounced model selection to coalesce rapid checkbox changes
+    selected_models_d <- shiny::debounce(shiny::reactive({ input$selected_models }), 400)
+
     output$plot_grid <- shiny::renderUI({
-      models <- input$selected_models
+      models <- selected_models_d()
       if (is.null(models) || length(models) == 0) {
         return(shiny::p("Please select at least one model to compare."))
       }
 
       plot_outputs <- lapply(models, function(m) {
-        col_width <- max(4, floor(12 / length(models)))
         safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
-
-        shiny::column(
-          col_width,
+        shiny::div(
+          # Aspect ratio wrapper to keep container roughly square to match ggplot2 aspect.ratio=1
+          style = "width: 100%; max-width: 450px; aspect-ratio: 1.15 / 1; margin: 0 auto;",
           shiny::plotOutput(
             outputId = safe_id,
+            height = "100%",
             dblclick = "plot_dblclick",
             brush = shiny::brushOpts(id = "plot_brush", resetOnNew = TRUE),
             hover = shiny::hoverOpts(id = paste0("hover_", safe_id), delay = 50, delayType = "throttle")
@@ -1629,7 +1719,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         )
       })
 
-      shiny::fluidRow(plot_outputs)
+      shiny::div(
+        # Responsive grid: centers the plots, prevents extreme horizontal stretching
+        style = "display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; align-items: center; justify-items: center;",
+        plot_outputs
+      )
     })
 
     # Manual Tour Steering (High-Dimensional Mode)
@@ -1639,35 +1733,115 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     current_projection <- shiny::reactiveVal(NULL)
     current_projection_info <- shiny::reactiveVal(NULL)
 
+    # Reactive for previous slice selections (collision avoidance)
+    prev_slice <- shiny::reactiveValues(x = NULL, y = NULL)
+
     output$tour_panel <- shiny::renderUI({
       dat <- current_data()
       if (ncol(dat) > 3) {
         mode <- shiny::isolate(input$data_mode)
         saved_var <- mode_states[[mode]]$tour_var
         saved_angle <- mode_states[[mode]]$tour_angle
-        
-        choices <- setdiff(colnames(dat), "Sim")
-        if (is.null(saved_var) || !(saved_var %in% choices)) {
-           saved_var <- choices[1]
+
+        feat_choices <- setdiff(colnames(dat), "Sim")
+        num_choices <- names(which(sapply(dat[feat_choices], is.numeric)))
+        if (is.null(saved_var) || !(saved_var %in% feat_choices)) {
+           saved_var <- feat_choices[1]
         }
         if (is.null(saved_angle)) saved_angle <- 0
+
+        tourr_available <- requireNamespace("tourr", quietly = TRUE)
+        hd_modes <- if (tourr_available) c("Projection" = "projection", "2D Slice" = "slice") else c("2D Slice" = "slice")
+        default_hd <- if (tourr_available) "projection" else "slice"
+
+        # Default slice X/Y to first two numeric predictors
+        default_sx <- if (length(num_choices) >= 1) num_choices[1] else feat_choices[1]
+        default_sy <- if (length(num_choices) >= 2) num_choices[2] else if (length(feat_choices) >= 2) feat_choices[2] else feat_choices[1]
 
         shiny::wellPanel(
           shiny::tags$details(
             open = "open",
-            shiny::tags$summary("Manual Tour Steering", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
-            shiny::p("High-dimensional data detected. Use the controls below to steer the 2D projection plane."),
-            shiny::selectInput("tour_var", "Manipulation Variable", choices = choices, selected = saved_var),
-            shiny::sliderInput("tour_angle", "Rotation Angle", min = 0, max = 1, value = saved_angle, step = 0.01)
+            shiny::tags$summary("High-Dimensional Visualization", style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer; margin-bottom: 10px;"),
+            shiny::p("High-dimensional data detected."),
+            shiny::radioButtons("hd_view_mode", "Visualization Mode", choices = hd_modes, selected = default_hd, inline = TRUE),
+            if (!tourr_available) shiny::p(shiny::tags$em("Note: Install the 'tourr' package to enable Projection mode."), style = "color: #888; font-size: 12px;"),
+            shiny::conditionalPanel(
+              condition = "input.hd_view_mode == 'projection'",
+              shiny::selectInput("tour_var", "Manipulation Variable", choices = feat_choices, selected = saved_var),
+              shiny::sliderInput("tour_angle", "Rotation Angle", min = 0, max = 1, value = saved_angle, step = 0.01),
+              shiny::uiOutput("proj_note_ui")
+            ),
+            shiny::conditionalPanel(
+              condition = "input.hd_view_mode == 'slice'",
+              shiny::selectInput("slice_x", "X-axis Feature", choices = num_choices, selected = default_sx),
+              shiny::selectInput("slice_y", "Y-axis Feature", choices = num_choices, selected = default_sy),
+              shiny::uiOutput("slice_note_ui")
+            )
           )
         )
       }
+    })
+
+    # Slice feature collision observer
+    shiny::observe({
+      sx <- input$slice_x
+      sy <- input$slice_y
+      if (is.null(sx) || is.null(sy)) return()
+
+      dat <- current_data()
+      if (is.null(dat) || ncol(dat) <= 3) return()
+      feat_choices <- setdiff(colnames(dat), "Sim")
+      num_choices <- names(which(sapply(dat[feat_choices], is.numeric)))
+
+      if (sx == sy && length(num_choices) > 1) {
+        # Determine which changed
+        if (!is.null(prev_slice$x) && sx != prev_slice$x) {
+          # X was changed to match Y, reassign Y
+          alt <- setdiff(num_choices, sx)[1]
+          shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "slice_y", selected = alt)
+        } else {
+          # Y was changed to match X, reassign X
+          alt <- setdiff(num_choices, sy)[1]
+          shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "slice_x", selected = alt)
+        }
+      }
+      prev_slice$x <- sx
+      prev_slice$y <- sy
+    })
+
+    # Dynamic explanatory note for 2D Slice
+    output$slice_note_ui <- shiny::renderUI({
+      sx <- input$slice_x
+      sy <- input$slice_y
+      if (is.null(sx) || is.null(sy)) return(NULL)
+      shiny::p(
+        shiny::tags$em(paste0(
+          "2D Slice: Shows ", sx, " vs ", sy,
+          ". Other numeric features are fixed at their median and categorical features at their mode. ",
+          "This is a 2D slice of the full multivariate boundary, so it may not represent the complete decision boundary accurately."
+        )),
+        style = "color: #666; font-size: 12px; margin-top: 5px;"
+      )
+    })
+
+    # Dynamic explanatory note for Projection
+    output$proj_note_ui <- shiny::renderUI({
+      shiny::p(
+        shiny::tags$em("Projection: Shows a 2D linear projection of the high-dimensional space. All features contribute simultaneously via a weighted linear combination."),
+        style = "color: #666; font-size: 12px; margin-top: 5px;"
+      )
     })
 
     # Initialize PCA basis when high-dim data loads
     shiny::observe({
       dat <- current_data()
       if (ncol(dat) > 3 && nrow(dat) >= 2 && is.null(current_basis())) {
+        if (!requireNamespace("tourr", quietly = TRUE)) {
+          # tourr unavailable; 2D Slice mode will be used instead
+          shiny::showNotification("The 'tourr' package is not installed. Falling back to 2D Slice mode for high-dimensional data.", type = "error", duration = 10)
+          return()
+        }
+
         num_dat <- dat[, setdiff(colnames(dat), "Sim"), drop = FALSE]
 
         # Check variance to prevent scaling errors
@@ -1697,6 +1871,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     shiny::observeEvent(input$tour_var, {
       shiny::req(input$tour_var)
       shiny::req(current_basis())
+      if (!requireNamespace("tourr", quietly = TRUE)) {
+        shiny::showNotification("The 'tourr' package is required for projection steering. Please install it.", type = "error")
+        return()
+      }
 
       dat <- current_data()
       num_cols <- setdiff(colnames(dat), "Sim")
@@ -1726,15 +1904,19 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       current_projection(new_proj)
     })
 
+    # Model cache for hash-based reuse across checkbox changes
+    model_cache <- shiny::reactiveVal(list())
+
     comparison_state <- shiny::reactive({
-      ws_update_trigger() # Take dependency to re-fit if an existing workspace model is updated
-      models <- input$selected_models
+      ws_update_trigger()
+      models <- selected_models_d()
       dat <- combined_training_data()
       if (is.null(models) || length(models) == 0 || nrow(dat) < 2 || length(unique(dat$Sim)) < 2) {
         return(NULL)
       }
 
       state <- list(train_data = dat, models = list())
+      cache <- shiny::isolate(model_cache())
 
       for (m in models) {
         config <- app_methods[[m]]
@@ -1745,38 +1927,48 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             plot_opts <- c(plot_opts, custom_opts)
           }
 
-          fit_args <- c(config$args, plot_opts)
+          fit_args <- utils::modifyList(config$args, plot_opts)
+          pred_args <- predict_args[[m]](as.numeric(input$rule))
 
-          tryCatch({
-            cb_mod <- fit_model(dat, Sim ~ ., classifier = config$fn, fit_args = fit_args)
-            pred_args <- predict_args[[m]](as.numeric(input$rule))
-            preds <- predict_model(cb_mod, dat, predict_args = pred_args)
-            
-            test_dat <- shiny::isolate(current_test_data())
-            test_preds <- NULL
-            if (!is.null(test_dat) && nrow(test_dat) > 0) {
-              test_preds <- predict_model(cb_mod, test_dat, predict_args = pred_args)
-            }
+          # Deterministic cache key
+          cache_key <- rlang::hash(list(data = dat, model = m, fit_args = fit_args, pred_args = pred_args))
 
-            state$models[[m]] <- list(
-              model = cb_mod,
-              predictions = preds,
-              predict_args = pred_args,
-              test_predictions = test_preds
-            )
-          }, error = function(e) {
-            clean_msg <- clean_err_msg(e$message)
-            shiny::showNotification(paste("Model", m, "failed to fit:", clean_msg), type = "error", duration = 10)
-          })
+          if (!is.null(cache[[cache_key]])) {
+            state$models[[m]] <- cache[[cache_key]]
+          } else {
+            tryCatch({
+              cb_mod <- fit_model(dat, Sim ~ ., classifier = config$fn, fit_args = fit_args)
+              preds <- predict_model(cb_mod, dat, predict_args = pred_args)
+
+              test_dat <- shiny::isolate(current_test_data())
+              test_preds <- NULL
+              if (!is.null(test_dat) && nrow(test_dat) > 0) {
+                test_preds <- predict_model(cb_mod, test_dat, predict_args = pred_args)
+              }
+
+              entry <- list(
+                model = cb_mod,
+                predictions = preds,
+                predict_args = pred_args,
+                test_predictions = test_preds
+              )
+              state$models[[m]] <- entry
+              cache[[cache_key]] <- entry
+            }, error = function(e) {
+              clean_msg <- clean_err_msg(e$message)
+              shiny::showNotification(paste("Model", m, "failed to fit:", clean_msg), type = "error", duration = 10, id = paste0("err_", m))
+            })
+          }
         }
       }
 
+      model_cache(cache)
       state
     })
 
-    # We must observe changes to selected models to register renderPlot for newly selected ones
+    # Register renderPlot for selected models (uses debounced selection)
     shiny::observe({
-      models <- input$selected_models
+      models <- selected_models_d()
       if (is.null(models)) {
         return()
       }
@@ -1784,6 +1976,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       lapply(models, function(m) {
         safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
         output[[safe_id]] <- shiny::renderPlot({
+          # Graceful abort if model was deselected
+          if (!(m %in% selected_models_d())) return(NULL)
+
           dat <- combined_training_data()
           if (!is.null(dat) && nrow(dat) > 0) {
             shiny::validate(shiny::need(ncol(dat) >= 3, "Classbound requires at least 2 feature columns for 2D visualization."))
@@ -1841,36 +2036,64 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
           cb_mod <- state$models[[m]]$model
 
+          # Determine slice_x/slice_y if in 2D Slice mode
+          use_slice_x <- NULL
+          use_slice_y <- NULL
+          use_proj <- current_projection()
+          use_proj_info <- current_projection_info()
+          if (ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) {
+            use_proj <- NULL
+            use_proj_info <- NULL
+            use_slice_x <- input$slice_x
+            use_slice_y <- input$slice_y
+          }
+
           tryCatch(
             {
-              p <- create_boundary_plot(
-                cb_mod = cb_mod,
-                data = dat,
-                title = title,
-                class_levels = class_choices(),
-                class_colors = color_palette(),
-                proj_matrix = current_projection(),
-                proj_info = current_projection_info(),
-                zoom_x = zoom_xlim(),
-                zoom_y = zoom_ylim(),
-                show_probs = isTRUE(input$show_probs),
-                resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
-                predict_args = state$models[[m]]$predict_args,
-                n_outliers = nrow(injected_outliers()),
-                highlight_outliers = isTRUE(input$highlight_outliers)
+              p <- withCallingHandlers(
+                {
+                  p_tmp <- create_boundary_plot(
+                    cb_mod = cb_mod,
+                    data = dat,
+                    title = title,
+                    class_levels = class_choices(),
+                    class_colors = color_palette(),
+                    proj_matrix = use_proj,
+                    proj_info = use_proj_info,
+                    zoom_x = zoom_xlim(),
+                    zoom_y = zoom_ylim(),
+                    show_probs = isTRUE(input$show_probs),
+                    resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
+                    predict_args = state$models[[m]]$predict_args,
+                    n_outliers = nrow(injected_outliers()),
+                    highlight_outliers = isTRUE(input$highlight_outliers),
+                    slice_x = use_slice_x,
+                    slice_y = use_slice_y
+                  )
+                  
+                  stk <- active_stroke_data()
+                  if (!is.null(stk) && nrow(stk) > 0 && identical(draw_stroke_plot_id(), safe_id)) {
+                    feat_cols <- setdiff(colnames(dat), "Sim")
+                    x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
+                    y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
+                    
+                    # Overlay active stroke points with transparency
+                    p_tmp <- p_tmp + ggplot2::geom_point(data = stk, ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]]), color = "black", size = 1.5, alpha = 0.6)
+                  }
+                  
+                  # Explicitly print to catch any lazily evaluated warnings from ggplot2
+                  print(p_tmp)
+                  p_tmp
+                },
+                warning = function(w) {
+                  msg <- conditionMessage(w)
+                  if (grepl("automatically imputed|projects points flat", msg, ignore.case = TRUE)) {
+                    invokeRestart("muffleWarning")
+                  }
+                }
               )
               
-              stk <- active_stroke_data()
-              if (!is.null(stk) && nrow(stk) > 0 && identical(draw_stroke_plot_id(), safe_id)) {
-                feat_cols <- setdiff(colnames(dat), "Sim")
-                x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
-                y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
-                
-                # Overlay active stroke points with transparency
-                p <- p + ggplot2::geom_point(data = stk, ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]]), color = "black", size = 1.5, alpha = 0.6)
-              }
-              
-              p
+              invisible(p)
             },
             error = function(e) {
               # Handle degenerate data gracefully.
@@ -2096,22 +2319,52 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                 m
               )
               tryCatch({
-                create_boundary_plot(
-                  cb_mod = state$models[[m]]$model,
-                  data = dat,
-                  title = title,
-                  class_levels = class_choices(),
-                  class_colors = color_palette(),
-                  proj_matrix = current_projection(),
-                  proj_info = current_projection_info(),
-                  zoom_x = zoom_xlim(),
-                  zoom_y = zoom_ylim(),
-                  show_probs = isTRUE(input$show_probs),
-                  resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
-                  predict_args = state$models[[m]]$predict_args,
-                  n_outliers = nrow(injected_outliers()),
-                  highlight_outliers = isTRUE(input$highlight_outliers)
+                # Determine slice params for export
+                exp_proj <- current_projection()
+                exp_proj_info <- current_projection_info()
+                exp_sx <- NULL
+                exp_sy <- NULL
+                if (ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) {
+                  exp_proj <- NULL
+                  exp_proj_info <- NULL
+                  exp_sx <- input$slice_x
+                  exp_sy <- input$slice_y
+                }
+                p_tmp <- withCallingHandlers(
+                  create_boundary_plot(
+                    cb_mod = state$models[[m]]$model,
+                    data = dat,
+                    title = title,
+                    class_levels = class_choices(),
+                    class_colors = color_palette(),
+                    proj_matrix = exp_proj,
+                    proj_info = exp_proj_info,
+                    zoom_x = zoom_xlim(),
+                    zoom_y = zoom_ylim(),
+                    show_probs = isTRUE(input$show_probs),
+                    resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
+                    predict_args = state$models[[m]]$predict_args,
+                    n_outliers = nrow(injected_outliers()),
+                    highlight_outliers = isTRUE(input$highlight_outliers),
+                    slice_x = exp_sx,
+                    slice_y = exp_sy
+                  ),
+                  warning = function(w) {
+                    msg <- conditionMessage(w)
+                    if (grepl("automatically imputed|projects points flat", msg, ignore.case = TRUE)) {
+                      invokeRestart("muffleWarning")
+                    }
+                  }
                 )
+                
+                stk <- active_stroke_data()
+                if (!is.null(stk) && nrow(stk) > 0) {
+                  feat_cols <- setdiff(colnames(dat), "Sim")
+                  x_name <- if (length(feat_cols) >= 1) feat_cols[1] else "X1"
+                  y_name <- if (length(feat_cols) >= 2) feat_cols[2] else "X2"
+                  p_tmp <- p_tmp + ggplot2::geom_point(data = stk, ggplot2::aes(x = .data[[x_name]], y = .data[[y_name]]), color = "black", size = 1.5, alpha = 0.6)
+                }
+                p_tmp
               }, error = function(e) NULL)
             })
 
@@ -2149,9 +2402,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               cb_mod = state$models[[m]]$model,
               data = dat,
               resolution = res_val,
-              proj_matrix = current_projection(),
-              proj_info = current_projection_info(),
+              proj_matrix = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) NULL else current_projection(),
+              proj_info = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) NULL else current_projection_info(),
               predict_args = state$models[[m]]$predict_args,
+              slice_x = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_x else NULL,
+              slice_y = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_y else NULL,
               file = file.path(grid_dir, paste0(safe_name, ".csv"))
             )
           }
@@ -2162,7 +2417,34 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           all_inputs <- shiny::isolate(shiny::reactiveValuesToList(input))
           safe_inputs <- Filter(function(x) is.numeric(x) || is.character(x) || is.logical(x), all_inputs)
           
-          exclude_pattern <- "^(export_|open_export|refresh_ws|sim_|clone_|add_class|clear|undo|inject_|outlier_|new_class_name)"
+          base_exclude <- c("export_", "open_export", "refresh_ws", "clone_", "add_class", "clear", "undo", "new_class_name", "sidebar_", "show_probs_disabled")
+          exclude_pattern <- paste0("^(", paste(base_exclude, collapse = "|"), ")")
+          
+          active_mode <- input$data_mode
+          if (isTRUE(active_mode == "Import Data")) {
+            exclude_pattern <- paste0(exclude_pattern, "|^(sim_|draw_|inject_|outlier_|interaction_mode|brush_|highlight_outliers)")
+          } else if (isTRUE(active_mode == "Simulate Data")) {
+            exclude_pattern <- paste0(exclude_pattern, "|^(import_|draw_|inject_|outlier_|interaction_mode|brush_|highlight_outliers)")
+          } else if (isTRUE(active_mode == "Draw Data")) {
+            exclude_pattern <- paste0(exclude_pattern, "|^(import_|sim_)")
+          }
+          
+          if (!is.null(dat) && ncol(dat) > 3) {
+             if (isTRUE(input$hd_view_mode == "projection")) {
+               exclude_pattern <- paste0(exclude_pattern, "|^(slice_x|slice_y)$")
+             } else {
+               exclude_pattern <- paste0(exclude_pattern, "|^(tour_var|tour_angle)$")
+             }
+          }
+          
+          # Prune hyperparameters for models that aren't actively selected
+          selected_models <- if (!is.null(state)) names(state$models) else c()
+          if (!"rpart" %in% selected_models) exclude_pattern <- paste0(exclude_pattern, "|^(rpart_)")
+          if (!"randomForest" %in% selected_models) exclude_pattern <- paste0(exclude_pattern, "|^(rf_)")
+          if (!"PPtreeViz" %in% selected_models) exclude_pattern <- paste0(exclude_pattern, "|^(rule|pp_method)$")
+          if (!"PPtreeExtclass" %in% selected_models && !"PPtreeExt_split" %in% selected_models) exclude_pattern <- paste0(exclude_pattern, "|^(stop)$")
+          if (!"ppforest2" %in% selected_models) exclude_pattern <- paste0(exclude_pattern, "|^(pprf_)")
+          
           safe_inputs <- safe_inputs[!grepl(exclude_pattern, names(safe_inputs))]
 
           config_vals <- list(
@@ -2191,14 +2473,23 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
         # Export a self-contained R script to reproduce the results.
         if ("Reproduce Script" %in% includes && !is.null(state) && length(state$models) > 0) {
-          proj <- current_projection()
-          proj_info <- current_projection_info()
+          proj <- if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) NULL else current_projection()
+          proj_info <- if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) NULL else current_projection_info()
           if (!is.null(proj)) {
             saveRDS(list(basis = proj, center = proj_info$center, scale = proj_info$scale),
                     file.path(export_dir, "projection.rds"))
           }
-          export_reproduce_script(names(state$models), has_projection = !is.null(proj),
-                                  file = file.path(export_dir, "reproduce.R"))
+          export_reproduce_script(
+            model_names = names(state$models), 
+            has_projection = !is.null(proj),
+            slice_x = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_x else NULL,
+            slice_y = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_y else NULL,
+            resolution = if (!is.null(input$grid_resolution)) input$grid_resolution else 100,
+            show_probs = isTRUE(input$show_probs),
+            zoom_x = zoom_xlim(),
+            zoom_y = zoom_ylim(),
+            file = file.path(export_dir, "reproduce.R")
+          )
         }
 
         owd <- setwd(export_dir)
@@ -2223,10 +2514,11 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 #' @param zoom_y Optional y-axis limits.
 #' @param show_probs Whether to show probability gradients.
 #' @param resolution The grid resolution.
-#' @param predict_args Arguments passed to predict
+#' @param slice_x Optional. Feature name to use for the X axis in 2D Slice mode.
+#' @param slice_y Optional. Feature name to use for the Y axis in 2D Slice mode.
 #' @return A ggplot object.
 #' @keywords internal
-create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list(), n_outliers = 0, highlight_outliers = TRUE) {
+create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list(), n_outliers = 0, highlight_outliers = TRUE, slice_x = NULL, slice_y = NULL) {
   if (!is.null(proj_matrix)) {
     proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
     x_mat <- as.matrix(data[, rownames(proj_matrix)])
@@ -2239,17 +2531,23 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
     pad1 <- max(diff(r1) * 0.06, 0.5)
     pad2 <- max(diff(r2) * 0.06, 0.5)
     
-    range_list <- list(
-      PC1 = r1 + c(-pad1, pad1),
-      PC2 = r2 + c(-pad2, pad2)
-    )
+    range_list <- list()
+    if (!is.null(zoom_x) && !is.null(zoom_y)) {
+      range_list[["PC1"]] <- c(min(r1[1] - pad1, min(zoom_x)), max(r1[2] + pad1, max(zoom_x)))
+      range_list[["PC2"]] <- c(min(r2[1] - pad2, min(zoom_y)), max(r2[2] + pad2, max(zoom_y)))
+    } else {
+      range_list[["PC1"]] <- r1 + c(-pad1, pad1)
+      range_list[["PC2"]] <- r2 + c(-pad2, pad2)
+    }
+    
     cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
     x_col_label <- "PC1"
     y_col_label <- "PC2"
   } else {
     feat_cols <- setdiff(colnames(data), "Sim")
-    x_name <- feat_cols[1]
-    y_name <- feat_cols[2]
+    # Use slice_x/slice_y if provided; otherwise default to first two features
+    x_name <- if (!is.null(slice_x) && slice_x %in% feat_cols) slice_x else feat_cols[1]
+    y_name <- if (!is.null(slice_y) && slice_y %in% feat_cols) slice_y else feat_cols[2]
     
     r1 <- range(data[[x_name]])
     r2 <- range(data[[y_name]])
@@ -2257,8 +2555,13 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
     pad2 <- max(diff(r2) * 0.06, 0.5)
 
     range_list <- list()
-    range_list[[x_name]] <- r1 + c(-pad1, pad1)
-    range_list[[y_name]] <- r2 + c(-pad2, pad2)
+    if (!is.null(zoom_x) && !is.null(zoom_y)) {
+      range_list[[x_name]] <- c(min(r1[1] - pad1, min(zoom_x)), max(r1[2] + pad1, max(zoom_x)))
+      range_list[[y_name]] <- c(min(r2[1] - pad2, min(zoom_y)), max(r2[2] + pad2, max(zoom_y)))
+    } else {
+      range_list[[x_name]] <- r1 + c(-pad1, pad1)
+      range_list[[y_name]] <- r2 + c(-pad2, pad2)
+    }
 
     cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, predict_args = predict_args)
     x_col_label <- x_name
@@ -2278,13 +2581,9 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
   }
 
   # Render plot with explicit color palette to stay in sync with the UI legend
-  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors, highlight_outliers = highlight_outliers) +
+  p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors, highlight_outliers = highlight_outliers, xlim = zoom_x, ylim = zoom_y) +
     ggplot2::ggtitle(title) +
     ggplot2::theme(aspect.ratio = 1, legend.position = "none")
-
-  if (!is.null(zoom_x) && !is.null(zoom_y)) {
-    p <- suppressMessages(p + ggplot2::coord_cartesian(xlim = zoom_x, ylim = zoom_y, expand = FALSE))
-  }
 
   p
 }

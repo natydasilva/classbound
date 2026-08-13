@@ -4,7 +4,17 @@
 \alias{export_reproduce_script}
 \title{Export a reproducibility R script}
 \usage{
-export_reproduce_script(model_names, has_projection = FALSE, file)
+export_reproduce_script(
+  model_names,
+  has_projection = FALSE,
+  slice_x = NULL,
+  slice_y = NULL,
+  resolution = 100,
+  show_probs = FALSE,
+  zoom_x = NULL,
+  zoom_y = NULL,
+  file
+)
 }
 \arguments{
 \item{model_names}{Character vector of model names included in the export.}

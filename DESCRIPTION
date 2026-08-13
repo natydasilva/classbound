@@ -17,13 +17,14 @@ Authors@R: c(
            email = "ignacio.lavarez@fcea.edu.uy",
            comment = c(ORCID = "https://orcid.org/0000-0003-1633-2432"))        
     )
-Description: This R package allows to explore decision boundaries for existing classification methods and also for new methods.
+Description: An R package for exploring and comparing decision boundaries from existing and new classification methods, including methods for two-dimensional and high-dimensional data.
 License: GPL (>= 2)
 URL: https://github.com/natydasilva/classbound, https://natydasilva.github.io/classbound/
 LazyData: yes
 Depends:
     R (>= 4.3.0)
 Imports:
+    class,
     ggplot2,
     rlang,
     ggnewscale,

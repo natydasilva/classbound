@@ -4,7 +4,15 @@
 \alias{simu_n}
 \title{Simulate multivariate normal distribution data for N classes}
 \usage{
-simu_n(means, covs, ns, class_names = NULL, seed = NULL, noise_ratio = 0)
+simu_n(
+  means,
+  covs,
+  ns,
+  class_names = NULL,
+  seed = NULL,
+  noise_ratio = 0,
+  test_ratio = 0
+)
 }
 \arguments{
 \item{means}{A list of numeric vectors containing the means for each class.}
@@ -18,9 +26,12 @@ simu_n(means, covs, ns, class_names = NULL, seed = NULL, noise_ratio = 0)
 \item{seed}{Optional integer for reproducibility.}
 
 \item{noise_ratio}{Numeric between 0 and 1. Proportion of \code{sum(ns)} to add as uniform background noise.}
+
+\item{test_ratio}{Numeric between 0 and 1. If greater than 0, independently generates an additional test dataset using the exact same parameters.}
 }
 \value{
-A data frame containing simulated features and a 'Sim' label column.
+If \code{test_ratio == 0}, a data frame containing simulated features and a 'Sim' label column.
+If \code{test_ratio > 0}, a list with \verb{$train} and \verb{$test} data frames.
 }
 \description{
 Simulate multivariate normal distribution data for N classes

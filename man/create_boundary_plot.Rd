@@ -18,7 +18,9 @@ create_boundary_plot(
   resolution = 100,
   predict_args = list(),
   n_outliers = 0,
-  highlight_outliers = TRUE
+  highlight_outliers = TRUE,
+  slice_x = NULL,
+  slice_y = NULL
 )
 }
 \arguments{
@@ -42,7 +44,9 @@ create_boundary_plot(
 
 \item{resolution}{The grid resolution.}
 
-\item{predict_args}{Arguments passed to predict}
+\item{slice_x}{Optional. Feature name to use for the X axis in 2D Slice mode.}
+
+\item{slice_y}{Optional. Feature name to use for the Y axis in 2D Slice mode.}
 }
 \value{
 A ggplot object.

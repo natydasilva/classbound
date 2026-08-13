@@ -19,7 +19,10 @@ plot_boundary(
   obs_size = 2.5,
   render = c("raster", "tile"),
   colors = NULL,
-  highlight_outliers = TRUE,
+  palette = NULL,
+  highlight_outliers = FALSE,
+  xlim = NULL,
+  ylim = NULL,
   ...
 )
 }
@@ -58,7 +61,13 @@ surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
 
 \item{colors}{Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.}
 
+\item{palette}{Optional string specifying a ColorBrewer palette (e.g. \code{"Dark2"}) to override the default colors.}
+
 \item{highlight_outliers}{Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).}
+
+\item{xlim}{Optional length-two numeric vector setting the x-axis limits.}
+
+\item{ylim}{Optional length-two numeric vector setting the y-axis limits.}
 
 \item{...}{Additional visualization parameters.}
 }

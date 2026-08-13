@@ -35,6 +35,9 @@
 #' @param render Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).
 #' @param colors Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.
 #' @param highlight_outliers Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).
+#' @param palette Optional string specifying a ColorBrewer palette (e.g. \code{"Dark2"}) to override the default colors.
+#' @param xlim Optional length-two numeric vector setting the x-axis limits.
+#' @param ylim Optional length-two numeric vector setting the y-axis limits.
 #' @param ... Additional visualization parameters.
 #'
 #' @return A `ggplot2` object.
@@ -60,7 +63,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D",
                           show_gradient = FALSE, agree_color = "#006666", disagree_color = "#FF8000",
                           obs_alpha = 1.0, obs_size = 2.5, render = c("raster", "tile"), colors = NULL,
-                          palette = NULL, highlight_outliers = FALSE, ...) {
+                          palette = NULL, highlight_outliers = FALSE, xlim = NULL, ylim = NULL, ...) {
   render <- match.arg(render)
 
   if (!type %in% c("2D", "disagreement")) {
@@ -301,6 +304,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     }
     p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)))
   }
-  p <- p + ggplot2::coord_cartesian(expand = FALSE)
+  p <- p + ggplot2::coord_cartesian(xlim = xlim, ylim = ylim, expand = FALSE)
   p
 }
