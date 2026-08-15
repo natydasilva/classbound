@@ -1,6 +1,6 @@
 Package: classbound
 Title: Visualization for Classification Decision Boundaries
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
     person(given = "Natalia",
            family = "da Silva",
@@ -17,7 +17,14 @@ Authors@R: c(
            email = "ignacio.lavarez@fcea.edu.uy",
            comment = c(ORCID = "https://orcid.org/0000-0003-1633-2432"))        
     )
-Description: An R package for exploring and comparing decision boundaries from existing and new classification methods, including methods for two-dimensional and high-dimensional data.
+Description: Tools for exploring, visualizing, and comparing classification decision boundaries
+    in R. Provides a unified interface for fitting classifiers and rendering 2D decision
+    boundary plots, with support for 2D slice visualization (fixing non-plotted dimensions at
+    reference values) and projection-based visualization for high-dimensional data (including
+    PCA and tour projections from the 'tourr' package). Supports native R classifiers,
+    tidymodels workflows, and custom user-supplied models via a flexible adapter system.
+    Includes an interactive Shiny application ('explorapp') for visual exploration, data
+    simulation, drawing, model comparison, probability surfaces, and reproducible exports.
 License: GPL (>= 2)
 URL: https://github.com/natydasilva/classbound, https://natydasilva.github.io/classbound/
 LazyData: yes

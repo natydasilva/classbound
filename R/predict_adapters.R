@@ -7,6 +7,7 @@
 #' @param ... Additional arguments passed to `predict()`.
 #'
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities).
+#' @keywords internal
 #' @importFrom stats predict
 #' @export
 predict_adapter.rpart <- function(model, newdata, ...) {
@@ -29,6 +30,7 @@ predict_adapter.rpart <- function(model, newdata, ...) {
 #' @param ... Additional arguments passed to `predict()`.
 #'
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities).
+#' @keywords internal
 #' @importFrom stats predict
 #' @export
 predict_adapter.randomForest <- function(model, newdata, ...) {
@@ -50,6 +52,7 @@ predict_adapter.randomForest <- function(model, newdata, ...) {
 #' @param ... Additional arguments passed to `predict()`.
 #'
 #' @return A list containing `class` (predicted labels) and `probs` (probabilities, NULL for pptree).
+#' @keywords internal
 #' @importFrom stats predict
 #' @export
 predict_adapter.PPtreeExtclass <- function(model, newdata, ...) {
@@ -76,6 +79,7 @@ predict_adapter.PPtreeExtclass <- function(model, newdata, ...) {
 #' @param ... Additional arguments passed to \code{predict()}.
 #'
 #' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities, NULL for PPtreeViz).
+#' @keywords internal
 #' @importFrom stats predict
 #' @export
 predict_adapter.PPtreeclass <- function(model, newdata, ...) {
@@ -109,6 +113,7 @@ predict_adapter.PPtreeclass <- function(model, newdata, ...) {
 #' @param ... Additional arguments passed to \code{predict()}.
 #'
 #' @return A list containing \code{class} (predicted labels) and \code{probs} (probabilities).
+#' @keywords internal
 #' @importFrom stats predict
 #' @export
 predict_adapter.pprf_classification <- function(model, newdata, ...) {

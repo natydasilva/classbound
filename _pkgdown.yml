@@ -7,13 +7,110 @@ template:
     fg: "#334155"
     base_font: {google: "Inter"}
     heading_font: {google: "Lora"}
+
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: articles/getting-started.html
+    articles:
+      text: Articles
+      menu:
+        - text: Getting Started
+          href: articles/getting-started.html
+        - text: "---"
+        - text: Visualization
+        - text: High-Dimensional Boundaries
+          href: articles/high-dimensional.html
+        - text: Comparing Classifiers with tidymodels
+          href: articles/tidymodels-workflow.html
+        - text: Comparing Models with tourr
+          href: articles/tourr-workflow.html
+        - text: "---"
+        - text: Interactive
+        - text: Interactive Exploration with Explorapp
+          href: articles/explorapp-guide.html
+        - text: "---"
+        - text: Advanced
+        - text: Custom Predictions and Adapters
+          href: articles/custom_adapters.html
+    reference:
+      text: Reference
+      href: reference/index.html
+
 reference:
+  - title: "Quick Access"
+    desc: "High-level wrapper for the full pipeline in one call."
+    contents:
+      - classbound
+      - explorapp
+
+  - title: "Programmatic API"
+    desc: "Modular functions for fitting, computing, and plotting boundaries."
+    contents:
+      - fit_model
+      - boundary_compute
+      - predict_model
+      - predict.classbound
+      - plot_boundary
+      - plot.classbound
+      - plot.classbound_boundary
+
+  - title: "Multi-Model Comparison"
+    desc: "Functions for comparing multiple classifiers simultaneously."
+    contents:
+      - boundary_workflow_set
+      - boundary_explore_nd
+
+  - title: "Bring Your Own Model"
+    desc: "Wrap pre-fitted models and extend the prediction system."
+    contents:
+      - as_classbound
+      - predict_adapter
+
+  - title: "Simulation"
+    desc: "Generate synthetic classification datasets."
+    contents:
+      - simulate_mixsim
+      - simu_n
+
+  - title: "Visualization Utilities"
+    desc: "Color palettes and other visual helpers."
+    contents:
+      - classbound_palette
+
+  - title: "Export"
+    desc: "Functions for exporting results from the Shiny app."
+    contents:
+      - export_data_csv
+      - export_models_rds
+      - export_metrics_csv
+      - export_plots_pdf
+      - export_plots_png
+      - export_grid_csv
+      - export_config_json
+      - export_reproduce_script
+
+  - title: "Data Preprocessing"
+    desc: "Internal preprocessing (exported for custom workflows)."
+    contents:
+      - preprocess_data
+
+  - title: "S3 Methods"
+    desc: "Print and summary methods for classbound objects."
+    contents:
+      - print.classbound
+      - summary.classbound
+
   - title: "Datasets"
     desc: "Included datasets."
     contents:
-      - has_keyword("datasets")
-  - title: "Functions"
-    desc: "All package functions."
+      - data69_1
+
+  - title: "Package"
+    desc: "Package-level documentation."
     contents:
-      - matches(".")
-      - -has_keyword("datasets")
+      - classbound-package

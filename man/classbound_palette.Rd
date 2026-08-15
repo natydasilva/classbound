@@ -7,20 +7,54 @@
 classbound_palette(classes)
 }
 \arguments{
-\item{classes}{A character vector or factor containing class labels.}
+\item{classes}{A character vector or factor containing class labels. Duplicates
+and \code{NA} values are handled gracefully.}
 }
 \value{
-A named character vector where the names are the unique, sorted classes and
-the values are the assigned hex color codes.
+A named character vector where names are the unique sorted class labels
+and values are hex color codes (e.g., \code{"#E6194B"}).
 }
 \description{
-Provides a deterministic color palette mapping for a given set of classes.
-It uses a highly curated palette of 20 visually distinct colors for the first
-20 classes. For any additional classes, it falls back to a mathematical formula
-based on the golden angle to generate infinitely many unique, perceptually distinct colors.
+Returns a named character vector mapping class labels to hex color codes.
+Colors are assigned deterministically: class labels are sorted alphabetically
+before assignment, so the same class always receives the same color regardless
+of the order the classes are supplied.
 }
 \details{
-The mapping is deterministic: classes are first sorted alphabetically before colors are assigned.
-This ensures that a given class label will always receive the exact same color regardless
-of the order in which the classes are provided.
+The first 20 classes are assigned colors from a curated palette of visually
+distinct hues designed for use on both light and dark backgrounds. For more than
+20 classes, additional colors are generated using the golden-angle method
+(\code{hue = (index * phi) \%\% 1} where \verb{phi = 0.618...}), which produces perceptually
+distinct colors with uniform spacing in HCL space.
+
+\code{plot_boundary()} uses this palette by default. If an RColorBrewer palette is
+requested via \verb{palette =} but cannot accommodate the number of classes (e.g.,
+\code{"Dark2"} supports a maximum of 8), it automatically falls back to
+\code{classbound_palette()}.
+}
+\examples{
+# 3-class palette
+classbound_palette(c("Adelie", "Chinstrap", "Gentoo"))
+
+# Colors are alphabetically ordered, so order of input doesn't matter
+identical(
+  classbound_palette(c("B", "A", "C")),
+  classbound_palette(c("C", "A", "B"))
+)
+
+# Use in plot_boundary() via the palette argument
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+m <- fit_model(peng_data, species ~ ., rpart::rpart)
+m <- boundary_compute(m, resolution = 50)
+plot_boundary(m,
+  obs_data = peng_data, x_col = "bill_length_mm",
+  y_col = "bill_depth_mm", true_label = "species"
+)
+}
+}
+\seealso{
+\code{\link[=plot_boundary]{plot_boundary()}}
 }

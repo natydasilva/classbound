@@ -1,0 +1,148 @@
+---
+title: "Comparing Classifiers with tidymodels"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing Classifiers with tidymodels}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse   = TRUE,
+  comment    = "#>",
+  fig.width  = 7,
+  fig.height = 5
+)
+```
+
+## Overview
+
+`classbound` provides first-class support for the `tidymodels` ecosystem via
+`boundary_workflow_set()`. Given a `workflow_set` of untrained or pre-trained classifiers,
+it automatically fits each model, computes the decision boundary on a shared grid, and
+returns a combined boundary data frame with a `model` column ready for faceted plotting.
+
+## Required packages
+
+```{r packages, eval=FALSE}
+install.packages(c("tidymodels", "workflowsets", "parsnip", "rpart", "nnet"))
+```
+
+```{r load_pkgs, message=FALSE, warning=FALSE}
+library(classbound)
+library(palmerpenguins)
+```
+
+## Step 1: Prepare data
+
+```{r data}
+penguins <- na.omit(palmerpenguins::penguins[
+  ,
+  c("species", "bill_length_mm", "bill_depth_mm")
+])
+```
+
+## Step 2: Define model specifications
+
+Use `parsnip` to define model specifications independently of the fitting engine.
+
+```{r specs, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE}
+library(parsnip)
+library(workflowsets)
+
+spec_tree <- decision_tree(mode = "classification") |>
+  set_engine("rpart")
+
+spec_rf <- rand_forest(mode = "classification") |>
+  set_engine("randomForest")
+```
+
+## Step 3: Create a workflow set
+
+A `workflow_set` pairs each model specification with a preprocessing formula.
+
+```{r wf_set, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE)}
+wf_set <- workflow_set(
+  preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
+  models  = list(tree = spec_tree, forest = spec_rf)
+)
+wf_set
+```
+
+## Step 4: Compute boundaries for all models
+
+`boundary_workflow_set()` handles fitting (if not already done) and boundary computation
+for every workflow in the set. It returns a combined boundary data frame with a `model`
+column identifying the `wflow_id`.
+
+```{r compute, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE}
+bounds <- boundary_workflow_set(
+  wf_set,
+  data       = penguins,
+  response   = "species",
+  resolution = 60
+)
+
+# The result is a classbound object with multi-model boundary data
+class(bounds)
+head(bounds$boundary_data[, 1:4])
+```
+
+## Step 5: Plot with facets
+
+`plot_boundary()` automatically facets multi-model objects by model name.
+
+```{r plot, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE}
+plot_boundary(
+  bounds,
+  obs_data   = penguins,
+  x_col      = "bill_length_mm",
+  y_col      = "bill_depth_mm",
+  true_label = "species"
+)
+```
+
+## Step 6: Disagreement map
+
+For two or more models, `type = "disagreement"` highlights where classifiers
+predict differently — useful for identifying regions of high model uncertainty.
+
+```{r disagree, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE}
+plot_boundary(bounds,
+  type = "disagreement",
+  x_col = "bill_length_mm", y_col = "bill_depth_mm"
+)
+```
+
+## Using pre-trained workflows
+
+If your workflows are already trained (e.g., from `tune::fit_resamples()` or a
+previous call to `parsnip::fit()`), `boundary_workflow_set()` detects this and
+skips refitting.
+
+```{r pretrained, eval=FALSE}
+# Fit individually first
+wf1 <- workflows::workflow(species ~ ., spec_tree) |> parsnip::fit(penguins)
+wf2 <- workflows::workflow(species ~ ., spec_rf) |> parsnip::fit(penguins)
+
+# Wrap in a workflow_set (already trained)
+wf_trained <- workflowsets::workflow_set(
+  preproc = list(base = species ~ .),
+  models  = list(tree = spec_tree, forest = spec_rf)
+)
+# boundary_workflow_set() will refit because wf_set workflows are not trained
+# Use as_classbound() directly for pre-fitted objects:
+m1 <- as_classbound(wf1, data = penguins, response = "species")
+m2 <- as_classbound(wf2, data = penguins, response = "species")
+bounds_manual <- boundary_compute(
+  list(tree = m1, forest = m2),
+  feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+  resolution = 60
+)
+plot_boundary(bounds_manual,
+  obs_data = penguins,
+  x_col = "bill_length_mm", y_col = "bill_depth_mm",
+  true_label = "species"
+)
+```

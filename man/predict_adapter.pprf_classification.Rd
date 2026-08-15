@@ -29,3 +29,4 @@ specifically to avoid this behavior. If a future version of \code{ppforest2}
 changes this behavior, no corresponding change to \code{classbound} is
 expected to be necessary.
 }
+\keyword{internal}

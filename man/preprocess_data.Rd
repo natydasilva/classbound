@@ -7,18 +7,31 @@
 preprocess_data(data, labels = NULL, ...)
 }
 \arguments{
-\item{data}{A data frame of raw training or prediction data.}
+\item{data}{A data frame of raw training data.}
 
-\item{labels}{Optional. A vector of target labels corresponding to \code{data}.
-If provided, it is converted to a factor with unused levels dropped.}
+\item{labels}{Optional vector of target labels. Converted to a factor with
+unused levels dropped.}
 
-\item{...}{Additional processing arguments (currently unused).}
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
-A list containing the validated and processed \code{data} and \code{labels}.
+A list with two elements:
+\itemize{
+\item \verb{$data}: the preprocessed data frame
+\item \verb{$labels}: the processed factor labels (or \code{NULL} if not supplied)
+}
 }
 \description{
-Handles common preprocessing steps like validating inputs, converting factors,
-handling missing values, and optional scaling. This centralizes validation so classifier
-adapters can assume validated inputs.
+Applies standard preprocessing steps to a training dataset: validates structure,
+coerces character columns to factors, drops unused factor levels, rejects missing
+and infinite values, and converts response labels to a factor.
+}
+\details{
+This function is called automatically by \code{fit_model()}. \strong{Do not call it manually
+before \code{fit_model()}} — doing so will result in feature metadata being extracted
+from the pre-processed data rather than the original data, which corrupts the
+imputation values used by \code{boundary_compute()} for 2D slicing.
+
+It is exported for use in custom workflows and testing, but it is not typically
+needed in the standard \code{fit_model()} → \code{boundary_compute()} pipeline.
 }

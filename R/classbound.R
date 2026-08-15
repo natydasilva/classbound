@@ -7,7 +7,7 @@
 #'   used for modeling and plotting are strictly determined by the `formula`.
 #' @param formula A formula specifying the response and predictors.
 #' @param classifier The classification function to use (e.g., \code{rpart::rpart}, \code{e1071::svm}).
-#'   This works with any R package classification algorithm. If the classifier uses a non-standard 
+#'   This works with any R package classification algorithm. If the classifier uses a non-standard
 #'   API, you can adapt it via the `predfun` argument.
 #' @param interface A string specifying how to invoke the classifier: \code{"formula"},
 #'   \code{"matrix"}, or \code{"custom"}.
@@ -24,7 +24,7 @@
 #' library(palmerpenguins)
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-#' 
+#'
 #' # Quick 2D boundary visualization for an SVM
 #' classbound(peng_data, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
 #' }
@@ -72,15 +72,15 @@ classbound <- function(data,
     x_mat <- as.matrix(data[, pred_vars, drop = FALSE])
     if (!is.null(projection$center)) x_mat <- scale(x_mat, center = projection$center, scale = FALSE)
     if (!is.null(projection$scale)) x_mat <- scale(x_mat, center = FALSE, scale = projection$scale)
-    
+
     proj_data <- x_mat %*% projection$basis
     pnames <- colnames(projection$basis)
     if (is.null(pnames)) pnames <- c("PC1", "PC2")
-    
+
     feature_range <- list()
     feature_range[[pnames[1]]] <- range(proj_data[, 1], na.rm = TRUE)
     feature_range[[pnames[2]]] <- range(proj_data[, 2], na.rm = TRUE)
-    
+
     x_col_plot <- pnames[1]
     y_col_plot <- pnames[2]
   }

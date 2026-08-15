@@ -2,7 +2,7 @@
 % Please edit documentation in R/boundary_compute.R
 \name{boundary_compute}
 \alias{boundary_compute}
-\title{Compute 2D the classification decision boundary}
+\title{Compute the classification decision boundary}
 \usage{
 boundary_compute(
   model,
@@ -15,62 +15,126 @@ boundary_compute(
 )
 }
 \arguments{
-\item{model}{A fitted model object of class \code{classbound}.}
+\item{model}{A \code{classbound} model object returned by \code{fit_model()} or \code{as_classbound()},
+or a named list of \code{classbound} objects for multi-model comparison. All models in a
+list must share the same training features and class levels.}
 
-\item{feature_range}{An optional named list defining the feature ranges (e.g., \code{list(V1 = c(4, 8), V2 = c(2, 5))}),
-or a character vector of two feature names to automatically compute bounds from the training data.
-If \code{NULL} and the model has exactly two numeric features, it will automatically use their ranges.}
+\item{feature_range}{A named list of length 2 specifying the axis ranges, e.g.,
+\code{list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25))}. Alternatively, a
+character vector of exactly two feature names (ranges computed from training data).
+If \code{NULL} and the model has exactly two numeric features, ranges are auto-detected.
+When \code{projection} is provided, this defines the limits of the 2D projected space.}
 
-\item{resolution}{An integer specifying the grid resolution.}
+\item{resolution}{An integer >= 2 specifying the number of grid points per axis.
+Higher values produce smoother boundaries. Default is 100; use 50 for faster
+interactive exploration.}
 
-\item{predfun}{A custom function to generate predictions for non-standard models.
-The function must accept at least two arguments: \code{model} (the fitted native model)
-and \code{newdata} (a data frame of new observations). It should return either a vector/factor
-of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).}
+\item{predfun}{An optional custom prediction function for non-standard classifiers.
+Must accept \verb{(model, newdata, ...)} and return a vector/factor of predicted classes,
+or a list with \verb{$class} (factor) and \verb{$probs} (probability matrix or \code{NULL}).}
 
-\item{projection}{An optional list defining a high-dimensional projection.
-Must contain \code{basis} (a numeric matrix defining the projection frame, which MUST be orthonormal).
-Optionally contains \code{center} and \code{scale} (numeric vectors) to reverse visual normalization.
-Projection is only supported for models trained exclusively on numeric features.
-If provided, \code{feature_range} defines the limits of the 2D projected space, and the grid
-is inversely projected back to the original feature space before prediction.}
+\item{projection}{An optional named list defining a high-dimensional projection.
+Must contain \verb{$basis} (a numeric matrix, rows = features, columns = 2 axes,
+must be orthonormal). Optionally contains \verb{$center} and \verb{$scale} (numeric vectors
+of length equal to the number of features) to reverse pre-projection standardization.
+Only supported for models trained on numeric features.}
 
-\item{reference}{An optional named list of fixed values to use for features not specified in \code{feature_range}.
-If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.}
+\item{reference}{An optional named list of fixed reference values for features not
+specified in \code{feature_range} (2D slice mode only). Names must match training feature
+names. If \code{NULL}, numeric features are imputed at their median and categorical
+features at their mode.}
 
-\item{...}{Additional computation parameters.}
+\item{...}{Additional arguments passed to \code{predict_model()}.}
 }
 \value{
-A modified \code{classbound} model object containing the 2D grid points and predictions in \verb{$boundary_data}.
+A modified \code{classbound} object with the additional class \code{"classbound_boundary"}.
+The boundary grid is stored in \verb{$boundary_data} (columns: \code{x}, \code{y}, \code{prediction},
+and per-class probability columns when available). For multi-model input, also
+contains a \code{model} column.
 }
 \description{
-Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
+Generates a 2D grid of predicted class labels (and optionally class probabilities)
+for a fitted \code{classbound} model. The resulting boundary data is stored in the returned
+object and consumed directly by \code{plot_boundary()}.
+}
+\details{
+\subsection{2D slice (two-feature visualization)}{
+
+When \code{projection} is \code{NULL}, \code{boundary_compute()} generates a regular grid over the
+two features named in \code{feature_range}. If the model was trained on more than two
+features, all remaining numeric features are fixed at their training-set median and
+categorical features at their training-set mode — unless you supply explicit values
+via \code{reference}.
+
+This is a \strong{2D slice} of the full multivariate decision boundary. Two observations
+that appear in the same region may still be separated in a dimension that is held
+fixed. Use this mode when you want to examine how two specific features interact,
+or when your model was trained on exactly two features.
+}
+
+\subsection{Projection (high-dimensional visualization)}{
+
+When \code{projection} is provided, the 2D grid is generated in the projected space and
+then \strong{inverse-projected} back to the original feature space before prediction.
+This means the model uses all of its training features; only the visualization is
+collapsed to two dimensions.
+
+The projection \verb{$basis} must be a numeric matrix with:
+\itemize{
+\item row count equal to the number of training features, row names matching feature names
+\item exactly two columns (the projected axes)
+\item orthonormal columns (\code{crossprod(basis)} must equal \code{diag(2)})
+}
+
+Suitable bases can be obtained from \code{prcomp()} or the \code{tourr} package.
+}
+
+\subsection{Multi-model comparison}{
+
+Pass a named list of \code{classbound} objects (all trained on the same features and class
+levels) to compute boundaries for multiple models at once. The result contains a
+\code{model} column, suitable for use with \code{plot_boundary(facet_col = "model")}.
+}
 }
 \examples{
 \donttest{
-data(data69_1)
-data69_1$Y <- as.factor(data69_1$Y)
-model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-# Auto-compute ranges for the two numeric features
-model <- boundary_compute(model)
-
-# Palmer penguins example with projection and resolution
 library(palmerpenguins)
 data(penguins)
-penguins <- na.omit(
-  penguins[, c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+# Fit and compute 2D boundary with auto-detected ranges
+m <- fit_model(peng_data, species ~ ., rpart::rpart)
+m <- boundary_compute(m, resolution = 50)
+head(m$boundary_data)
+
+# Explicit axis ranges
+m <- boundary_compute(m,
+  feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+  resolution = 100
 )
-m_peng <- fit_model(penguins, species ~ ., rpart::rpart)
 
-# Create a simple orthonormal projection basis (e.g., PCA or manual)
-basis <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3, ncol = 3)[, 1:2]
-rownames(basis) <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+# 3-feature model visualized as a 2D slice
+peng3d <- na.omit(penguins[, c(
+  "species", "bill_length_mm",
+  "bill_depth_mm", "flipper_length_mm"
+)])
+m3d <- fit_model(peng3d, species ~ ., rpart::rpart)
+m3d_slice <- boundary_compute(m3d,
+  feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+  resolution = 50
+)
 
-m_peng_proj <- boundary_compute(
-  m_peng, 
-  feature_range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+# 3-feature model visualized via PCA projection
+feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+pca <- prcomp(peng3d[, feat_cols], scale. = TRUE)
+basis <- pca$rotation[, 1:2]
+m3d_proj <- boundary_compute(m3d,
+  feature_range = list(PC1 = c(-4, 4), PC2 = c(-3, 3)),
   resolution = 50,
-  projection = list(basis = basis)
+  projection = list(basis = basis, center = pca$center, scale = pca$scale)
 )
 }
+}
+\seealso{
+\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_boundary]{plot_boundary()}}, \code{\link[=boundary_workflow_set]{boundary_workflow_set()}}
 }

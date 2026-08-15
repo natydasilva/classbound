@@ -1,0 +1,203 @@
+---
+title: "Interactive Exploration with Explorapp"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Interactive Exploration with Explorapp}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## Launching Explorapp
+
+`explorapp()` opens the interactive Shiny application for visual exploration of
+classification decision boundaries. Launch it from the R console:
+
+```{r launch, eval=FALSE}
+library(classbound)
+
+# Empty app — start with simulation or drawing
+explorapp()
+
+# Pre-loaded dataset
+library(palmerpenguins)
+penguins <- na.omit(palmerpenguins::penguins)
+explorapp(data = penguins, target_col = "species")
+```
+
+When `data` and `target_col` are provided, **Import Data** mode is selected automatically.
+
+---
+
+## Data modes
+
+The sidebar's **Data Mode** panel controls which dataset the models are trained on.
+
+### Import Data
+
+Available when you call `explorapp(data = ..., target_col = ...)`. The provided data
+frame is loaded directly. Use **Data Preview** to inspect the loaded rows.
+
+For datasets with more than two features, a **2D Slice** or **Projection** tab
+appears in the visualization area (see below).
+
+### Simulate Data
+
+Generate synthetic data from one of two engines:
+
+**Multivariate Normal (MVN)**: You specify the number of classes, and the app
+generates class-specific mean and covariance sliders. Click **Generate Data** to
+draw a new dataset. A separate independent test set is also generated with
+approximately 30% of the training sample size — this is not a 70/30 split; it is
+an additional independently drawn evaluation sample using the same class parameters.
+
+**MixSim**: Generates more complex overlapping Gaussian mixture data. Specify the
+number of classes `K`, number of dimensions `p`, and maximum pairwise overlap
+`MaxOmega`. Smaller overlap values create more clearly separated classes.
+
+Both engines support a **Random Seed** for reproducibility and a **Background Noise**
+slider for adding uniformly distributed contamination points.
+
+### Draw Data
+
+Draw your own classification dataset by clicking or brushing directly on the plot.
+Choose from two interaction modes:
+
+**Draw Point** — each click adds one observation at the clicked location. Dragging does
+not create a stroke; only the location where you release the mouse counts.
+
+**Draw Cluster** — dragging creates a cluster of observations along the drawn path.
+The **Point Density** and **Brush Size** controls determine how many points are added
+per path segment.
+
+Use **Undo Last** to remove the most recently added batch of points. **Clear Canvas**
+removes all drawn points.
+
+**Clone to Draw Canvas** copies a supported 2-feature dataset (from Import or Simulate)
+onto the Draw Canvas so you can continue editing it. High-dimensional datasets cannot
+be cloned because the Draw Canvas is a 2-feature interface.
+
+---
+
+## Model configuration
+
+The **Model Configuration** panel lists all available classifiers. Select one or more
+to compare simultaneously. Each classifier shows its own tuning parameters when selected.
+
+Supported classifiers include:
+- **rpart** (decision tree) — complexity parameter `cp`
+- **randomForest** — number of trees, `mtry`
+- **PPtreeViz** / **PPtreeExtclass** / **PPtreeExt_split** — projection pursuit trees
+- **ppforest2** — projection pursuit random forest
+- **Tidymodels presets** (if the `parsnip` package is installed): Decision Tree, Random Forest, SVM, Neural Net, PP Forest
+
+**Grid Resolution** controls the density of the prediction grid: higher values produce
+smoother boundaries at the cost of computation time. 100 is a good default.
+
+---
+
+## Visualization modes
+
+### Navigate
+
+The default interaction mode. Use Ctrl + mouse wheel to zoom in/out, or draw a brush
+(drag) on the plot to select a region and zoom into it. Double-click to reset the view.
+
+### 2D Slice
+
+For datasets with more than two features, the **2D Slice** tab lets you choose which
+two features to display on the axes. All other numeric features are fixed at their
+training-set median and categorical features at their mode.
+
+The slice shows the decision boundary at a specific cross-section. Changing the selected
+features reveals different slices through the multi-dimensional boundary.
+
+### Projection
+
+The **Projection** tab uses a PCA-derived basis to project the high-dimensional feature
+space into two axes. Unlike a slice, the projection combines information from all features
+simultaneously.
+
+When a projection is active, training observations are depth-faded: points closer to
+the projection plane appear more opaque, while points further away fade toward
+transparency.
+
+---
+
+## Probability surface
+
+The **Probability Surface** option (in Visual Settings) shades decision regions by the
+model's predicted class probability: deep colors indicate high confidence and faded
+colors indicate uncertainty near the boundary.
+
+**Probability surface is only available when the selected classifier provides class
+probabilities.** Classifiers such as standard SVMs and PPtree models do not provide
+probabilities and always produce flat colored regions regardless of this setting.
+The app displays: *"Probability surface unavailable: the selected model does not provide
+class probabilities."*
+
+---
+
+## Outlier injection
+
+The **Outlier Injection** panel adds extreme observations to the training data to test
+how classifiers respond to unusual points.
+
+- **Outlier Class**: the class label assigned to the injected outlier, or *Random* for
+  a randomly chosen class.
+- **Outlier Magnitude**: controls how far the outlier is placed from its class distribution.
+- **Number of Outliers**: how many outliers to inject at once.
+- **Highlight Outliers (Diamonds)**: renders injected outliers with a distinct diamond shape.
+
+Injected outliers become part of the training data. When models are refitted, the outliers
+influence the fitted boundary. For simulated data, outliers are added to the training set
+and do not affect the independently generated test set.
+
+Use **Clear** to remove all injected outliers without clearing the rest of the dataset.
+
+---
+
+## Performance metrics
+
+The **Training Performance Metrics** table at the bottom of the main panel shows
+accuracy, precision, recall, and F1 for each fitted model on the training data.
+
+The **Test Error** column reports error on the independently generated test dataset
+(for Simulate Data mode). This test set is generated fresh using the same simulation
+parameters as the training data, with approximately 30% of the training sample size.
+It is not derived by splitting the training data.
+
+For **Import Data** and **Draw Data** modes, no automatic test data is fabricated.
+Test Error is not reported for these modes.
+
+---
+
+## Export
+
+Click **Export Results...** to open the Export Wizard, which lets you choose which
+components to include:
+
+| Component | Description |
+|---|---|
+| Data (CSV) | The current training dataset (including any injected outliers) |
+| Fitted Models (RDS) | All currently fitted model objects as an R list |
+| Plots (PNG / PDF) | Current boundary plots as image files |
+| Grid (CSV) | The raw boundary prediction grid (x, y, prediction, probabilities) |
+| Metrics (CSV) | The performance metrics table |
+| Reproduce Script (R) | An auto-generated R script that reloads the data and redraws the plots |
+
+The reproduce script loads `data.csv` and `models.rds` from the same folder and
+calls `boundary_compute()` and `plot_boundary()` to regenerate the plots. It captures
+the current grid resolution, zoom state, and visualization settings. UI-only state
+(e.g., panel layout, color theme preferences) is intentionally not exported.
+
+---
+
+## Import Workspace Models
+
+The **Import Workspace Models** panel scans your R Global Environment for `workflow`,
+`model_fit`, and `model_spec` objects (from `tidymodels`). Any found objects can be
+imported into the app for comparison against the built-in classifiers.

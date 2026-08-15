@@ -1,19 +1,50 @@
-#' Convert an existing fitted model into a classbound object
+#' Convert a fitted model into a classbound object
 #'
-#' @description Wraps a pre-fitted model with the metadata required by the `classbound`
-#'   visualization pipeline. This enables "bring your own model" workflows and supports
-#'   native integration with frameworks like `tidymodels`.
+#' @description
+#' Wraps a pre-fitted model in a `classbound` object, adding the feature metadata
+#' (names, types, ranges, imputation values) required by `boundary_compute()` and
+#' `plot_boundary()`. This is the entry point for "bring your own model" (BYO) workflows,
+#' including native `tidymodels` workflows and `parsnip` model fits.
 #'
-#' @param model A fitted model object.
-#' @param data A data frame containing the training data used to fit the model.
-#'   This is strictly used to extract feature metadata (names, types, and levels).
-#'   It is not passed through `preprocess_data()`.
-#' @param response A string specifying the name of the response column in `data`.
-#'   If provided, this column is excluded from feature metadata, and its levels
-#'   are recorded as the class levels.
+#' @details
+#' Unlike `fit_model()`, `as_classbound()` does **not** refit the model or call
+#' `preprocess_data()`. Feature metadata is extracted solely from the `data` argument,
+#' which should be the same data used to fit the model. If the model was fitted on
+#' scaled or transformed data, ensure `data` reflects that transformation.
+#'
+#' `as_classbound()` dispatches on the class of `model`:
+#' - **Default**: wraps any fitted model object (e.g., `rpart`, `lda`).
+#' - **`workflow`**: requires the workflow to already be trained (via `fit()`). Use
+#'   `boundary_workflow_set()` to train and wrap an entire workflow set at once.
+#' - **`model_fit`**: wraps a fitted `parsnip` model.
+#'
+#' @param model A fitted model object. For `tidymodels` objects, must be a trained
+#'   `workflow` or `model_fit` — not a model specification.
+#' @param data A data frame of the training data. Used only to extract feature metadata;
+#'   the data is not passed through `preprocess_data()`. Must contain all features that
+#'   the model was trained on.
+#' @param response Optional string naming the response column in `data`. If provided,
+#'   this column is excluded from feature metadata and its levels are stored as class
+#'   levels. If `NULL`, class levels will be `NULL` in the returned object.
 #' @param ... Additional arguments passed to methods.
 #'
-#' @return A `classbound` object.
+#' @return A `classbound` object ready for use with `boundary_compute()` and
+#'   `plot_boundary()`.
+#'
+#' @examples
+#' \donttest{
+#' library(palmerpenguins)
+#' data(penguins)
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#'
+#' # Wrap any pre-fitted model
+#' raw_model <- rpart::rpart(species ~ ., data = peng_data)
+#' cb_model <- as_classbound(raw_model, data = peng_data, response = "species")
+#'
+#' # Tidymodels: wrap a fitted workflow
+#' # (boundary_workflow_set() does this automatically for entire workflow sets)
+#' }
+#' @seealso [fit_model()], [boundary_workflow_set()], [boundary_compute()]
 #' @export
 as_classbound <- function(model, data, response = NULL, ...) {
   UseMethod("as_classbound")

@@ -1,15 +1,27 @@
 #' Preprocess data before model fitting
 #'
-#' @description Handles common preprocessing steps like validating inputs, converting factors,
-#' handling missing values, and optional scaling. This centralizes validation so classifier
-#' adapters can assume validated inputs.
+#' @description
+#' Applies standard preprocessing steps to a training dataset: validates structure,
+#' coerces character columns to factors, drops unused factor levels, rejects missing
+#' and infinite values, and converts response labels to a factor.
 #'
-#' @param data A data frame of raw training or prediction data.
-#' @param labels Optional. A vector of target labels corresponding to `data`.
-#'   If provided, it is converted to a factor with unused levels dropped.
-#' @param ... Additional processing arguments (currently unused).
+#' @details
+#' This function is called automatically by `fit_model()`. **Do not call it manually
+#' before `fit_model()`** — doing so will result in feature metadata being extracted
+#' from the pre-processed data rather than the original data, which corrupts the
+#' imputation values used by `boundary_compute()` for 2D slicing.
 #'
-#' @return A list containing the validated and processed `data` and `labels`.
+#' It is exported for use in custom workflows and testing, but it is not typically
+#' needed in the standard `fit_model()` → `boundary_compute()` pipeline.
+#'
+#' @param data A data frame of raw training data.
+#' @param labels Optional vector of target labels. Converted to a factor with
+#'   unused levels dropped.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return A list with two elements:
+#'   - `$data`: the preprocessed data frame
+#'   - `$labels`: the processed factor labels (or `NULL` if not supplied)
 #' @export
 preprocess_data <- function(data, labels = NULL, ...) {
   if (!is.data.frame(data)) {

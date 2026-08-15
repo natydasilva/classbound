@@ -10,7 +10,9 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.path = "man/figures/README-",
   out.width = "70%",
-  fig.align = "center"
+  fig.align = "center",
+  fig.width = 6,
+  fig.height = 5
 )
 ```
 
@@ -21,105 +23,217 @@ knitr::opts_chunk$set(
 [![pkgdown](https://github.com/natydasilva/classbound/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/natydasilva/classbound/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
-The **classbound** package provides tools to explore, visualize, and analyze classification decision boundaries in R. It offers a unified interface for fitting machine learning models and rendering 2D visualizations of their prediction surfaces.
+`classbound` is an R package for exploring and comparing classification decision
+boundaries. It provides a unified interface for fitting classifiers, computing 2D
+boundary grids, and visualizing how different models partition the feature space.
+
+**What you can do with classbound:**
+
+- Visualize decision boundaries for any R classifier
+- Compare multiple classifiers side by side
+- Handle high-dimensional data via 2D slicing or projection (PCA, tourr)
+- View probability surfaces for classifiers that provide them
+- Explore data interactively using the built-in Shiny app (`explorapp()`)
+- Integrate natively with `tidymodels` workflows
+
+**Full documentation:** <https://natydasilva.github.io/classbound/>
+
+---
 
 ## Installation
 
-You can install the development version of classbound from GitHub with:
-
-```{r eval=FALSE}
-install.packages("devtools")
+```{r install, eval=FALSE}
 devtools::install_github("natydasilva/classbound")
 ```
 
-## Quick Start
+---
 
-### Visualizing a Decision Boundary
+## Quick start
 
-Here is a basic example of how to fit a model and visualize its decision boundary:
+### One-step wrapper
 
-```{r visualisation, message=FALSE, warning=FALSE}
+`classbound()` fits a model, computes its decision boundary, and plots the result in
+a single call.
+
+```{r quickstart, message=FALSE, warning=FALSE}
 library(classbound)
 library(palmerpenguins)
 
-# 1. Load and prepare sample dataset
-penguins <- na.omit(penguins[, -c(2, 7, 8)])
+penguins <- na.omit(palmerpenguins::penguins[
+  ,
+  c("species", "bill_length_mm", "bill_depth_mm")
+])
 
-# 2. Fit a decision tree (rpart) predicting species
-model <- fit_model(
-  data = penguins,
-  formula = species ~ bill_length_mm + bill_depth_mm,
+classbound(
+  data       = penguins,
+  formula    = species ~ bill_length_mm + bill_depth_mm,
   classifier = rpart::rpart,
-  interface = "formula"
+  resolution = 80
 )
+```
 
-# 3. Compute the boundary
-feature_range <- list(
-  bill_length_mm = c(30.0, 60.0),
-  bill_depth_mm = c(10.0, 25.0)
-)
-model <- boundary_compute(model, feature_range = feature_range, resolution = 100)
+### Modular pipeline
 
-# 4. Plot the decision boundary
+For full control, use the three-step pipeline:
+
+```{r pipeline, message=FALSE, warning=FALSE}
+# 1. Fit
+model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
+
+# 2. Compute boundary
+model <- boundary_compute(model, resolution = 80)
+
+# 3. Plot
 plot_boundary(
-  model = model,
-  obs_data = penguins,
-  x_col = "bill_length_mm",
-  y_col = "bill_depth_mm",
+  model,
+  obs_data   = penguins,
+  x_col      = "bill_length_mm",
+  y_col      = "bill_depth_mm",
   true_label = "species"
 )
 ```
 
-### Native Confidence Mapping (Gradients)
+`boundary_compute()` returns the model with the grid attached, so you can replot with
+different settings without refitting.
 
-If the specified classifier returns prediction probabilities (such as Random Forests or Logistic Regression), `classbound` automatically extracts these probabilities and maps them to the visual transparency (`alpha`) of the decision regions. Deep, saturated colors indicate high model confidence, while pale, faded regions indicate model uncertainty near the boundary edges. If a classifier does not return probabilities (e.g., standard SVMs), `classbound` gracefully falls back to drawing solid colors separated by sharp boundaries.
+---
 
-### High-Dimensional Depth Fading (Projections)
+## Interactive workflow
 
-When visualizing models with >2 dimensions via projection (using `boundary_compute(..., projection = proj)`), `plot_boundary()` applies mathematically rigorous forward projection to any overlaid training observations.
+Launch the built-in Shiny application for point-and-click exploration:
 
-To prevent visual crowding and provide a sense of spatial depth, it automatically calculates the orthogonal distance from each original high-dimensional point to the 2D projection plane. Points lying exactly on the plane are plotted entirely opaque (`alpha = 1.0`), while points further away in high-dimensional space gradually fade into the background (`alpha = 0.2`). This provides instant visual context on whether a point is genuinely near the boundary or simply an artifact of the viewing angle.
+```{r explorapp, eval=FALSE}
+# Start with your own dataset
+explorapp(data = penguins, target_col = "species")
 
-### The All-In-One Wrapper
-
-For convenience, you can perform fitting, boundary computation, and plotting in a single step using the `classbound()` wrapper:
-
-```{r classbound-wrapper, eval=FALSE}
-classbound(
-  data = penguins,
-  formula = species ~ bill_length_mm + bill_depth_mm,
-  classifier = rpart::rpart,
-  resolution = 100
-)
-```
-
-### Using Different Classifiers
-
-Because `classbound` uses standard R evaluation, you can easily plug in other models. The package supports standard classifiers out of the box, and provides a `predfun` argument for models that return complex objects (like lists).
-
-```{r classifiers, eval=FALSE}
-# Standard models (e.g., SVM) work automatically
-model_svm <- classbound(
-  data = penguins,
-  formula = species ~ bill_length_mm + bill_depth_mm,
-  classifier = e1071::svm
-)
-
-# Models returning lists (e.g., MASS::qda) use the `predfun` fallback mechanism
-model_qda <- classbound(
-  data = penguins,
-  formula = species ~ bill_length_mm + bill_depth_mm,
-  classifier = MASS::qda,
-  predfun = function(model, newdata, ...) {
-    predict(model, newdata, ...)$class
-  }
-)
-```
-
-### Interactive Exploration
-
-The package also includes a Shiny app to interactively explore models and boundaries. You can launch it using:
-
-```{r eval=FALSE}
+# Or start empty and simulate/draw data
 explorapp()
 ```
+
+In `explorapp()` you can:
+- Import real data or simulate synthetic datasets
+- Draw classification data by hand
+- Fit and compare multiple classifiers simultaneously
+- Switch between 2D Slice and Projection views for high-dimensional data
+- Inject outliers and observe how boundaries shift
+- Inspect probability surfaces (for supported classifiers)
+- Export data, models, plots, and a reproduce script
+
+---
+
+## Two main workflows
+
+### Interactive
+
+Use `explorapp()` to:
+
+1. Choose or create data
+2. Choose models
+3. Explore decision boundaries
+4. Navigate, zoom, and draw
+5. Compare models and export results
+
+### Programmatic
+
+Use the core Classbound functions directly:
+
+```r
+fit_model()
+boundary_compute()
+plot_boundary()
+
+---
+
+## High-dimensional data
+
+When a model is trained on more than two features, `boundary_compute()` supports:
+
+- **2D Slice**: two features are plotted; other features are fixed at their median/mode.
+
+```{r slice, message=FALSE, warning=FALSE}
+penguins3 <- na.omit(palmerpenguins::penguins[
+  ,
+  c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+])
+
+m3 <- fit_model(penguins3, species ~ ., rpart::rpart)
+m3_slice <- boundary_compute(m3,
+  feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+  resolution = 60
+)
+
+plot_boundary(m3_slice,
+  obs_data = penguins3,
+  x_col = "bill_length_mm", y_col = "bill_depth_mm",
+  true_label = "species"
+)
+```
+
+- **Projection**: all features are combined into two projected axes (e.g., PCA).
+
+```{r projection, message=FALSE, warning=FALSE}
+feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+pca <- prcomp(penguins3[, feat_cols], scale. = TRUE)
+basis <- pca$rotation[, 1:2]
+
+x_std <- scale(penguins3[, feat_cols], center = pca$center, scale = pca$scale)
+z_mat <- x_std %*% basis
+
+m3_proj <- boundary_compute(m3,
+  feature_range = list(
+    PC1 = range(z_mat[, 1]) + c(-0.5, 0.5),
+    PC2 = range(z_mat[, 2]) + c(-0.5, 0.5)
+  ),
+  resolution = 60,
+  projection = list(basis = basis, center = pca$center, scale = pca$scale)
+)
+
+plot_boundary(m3_proj,
+  obs_data = penguins3,
+  x_col = "PC1", y_col = "PC2", true_label = "species"
+)
+```
+
+See the [high-dimensional](https://natydasilva.github.io/classbound/articles/high-dimensional.html) guide for a full explanation.
+
+---
+
+## Multi-model comparison with tidymodels
+
+```{r tidymodels, eval=requireNamespace("parsnip", quietly=TRUE) && requireNamespace("workflowsets", quietly=TRUE), message=FALSE, warning=FALSE}
+library(parsnip)
+library(workflowsets)
+
+spec_tree <- decision_tree(mode = "classification") |> set_engine("rpart")
+spec_rf <- rand_forest(mode = "classification") |> set_engine("randomForest")
+
+wf_set <- workflow_set(
+  preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
+  models  = list(tree = spec_tree, forest = spec_rf)
+)
+
+bounds <- boundary_workflow_set(wf_set,
+  data = penguins,
+  response = "species", resolution = 60
+)
+
+plot_boundary(bounds,
+  obs_data = penguins,
+  x_col = "bill_length_mm", y_col = "bill_depth_mm",
+  true_label = "species"
+)
+```
+
+---
+
+## Documentation
+
+| Resource | Link |
+|---|---|
+| Getting Started | [getting-started](https://natydasilva.github.io/classbound/articles/getting-started.html) |
+| High-Dimensional | [high-dimensional](https://natydasilva.github.io/classbound/articles/high-dimensional.html) |
+| tidymodels | [tidymodels-workflow](https://natydasilva.github.io/classbound/articles/tidymodels-workflow.html) |
+| tourr | [tourr-workflow](https://natydasilva.github.io/classbound/articles/tourr-workflow.html) |
+| Explorapp Guide | [explorapp-guide](https://natydasilva.github.io/classbound/articles/explorapp-guide.html) |
+| Custom Adapters | [custom_adapters](https://natydasilva.github.io/classbound/articles/custom_adapters.html) |
+| Reference | [Function Reference](https://natydasilva.github.io/classbound/reference/) |

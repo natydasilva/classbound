@@ -27,81 +27,154 @@ plot_boundary(
 )
 }
 \arguments{
-\item{model}{A \code{classbound} model object returned by \code{boundary_compute()}.
-Must contain boundary data in \verb{$boundary_data}.}
+\item{model}{A \code{classbound} object returned by \code{boundary_compute()}. Must contain
+boundary data in \verb{$boundary_data}.}
 
-\item{obs_data}{Optional data frame of training observations to overlay.}
+\item{obs_data}{An optional data frame of observations to overlay on the boundary plot.
+Typically the training data. If provided, \code{x_col}, \code{y_col}, and \code{true_label} are
+required.}
 
-\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Also used as the x-axis label.
-Required if \code{obs_data} is provided.}
+\item{x_col}{Column name in \code{obs_data} for the x-axis feature. Used as the x-axis label.
+Required when \code{obs_data} is provided and the model has no projection.}
 
-\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Also used as the y-axis label.
-Required if \code{obs_data} is provided.}
+\item{y_col}{Column name in \code{obs_data} for the y-axis feature. Used as the y-axis label.
+Required when \code{obs_data} is provided and the model has no projection.}
 
-\item{true_label}{Column name in \code{obs_data} representing the true class labels. Required if \code{obs_data} is provided.}
+\item{true_label}{Column name in \code{obs_data} containing the true class labels.
+Required when \code{obs_data} is provided.}
 
-\item{facet_col}{Optional string naming a column in \code{boundary} to facet the plot by.
-Useful for comparing multiple models (e.g. from \code{boundary_workflow_set()}).}
+\item{facet_col}{Optional string naming a column in the boundary data to facet the
+plot by. Set to \code{"model"} automatically when the input is a multi-model comparison
+object. Also compatible with any column from \code{boundary_workflow_set()} output.}
 
-\item{type}{The type of visualization to generate. Supported: '2D' or 'disagreement'.}
+\item{type}{The visualization type. \code{"2D"} (default) renders the predicted class
+regions. \code{"disagreement"} renders a binary map showing where models agree vs.
+disagree; requires a multi-model input.}
 
-\item{show_gradient}{Logical. If \code{TRUE}, classification probabilities (if available)
-will be mapped to the transparency (alpha) of the decision regions, creating a gradient
-surface. Defaults to \code{FALSE} (renders a flat decision boundary).}
+\item{show_gradient}{Logical. If \code{TRUE}, decision regions are shaded by the predicted
+class probability (requires a classifier that provides probabilities). Defaults to
+\code{FALSE}.}
 
-\item{agree_color}{Color used for areas where all models agree (only for type='disagreement').}
+\item{agree_color}{Color for regions where all models agree (only for
+\code{type = "disagreement"}).}
 
-\item{disagree_color}{Color used for areas where models disagree (only for type='disagreement').}
+\item{disagree_color}{Color for regions where models disagree (only for
+\code{type = "disagreement"}).}
 
-\item{obs_alpha}{Numeric transparency level for overlaid observation points (0.0 to 1.0).}
+\item{obs_alpha}{Numeric transparency for overlaid observation points (0.0–1.0).
+When a projection is active, this is treated as the maximum opacity; actual alpha
+varies by depth-fading.}
 
-\item{obs_size}{Numeric size for overlaid observation points.}
+\item{obs_size}{Numeric point size for overlaid observations.}
 
-\item{render}{Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).}
+\item{render}{Rendering method for decision regions: \code{"raster"} (default, fast, not
+plotly-compatible) or \code{"tile"} (slower, compatible with \code{plotly::ggplotly()}).}
 
-\item{colors}{Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.}
+\item{colors}{Optional named character vector mapping class labels to colors, e.g.
+\code{c("Adelie" = "#E6194B", "Chinstrap" = "#3CB44B", "Gentoo" = "#4363D8")}. Overrides
+both \code{palette} and the default \code{classbound_palette()}.}
 
-\item{palette}{Optional string specifying a ColorBrewer palette (e.g. \code{"Dark2"}) to override the default colors.}
+\item{palette}{Optional RColorBrewer palette name (e.g., \code{"Dark2"}, \code{"Set1"}) to
+override the default colors. Falls back to \code{classbound_palette()} if the palette
+cannot support the number of classes.}
 
-\item{highlight_outliers}{Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).}
+\item{highlight_outliers}{Logical. If \code{TRUE}, observations with \code{is_outlier == TRUE}
+in \code{obs_data} are rendered as diamonds (shape 23) instead of circles.}
 
-\item{xlim}{Optional length-two numeric vector setting the x-axis limits.}
+\item{xlim}{Optional length-2 numeric vector to set x-axis limits.}
 
-\item{ylim}{Optional length-two numeric vector setting the y-axis limits.}
+\item{ylim}{Optional length-2 numeric vector to set y-axis limits.}
 
-\item{...}{Additional visualization parameters.}
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
 A \code{ggplot2} object.
 }
 \description{
-Renders a 2D plot for boundary exploration.
+Renders a 2D ggplot of a classification decision boundary, optionally overlaying
+observed training data. Input must be a \code{classbound} object that has already been
+passed through \code{boundary_compute()}.
 }
 \details{
-If the \code{model} object contains a \code{projection} (e.g. from \code{tourr} or \code{prcomp}),
-\code{plot_boundary()} will automatically apply forward projection to any provided \code{obs_data}.
-It will mathematically map the high-dimensional points onto the 2D plane and calculate
-their orthogonal distances to the plane. Points exactly on the plane are rendered fully opaque
-(alpha = 1.0), while points further away gradually fade to greater transparency (alpha = 0.2).
+\subsection{Probability surface (gradient)}{
 
-Any provided training observations (\code{obs_data}) are rendered with a white border
-to improve contrast against the underlying colored decision regions.
+When \code{show_gradient = TRUE}, decision regions are shaded by the predicted class
+probability: deep, saturated regions indicate high model confidence, while faded
+regions indicate uncertainty near the boundary. Probability shading is only possible
+when the underlying classifier returns class probabilities. Classifiers that return
+only class labels (e.g., standard SVMs or PPtree models) produce a flat boundary
+regardless of \code{show_gradient}.
+}
+
+\subsection{High-dimensional projections and depth fading}{
+
+When the \code{classbound} object contains a projection (from \code{boundary_compute(..., projection = ...)}),
+\code{plot_boundary()} automatically forward-projects any \code{obs_data} observations onto the
+2D plane. It also computes each point's orthogonal distance from the projection plane
+and maps this distance to opacity: points lying exactly on the plane are fully opaque
+(\code{alpha = 1.0}), while points further away in the original feature space gradually
+fade toward \code{alpha = 0.2}. This depth-fading provides visual cues about how faithfully
+each point's position is captured by the current projection.
+}
+
+\subsection{Rendering backend and plotly compatibility}{
+
+The default \code{render = "raster"} uses \code{ggplot2::geom_raster()}, which is fast and
+produces high-quality static output. However, \code{geom_raster()} is not supported by
+\code{plotly::ggplotly()} and will produce a blank interactive plot. To convert a boundary
+plot to an interactive plotly figure, use \code{render = "tile"} instead:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{p <- plot_boundary(model, render = "tile")
+plotly::ggplotly(p)
+}\if{html}{\out{</div>}}
+}
+
+\subsection{Colors and palettes}{
+
+By default, \code{plot_boundary()} uses \code{classbound_palette()}, a curated 20-color palette
+with deterministic (alphabetical) class-to-color assignment, ensuring consistent colors
+across multiple plots. Supply a \code{palette} name (e.g., \code{"Dark2"}) to use an RColorBrewer
+palette, or supply \code{colors} as a named vector for explicit control. If an RColorBrewer
+palette cannot accommodate the number of classes, it falls back to \code{classbound_palette()}.
+}
 }
 \examples{
 \donttest{
 library(palmerpenguins)
 data(penguins)
 peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
 
-# Auto-compute bounds and generate 2D grid
-m_rpart <- boundary_compute(m_rpart, resolution = 50)
+m <- fit_model(peng_data, species ~ ., rpart::rpart)
+m <- boundary_compute(m, resolution = 50)
 
-# Plot the decision boundary with observations overlaid
-plot_boundary(m_rpart,
-  obs_data = peng_data,
-  x_col = "bill_length_mm", y_col = "bill_depth_mm",
+# Basic boundary plot with observations
+plot_boundary(m,
+  obs_data   = peng_data,
+  x_col      = "bill_length_mm",
+  y_col      = "bill_depth_mm",
   true_label = "species"
 )
+
+# Probability gradient (rpart supports probabilities)
+plot_boundary(m,
+  obs_data      = peng_data,
+  x_col         = "bill_length_mm",
+  y_col         = "bill_depth_mm",
+  true_label    = "species",
+  show_gradient = TRUE
+)
+
+# Plotly-compatible rendering
+p <- plot_boundary(m,
+  obs_data   = peng_data,
+  x_col      = "bill_length_mm",
+  y_col      = "bill_depth_mm",
+  true_label = "species",
+  render     = "tile"
+)
+# plotly::ggplotly(p)  # uncomment to convert to interactive
 }
+}
+\seealso{
+\code{\link[=boundary_compute]{boundary_compute()}}, \code{\link[=classbound]{classbound()}}, \code{\link[=classbound_palette]{classbound_palette()}}
 }

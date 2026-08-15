@@ -12,7 +12,7 @@ test_that("user-defined custom adapters are supported natively via S3 dispatch",
 
   # 2. Define a custom prediction adapter for that class
   predict_adapter.my_model <- function(model, newdata, ...) { # nolint: object_name_linter.
-    # Just predict the first level for all rows
+    # Predict the first level for all rows
     n <- nrow(newdata)
     level_1 <- levels(model$dummy_labels)[1]
     preds <- factor(rep(level_1, n), levels = levels(model$dummy_labels))

@@ -5,15 +5,60 @@
 \alias{classbound-package}
 \title{classbound: Visualization for Classification Decision Boundaries}
 \description{
-An R package for exploring and comparing decision boundaries from existing and new classification methods, including methods for two-dimensional and high-dimensional data.
+The \code{classbound} package provides tools for exploring, visualizing, and comparing
+classification decision boundaries in R. It supports both two-dimensional data and
+high-dimensional data (via 2D slicing or linear projections), and works with native
+R classifiers, \code{tidymodels} workflows, and user-supplied models.
 }
-\seealso{
-Useful links:
-\itemize{
-  \item \url{https://github.com/natydasilva/classbound}
-  \item \url{https://natydasilva.github.io/classbound/}
+\details{
+\subsection{Two main workflows}{
+
+\strong{Interactive workflow} — Launch \code{explorapp()} to start the built-in Shiny application.
+From there, you can import your own data, simulate datasets, draw data by hand, choose
+classifiers, adjust parameters, compare decision boundaries side-by-side, inspect
+probability surfaces, inject outliers, and export the results.
+
+\strong{Programmatic workflow} — Use the modular API directly:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{model <- fit_model(data, formula, classifier)
+model <- boundary_compute(model, feature_range, resolution = 100)
+plot_boundary(model, obs_data = data, x_col = "x", y_col = "y", true_label = "class")
+}\if{html}{\out{</div>}}
+
+For a one-step wrapper, use \code{classbound()}.
 }
 
+\subsection{High-dimensional data}{
+
+When a model is trained on more than two features, \code{boundary_compute()} supports
+two visualization strategies:
+\itemize{
+\item \strong{2D Slice}: two features are selected for the axes; all other numeric features
+are fixed at their median and categorical features at their mode.
+\item \strong{Projection}: a projection matrix maps the high-dimensional feature space to two
+dimensions (e.g., PCA or a tour basis from the \code{tourr} package). The boundary grid
+is generated in projection space and inverse-projected back for prediction.
+}
+}
+
+\subsection{Supported classifiers}{
+
+Any classifier whose \code{predict()} method returns a vector or factor of class labels
+works automatically. Built-in adapters are provided for \code{rpart}, \code{randomForest},
+\code{PPtreeViz}, \code{PPtreeExt}, and \code{ppforest2}. For classifiers that return complex
+objects (such as lists), use the \code{predfun} argument to extract class labels.
+Native \code{tidymodels} integration is available via \code{boundary_workflow_set()}.
+}
+}
+\seealso{
+\itemize{
+\item \code{classbound()} for the all-in-one wrapper
+\item \code{fit_model()} to fit a model
+\item \code{boundary_compute()} to compute a decision boundary
+\item \code{plot_boundary()} to visualize a decision boundary
+\item \code{explorapp()} for the interactive Shiny application
+\item \code{boundary_workflow_set()} for tidymodels multi-model comparison
+}
 }
 \author{
 \strong{Maintainer}: Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})

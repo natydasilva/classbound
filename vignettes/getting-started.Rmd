@@ -7,80 +7,147 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 5
 )
 ```
 
-## Introduction
+## What is classbound?
 
-The **classbound** package provides a streamlined interface for computing, visualizing, and interactively exploring classification decision boundaries in R. Whether you are teaching machine learning concepts, evaluating model performance, or debugging complex classifiers, `classbound` helps you understand how your models partition the feature space.
+`classbound` is an R package for exploring and comparing classification decision boundaries. Given a fitted classifier and a dataset, it answers a simple question: *where in the feature space does the model change its prediction?*
 
-```{r setup}
+The package supports:
+
+- Any classifier whose `predict()` returns class labels
+- 2D boundary plots for two-feature models
+- High-dimensional data via 2D slicing or linear projection (PCA, tourr)
+- Side-by-side multi-model comparison
+- Probability surfaces (where the classifier provides probabilities)
+- An interactive Shiny application (`explorapp()`) for visual exploration
+
+## Installation
+
+```{r eval=FALSE}
+devtools::install_github("natydasilva/classbound")
+```
+
+## Quick start: one-step boundary plot
+
+The `classbound()` wrapper fits a model, computes the decision boundary, and plots it in a single call.
+
+```{r quickstart, message=FALSE, warning=FALSE}
 library(classbound)
-```
-
-## Fitting a Model
-
-`classbound` provides a unified `fit_model()` function that wraps various underlying algorithms. For example, to fit a decision tree:
-
-```{r message=FALSE, warning=FALSE}
-# Load and prepare palmerpenguins dataset
 library(palmerpenguins)
-penguins <- na.omit(penguins[, -c(2, 7, 8)])
 
-# Fit an rpart decision tree model predicting species
-model <- fit_model(
-  data = penguins,
-  formula = species ~ bill_length_mm + bill_depth_mm,
+penguins <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+classbound(
+  data       = penguins,
+  formula    = species ~ bill_length_mm + bill_depth_mm,
   classifier = rpart::rpart,
-  interface = "formula"
+  resolution = 80
 )
 ```
 
-## Computing the Decision Boundary
+The colored regions show the predicted class for each point in the feature space. Training observations are overlaid as points colored by their true class.
 
-Once a model is fitted, you can compute the boundary over a specified grid. Define the range for your features and the grid resolution:
+## The modular API
 
-```{r}
-# Define the range for the grid
-feature_range <- list(
-  bill_length_mm = c(30.0, 60.0),
-  bill_depth_mm = c(10.0, 25.0)
-)
+For more control, use the three-step pipeline:
 
-# Compute predictions over the grid
+```{r pipeline, message=FALSE, warning=FALSE}
+# Step 1: Fit the model
+model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
+
+# Step 2: Compute the boundary grid
 model <- boundary_compute(
-  model = model,
-  feature_range = feature_range,
-  resolution = 100
+  model,
+  feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+  resolution    = 80
 )
 
-head(model$boundary_data)
-```
-
-## Visualizing the Boundary
-
-To visualize the resulting boundary, pass the computed grid data to `plot_boundary()`. You can also overlay the original training observations to see how well the regions match the true classes.
-
-```{r}
+# Step 3: Plot
 plot_boundary(
-  model = model,
-  obs_data = penguins,
-  x_col = "bill_length_mm",
-  y_col = "bill_depth_mm",
+  model,
+  obs_data   = penguins,
+  x_col      = "bill_length_mm",
+  y_col      = "bill_depth_mm",
   true_label = "species"
 )
 ```
 
-## Interactive Exploration
+`boundary_compute()` returns the same model object with `$boundary_data` populated. This means you can reuse the same fitted model with different visualizations, zoom levels, or color settings without refitting.
 
-For interactive exploration using simulated datasets, you can launch the built-in Shiny application:
+## Using different classifiers
 
-```{r eval=FALSE}
+`classbound` works with any classifier whose `predict()` method returns a vector of class labels. Most classifiers work automatically:
+
+```{r classifiers, eval=FALSE}
+# SVM (returns class labels natively — no extra work needed)
+classbound(penguins, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
+
+# Random forest (matrix interface — randomForest expects x and y separately)
+classbound(penguins, species ~ bill_length_mm + bill_depth_mm,
+  randomForest::randomForest,
+  interface = "matrix"
+)
+```
+
+For classifiers whose `predict()` returns a list or other complex object, use the `predfun` argument to extract the class labels:
+
+```{r predfun, eval=FALSE}
+# MASS::qda returns a list — extract $class manually
+classbound(
+  penguins,
+  species ~ bill_length_mm + bill_depth_mm,
+  MASS::qda,
+  predfun = function(model, newdata, ...) predict(model, newdata, ...)$class
+)
+```
+
+## Probability surface
+
+Classifiers that return class probabilities (e.g., `rpart`, `randomForest`) enable a gradient visualization where decision regions are shaded by model confidence:
+
+```{r gradient, message=FALSE, warning=FALSE}
+model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
+model <- boundary_compute(model, resolution = 80)
+
+plot_boundary(
+  model,
+  obs_data      = penguins,
+  x_col         = "bill_length_mm",
+  y_col         = "bill_depth_mm",
+  true_label    = "species",
+  show_gradient = TRUE
+)
+```
+
+Deep colors indicate high model confidence; faded colors near boundaries indicate uncertainty.
+
+Classifiers that do not provide probabilities (e.g., standard SVMs, PPtree) always show flat solid regions regardless of `show_gradient = TRUE`.
+
+## Interactive exploration
+
+For interactive exploration without writing code, launch the built-in Shiny application:
+
+```{r explorapp, eval=FALSE}
+# Launch with a dataset pre-loaded
+explorapp(data = penguins, target_col = "species")
+
+# Or launch empty and simulate data interactively
 explorapp()
 ```
 
-This app allows you to simulate classification datasets and compare decision boundaries across PPtree, PPtreeExt, and rpart models.
+See the `vignette("explorapp-guide")` for a full walkthrough of the interactive features.
+
+## What's next?
+
+- **High-dimensional data**: `vignette("high-dimensional")` — 2D slice vs. projection  
+- **Multiple models**: `vignette("tidymodels-workflow")` — comparing classifiers with `boundary_workflow_set()`  
+- **Custom classifiers**: `vignette("custom_adapters")` — `predfun` and custom S3 adapters  
+- **tourr integration**: `vignette("tourr-workflow")` — animated projection tours  

@@ -1,11 +1,25 @@
-#' data69-1
+#' Waveform Dataset (UCI)
 #'
-#' Waveform Database Generator dataset. Contains 5000 observations with 21
-#' numeric features and 3 classes, used for classification boundary exploration.
+#' @description
+#' A subset of the UCI Waveform Database Generator dataset (Version 1). Contains
+#' 5000 observations with 21 numeric features and a 3-class response variable.
+#' All 21 features contribute to class membership, making this a useful dataset for
+#' demonstrating high-dimensional boundary visualization, including 2D slice and
+#' projection-based approaches.
+#'
+#' @details
+#' Each observation is generated from one of three waveform classes. All features
+#' are numeric; the response variable `Y` is a factor with levels `"1"`, `"2"`, and
+#' `"3"`. Load the dataset with `data(data69_1)`.
+#'
+#' This dataset is included primarily to demonstrate high-dimensional boundary
+#' visualization with tools like PCA projection and `tourr`. For introductory
+#' 2D examples, the `palmerpenguins::penguins` dataset provides a more
+#' accessible alternative.
 #'
 #' @format A data frame with 5000 rows and 22 columns:
 #' \describe{
-#' \item{Y}{Class label (factor with 3 levels)}
+#' \item{Y}{Class label: a factor with 3 levels (`"1"`, `"2"`, `"3"`)}
 #' \item{V1}{Numeric feature variable}
 #' \item{V2}{Numeric feature variable}
 #' \item{V3}{Numeric feature variable}
@@ -33,4 +47,9 @@
 #' @name data69_1
 #' @usage data(data69_1)
 #' @source \url{https://archive.ics.uci.edu/dataset/107/waveform+database+generator+version+1}
+#' @examples
+#' data(data69_1)
+#' dim(data69_1) # 5000 x 22
+#' levels(data69_1$Y) # "1" "2" "3"
+#' head(data69_1[, 1:5])
 NULL

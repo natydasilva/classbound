@@ -37,32 +37,68 @@ fit_model(data, formula, classifier, ...)
 )
 }
 \arguments{
-\item{data}{A data frame containing the training features and response.}
+\item{data}{A data frame containing the training features and response variable.
+All columns referenced in \code{formula} must be present.}
 
-\item{formula}{A formula specifying the response and predictors.}
+\item{formula}{A formula specifying the response and predictors, e.g.,
+\code{species ~ bill_length_mm + bill_depth_mm} or \code{species ~ .} to use all columns.}
 
-\item{classifier}{The classification function to use (e.g., \code{rpart::rpart}). When passing a string, it must precisely match the case-sensitive name of the function.}
+\item{classifier}{The classification function or model specification to use.
+Pass a function (e.g., \code{rpart::rpart}), a string name (e.g., \code{"rpart::rpart"}),
+or a \code{parsnip} model spec / fitted \code{workflow}.}
 
 \item{...}{Additional arguments passed to methods.}
 
-\item{interface}{A string specifying how to invoke the classifier.
-\itemize{
-\item \code{"formula"} (default): For classifiers that accept a formula and data frame natively
-(verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
-\item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y}
-(verified for \code{randomForest::randomForest} default method).
-\item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args}
-(verified for \code{qeML::qeKNN}).
-}}
+\item{interface}{A string specifying how to invoke the classifier: \code{"formula"}
+(default), \code{"matrix"}, or \code{"custom"}. See Details.}
 
-\item{fit_args}{A named list of additional arguments passed to the classifier during fitting.}
+\item{fit_args}{A named list of additional arguments forwarded to the classifier
+during fitting (e.g., \code{list(cp = 0.01)} for \code{rpart}).}
 }
 \value{
-A fitted model object with a normalized structure of class "classbound", containing the raw model
-and extracted feature metadata.
+A \code{classbound} object (a list of class \code{"classbound"}) containing:
+\itemize{
+\item \verb{$fit}: the raw fitted model object returned by the classifier
+\item \verb{$metadata}: a list with \verb{$features} (names, types, ranges, imputation values)
+and \verb{$class_levels} (sorted character vector of class labels)
+\item \verb{$boundary_data}: \code{NULL} until \code{boundary_compute()} is called
+}
 }
 \description{
-Fits a machine learning classifier using a standard interface.
+Fits a classification model and wraps it in a \code{classbound} object, which carries
+the feature metadata needed by \code{boundary_compute()} and \code{plot_boundary()}.
+}
+\details{
+\subsection{Interface modes}{
+
+\code{fit_model()} supports three calling conventions via the \code{interface} argument:
+\itemize{
+\item \strong{\code{"formula"}} (default): passes \code{formula} and \code{data} directly to the classifier.
+Works for the vast majority of R classifiers (e.g., \code{rpart::rpart}, \code{e1071::svm},
+\code{stats::lda}).
+\item \strong{\code{"matrix"}}: constructs a predictor matrix \code{x} and response vector \code{y} from
+the formula, then calls \code{classifier(x, y, ...)}. Required for classifiers whose
+primary interface is matrix-based (e.g., \code{randomForest::randomForest}).
+\item \strong{\code{"custom"}}: passes only \code{fit_args} to the classifier, giving you full control
+over the call. Use this for non-standard APIs.
+}
+}
+
+\subsection{Tidymodels support}{
+
+If \code{classifier} is a \code{parsnip} model specification (\code{model_spec}), a fitted
+\code{model_fit}, or a \code{tidymodels} \code{workflow}, \code{fit_model()} dispatches to the
+appropriate method automatically. The \code{interface} argument is not needed for these
+objects.
+}
+
+\subsection{Preprocessing}{
+
+\code{fit_model()} calls \code{preprocess_data()} internally to coerce response labels to
+a factor, handle missing values, and extract feature metadata. Do not call
+\code{preprocess_data()} manually before calling \code{fit_model()}; this will corrupt the
+stored metadata.
+}
 }
 \examples{
 \donttest{
@@ -70,6 +106,20 @@ library(palmerpenguins)
 data(penguins)
 peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
 
+# Formula interface (most classifiers)
 m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+
+# Matrix interface (randomForest)
+m_rf <- fit_model(peng_data, species ~ ., randomForest::randomForest,
+  interface = "matrix"
+)
+
+# Additional fitting arguments via fit_args
+m_rpart_cp <- fit_model(peng_data, species ~ ., rpart::rpart,
+  fit_args = list(control = rpart::rpart.control(cp = 0.001))
+)
 }
+}
+\seealso{
+\code{\link[=boundary_compute]{boundary_compute()}}, \code{\link[=predict_model]{predict_model()}}, \code{\link[=classbound]{classbound()}}
 }

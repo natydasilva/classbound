@@ -76,12 +76,12 @@ test_that("plot.classbound_boundary S3 method delegates to plot_boundary", {
 
   mock_model <- structure(list(boundary_data = boundary_data), class = c("classbound_boundary", "classbound"))
 
-  
+
   # Call plot() using S3 dispatch
   p <- plot(mock_model)
-  
+
   expect_s3_class(p, "ggplot")
-  
+
   # Verify the plot builds successfully without error
   expect_silent(suppressWarnings(ggplot2::ggplot_build(p)))
 })

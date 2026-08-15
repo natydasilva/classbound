@@ -20,20 +20,24 @@
 #' library(palmerpenguins)
 #' library(workflowsets)
 #' library(parsnip)
-#' 
+#'
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-#' 
+#'
 #' # Define multiple engines
-#' spec_rpart <- decision_tree() |> set_engine("rpart") |> set_mode("classification")
-#' spec_glm   <- multinom_reg() |> set_engine("nnet") |> set_mode("classification")
-#' 
+#' spec_rpart <- decision_tree() |>
+#'   set_engine("rpart") |>
+#'   set_mode("classification")
+#' spec_glm <- multinom_reg() |>
+#'   set_engine("nnet") |>
+#'   set_mode("classification")
+#'
 #' # Create a workflow set
 #' wf_set <- workflow_set(
 #'   preproc = list(base = species ~ bill_length_mm + bill_depth_mm),
 #'   models = list(tree = spec_rpart, log_reg = spec_glm)
 #' )
-#' 
+#'
 #' # Compute 2D boundaries for all models simultaneously (auto-range)
 #' bounds <- boundary_workflow_set(wf_set, peng_data, response = "species", resolution = 30)
 #' }

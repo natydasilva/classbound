@@ -9,8 +9,8 @@
 #' @param newdata A data frame of new observations to predict on.
 #' @param predict_args A named list of additional arguments passed to \code{predict_adapter}.
 #' @param predfun A custom function to generate predictions for non-standard models.
-#'   The function must accept at least two arguments: \code{model} (the fitted native model) 
-#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor 
+#'   The function must accept at least two arguments: \code{model} (the fitted native model)
+#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor
 #'   of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
@@ -39,6 +39,9 @@ predict.classbound <- function(object, newdata, predict_args = list(), predfun =
       }
     }
 
+    # Force to standard data.frame (strips matrix structures that crash rpart/etc)
+    newdata <- as.data.frame(newdata)
+
     # Dispatch to predict_adapter.
     args <- c(list(model = object$fit, newdata = newdata), predict_args, list(...))
     res <- do.call(predict_adapter, args)
@@ -65,12 +68,12 @@ predict.classbound_multi <- function(object, newdata, predict_args = list(), pre
 #' This function is a compatibility wrapper around the standard \code{predict()} method for "classbound" objects.
 #'
 #' @param model A fitted classbound model. This corresponds to the \code{object} argument used by the
-#'   standard R \code{predict()} generic. This wrapper simply calls \code{predict(model, ...)}.
+#'   standard R \code{predict()} generic. This wrapper calls \code{predict(model, ...)}.
 #' @param newdata A data frame of new observations to predict on.
 #' @param predict_args A named list of additional arguments passed to \code{predict_adapter}.
 #' @param predfun A custom function to generate predictions for non-standard models.
-#'   The function must accept at least two arguments: \code{model} (the fitted native model) 
-#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor 
+#'   The function must accept at least two arguments: \code{model} (the fitted native model)
+#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor
 #'   of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).
 #' @param ... Additional arguments passed to the specific model adapter.
 #'
@@ -81,7 +84,7 @@ predict.classbound_multi <- function(object, newdata, predict_args = list(), pre
 #' library(palmerpenguins)
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-#' 
+#'
 #' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
 #' preds <- predict_model(m_rpart, newdata = peng_data[1:5, ])
 #' }

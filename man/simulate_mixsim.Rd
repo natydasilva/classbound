@@ -2,7 +2,7 @@
 % Please edit documentation in R/generate_simulation.R
 \name{simulate_mixsim}
 \alias{simulate_mixsim}
-\title{Simulate data using Gaussian mixture models from MixSim}
+\title{Simulate data using Gaussian mixture models}
 \usage{
 simulate_mixsim(
   n,
@@ -16,26 +16,65 @@ simulate_mixsim(
 )
 }
 \arguments{
-\item{n}{Sample size.}
+\item{n}{Number of training observations to generate.}
 
 \item{K}{Number of classes.}
 
-\item{p}{Number of dimensions.}
+\item{p}{Number of numeric features (dimensions).}
 
-\item{MaxOmega}{Maximum overlap between components.}
+\item{MaxOmega}{Maximum pairwise overlap between mixture components (0 to 1).
+Smaller values create better-separated classes.}
 
-\item{class_names}{Optional character vector of class labels.}
+\item{class_names}{Optional character vector of class labels (length \code{K}).
+Defaults to \code{"Class 1"}, \code{"Class 2"}, etc.}
 
-\item{seed}{Optional integer for reproducibility.}
+\item{seed}{Optional integer for reproducibility. The global random seed is
+restored after the call.}
 
-\item{noise_ratio}{Numeric between 0 and 1. Proportion of \code{n} to add as uniform background noise.}
+\item{noise_ratio}{Numeric in [0, 1). Proportion of \code{n} to add as uniform background
+noise (randomly labeled). Use this to test classifier robustness to contamination.}
 
-\item{test_ratio}{Numeric between 0 and 1. If greater than 0, independently generates an additional test dataset using the exact same parameters.}
+\item{test_ratio}{Numeric in [0, 1). If greater than 0, generates an additional
+independent test dataset of size \code{round(n * test_ratio)} using the same mixture
+parameters. This is not a split of the training data.}
 }
 \value{
-If \code{test_ratio == 0}, a data frame containing simulated features and a 'Sim' label column.
-If \code{test_ratio > 0}, a list with \verb{$train} and \verb{$test} data frames.
+If \code{test_ratio == 0} (default): a data frame with a \code{Sim} class column and
+\code{p} feature columns (\code{X1}, \code{X2}, ...). If \code{test_ratio > 0}: a list with \verb{$train}
+and \verb{$test} data frames.
 }
 \description{
-Simulate data using Gaussian mixture models from MixSim
+Generates synthetic classification data using Gaussian mixture models constructed by
+the \code{MixSim} package. Useful for creating controlled datasets to explore decision
+boundary behavior when no real dataset is available.
+}
+\details{
+Class distributions are randomly generated subject to the \code{MaxOmega} overlap
+constraint. The simulation is fully reproducible when \code{seed} is supplied.
+\subsection{Test data}{
+
+When \code{test_ratio > 0}, an additional independent dataset is generated using the
+\strong{same mixture parameters} but a fresh random draw. This is not a split of the
+training data: the training set has \code{n} observations and the test set has
+\code{round(n * test_ratio)} independently generated observations. The two sets are
+statistically independent, so the test set is a fair evaluation sample.
+}
+}
+\examples{
+\donttest{
+# Generate a 3-class, 2-dimensional training dataset
+train_df <- simulate_mixsim(n = 200, K = 3, p = 2, MaxOmega = 0.05, seed = 42)
+head(train_df)
+
+# Generate training and independent test data
+sim <- simulate_mixsim(
+  n = 200, K = 3, p = 2, MaxOmega = 0.05,
+  seed = 42, test_ratio = 0.3
+)
+nrow(sim$train) # 200
+nrow(sim$test) # 60 (independently generated, not split from train)
+}
+}
+\seealso{
+\code{\link[=simu_n]{simu_n()}}
 }

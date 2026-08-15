@@ -572,6 +572,126 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           shiny::h4("Export Results", style = "margin-top: 0;"),
           shiny::actionButton("open_export_wizard", "Export Results...", class = "btn-success", icon = shiny::icon("download", lib = "font-awesome")),
           shiny::helpText(shiny::em("Customize export formats (PNG, PDF, etc.)"))
+        ),
+        shiny::wellPanel(
+          style = "padding-bottom: 5px;",
+          shiny::tags$details(
+            shiny::tags$summary(
+              "\u2753 Help & Guide",
+              style = "display: list-item; font-size: 18px; font-weight: 500; cursor: pointer;"
+            ),
+            shiny::tags$div(
+              style = "margin-top: 12px;",
+              shiny::tags$input(
+                id = "help_search",
+                type = "text",
+                placeholder = "Search help...",
+                style = "width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; font-size: 13px;"
+              ),
+              shiny::tags$script(shiny::HTML("
+                document.addEventListener('input', function(e) {
+                  if (e.target && e.target.id === 'help_search') {
+                    var q = e.target.value.toLowerCase();
+                    document.querySelectorAll('.help-section').forEach(function(sec) {
+                      var text = sec.innerText.toLowerCase();
+                      sec.style.display = (!q || text.includes(q)) ? '' : 'none';
+                    });
+                  }
+                });
+              ")),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Getting Started", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p("Classbound lets you fit a classifier, compute its decision boundary, and visualize how it partitions the feature space. Use the sidebar to choose a data source, select models, and adjust settings. Plots update automatically.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::actionLink("help_getting_started", "Full documentation \u2192", style = "font-size: 12px;")
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Data Modes", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p(shiny::tags$b("Import Data"), ": uses the dataset you passed to explorapp(). Read-only; cannot be edited in the app. Clone to Draw Canvas to make edits.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::tags$p(shiny::tags$b("Simulate Data"), ": generates synthetic data using Multivariate Normal (MVN) or MixSim engines. A separate independent test set is also generated - it is not a split of the training data.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::tags$p(shiny::tags$b("Draw Data"), ": click or brush directly on the plot to add observations. Use 'Undo Last' or 'Clear Canvas' to manage drawn points.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::actionLink("help_explorapp_guide", "Explorapp guide \u2192", style = "font-size: 12px;")
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Interaction Modes", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p(shiny::tags$b("Navigate"), ": zoom with Ctrl+wheel, brush to select region, double-click to reset.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::tags$p(shiny::tags$b("Draw Point"), ": each click adds one observation at that location.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::tags$p(shiny::tags$b("Draw Cluster"), ": drag to paint clusters of observations. Point Density and Brush Size control how many points are added.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  )
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("2D Slice vs Projection", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p(shiny::tags$b("2D Slice"), ": when the model uses more than two features, you choose two for the axes. All other features are fixed at their training-set median.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::tags$p(shiny::tags$b("Projection"), ": Projects the data onto the first two principal components (PC1 and PC2) using PCA. Training points are overlaid with depth fading, where more transparent points are farther from the projection plane.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::actionLink("help_high_dimensional", "High-dimensional guide \u2192", style = "font-size: 12px;")
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Probability Surface", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p("The probability surface shades decision regions by model confidence: deep colors = high confidence, faded colors = uncertain near boundaries. Only available for classifiers that provide class probabilities (e.g., rpart, randomForest). SVMs and PPtree models always show flat regions.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  )
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Outlier Injection", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p("Injected outliers become part of the training data and affect the fitted boundary. Outlier Magnitude controls how far they are placed from the class distribution. Use Clear to remove outliers without clearing the rest of the dataset.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  )
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Performance Metrics", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p("Training metrics (accuracy, Kappa, error) are computed on the training data. Test Error uses an independently generated test set (not a split of the training data). Test Error is only available in Simulate Data mode.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  )
+                )
+              ),
+              shiny::tags$div(
+                class = "help-section",
+                shiny::tags$details(
+                  shiny::tags$summary("Export", style = "display: list-item; cursor: pointer; font-weight: bold; padding: 4px 0;"),
+                  shiny::tags$p("The Export Wizard lets you download data (CSV), fitted models (RDS), plots (PNG/PDF), and a reproduce script that regenerates the plots from exported files.",
+                    style = "font-size: 12px; margin: 6px 0;"
+                  ),
+                  shiny::actionLink("help_export", "Export details \u2192", style = "font-size: 12px;")
+                )
+              )
+            )
+          )
         )
       ),
       shiny::mainPanel(
@@ -592,6 +712,20 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
   # Server
   server <- function(input, output, session) {
+    # --- External Help Links ---
+    shiny::observeEvent(input$help_getting_started, {
+      utils::browseURL("https://natydasilva.github.io/classbound/articles/getting-started.html")
+    })
+    shiny::observeEvent(input$help_explorapp_guide, {
+      utils::browseURL("https://natydasilva.github.io/classbound/articles/explorapp-guide.html")
+    })
+    shiny::observeEvent(input$help_high_dimensional, {
+      utils::browseURL("https://natydasilva.github.io/classbound/articles/high-dimensional.html")
+    })
+    shiny::observeEvent(input$help_export, {
+      utils::browseURL("https://natydasilva.github.io/classbound/articles/explorapp-guide.html#export")
+    })
+
     # Initialize current_data based on passed 'data'
     initial_imp_data <- data.frame(Sim = character(), X1 = numeric(), X2 = numeric())
     initial_imp_classes <- c("Class 1", "Class 2", "Class 3")
@@ -714,7 +848,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           )
         }
 
-        # Store safely in the background state
+        # Store in the background state
         if (is.list(new_data) && !is.data.frame(new_data)) {
           mode_states[["Simulate Data"]]$data <- new_data$train
           mode_states[["Simulate Data"]]$test_data <- new_data$test
@@ -1701,7 +1835,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       }
 
       # If the plot is auto-scaling (limits are NULL), lock the limits to exactly what the
-      # user just saw so the newly drawn stroke isn't violently distorted by auto-scaling.
+      # Lock axis limits so the newly drawn stroke isn't distorted by auto-scaling.
       if (is.null(shiny::isolate(zoom_xlim()))) {
         pid <- draw_stroke_plot_id()
         h_end <- shiny::isolate(input[[paste0("hover_", pid)]])

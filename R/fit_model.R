@@ -1,32 +1,76 @@
 #' Fit a machine learning model
 #'
-#' @description Fits a machine learning classifier using a standard interface.
+#' @description
+#' Fits a classification model and wraps it in a `classbound` object, which carries
+#' the feature metadata needed by `boundary_compute()` and `plot_boundary()`.
 #'
-#' @param data A data frame containing the training features and response.
-#' @param formula A formula specifying the response and predictors.
-#' @param classifier The classification function to use (e.g., \code{rpart::rpart}). When passing a string, it must precisely match the case-sensitive name of the function.
-#' @param interface A string specifying how to invoke the classifier.
-#' \itemize{
-#'   \item \code{"formula"} (default): For classifiers that accept a formula and data frame natively
-#'     (verified for \code{rpart::rpart}, \code{e1071::svm}, \code{stats::glm}).
-#'   \item \code{"matrix"}: For classifiers that expect a predictor matrix \code{x} and response vector \code{y}
-#'     (verified for \code{randomForest::randomForest} default method).
-#'   \item \code{"custom"}: For non-standard APIs where you must pass all arguments explicitly via \code{fit_args}
-#'     (verified for \code{qeML::qeKNN}).
-#' }
-#' @param fit_args A named list of additional arguments passed to the classifier during fitting.
+#' @details
+#' ## Interface modes
+#'
+#' `fit_model()` supports three calling conventions via the `interface` argument:
+#'
+#' - **`"formula"`** (default): passes `formula` and `data` directly to the classifier.
+#'   Works for the vast majority of R classifiers (e.g., `rpart::rpart`, `e1071::svm`,
+#'   `stats::lda`).
+#' - **`"matrix"`**: constructs a predictor matrix `x` and response vector `y` from
+#'   the formula, then calls `classifier(x, y, ...)`. Required for classifiers whose
+#'   primary interface is matrix-based (e.g., `randomForest::randomForest`).
+#' - **`"custom"`**: passes only `fit_args` to the classifier, giving you full control
+#'   over the call. Use this for non-standard APIs.
+#'
+#' ## Tidymodels support
+#'
+#' If `classifier` is a `parsnip` model specification (`model_spec`), a fitted
+#' `model_fit`, or a `tidymodels` `workflow`, `fit_model()` dispatches to the
+#' appropriate method automatically. The `interface` argument is not needed for these
+#' objects.
+#'
+#' ## Preprocessing
+#'
+#' `fit_model()` calls `preprocess_data()` internally to coerce response labels to
+#' a factor, handle missing values, and extract feature metadata. Do not call
+#' `preprocess_data()` manually before calling `fit_model()`; this will corrupt the
+#' stored metadata.
+#'
+#' @param data A data frame containing the training features and response variable.
+#'   All columns referenced in `formula` must be present.
+#' @param formula A formula specifying the response and predictors, e.g.,
+#'   `species ~ bill_length_mm + bill_depth_mm` or `species ~ .` to use all columns.
+#' @param classifier The classification function or model specification to use.
+#'   Pass a function (e.g., `rpart::rpart`), a string name (e.g., `"rpart::rpart"`),
+#'   or a `parsnip` model spec / fitted `workflow`.
+#' @param interface A string specifying how to invoke the classifier: `"formula"`
+#'   (default), `"matrix"`, or `"custom"`. See Details.
+#' @param fit_args A named list of additional arguments forwarded to the classifier
+#'   during fitting (e.g., `list(cp = 0.01)` for `rpart`).
 #' @param ... Additional arguments passed to methods.
 #'
-#' @return A fitted model object with a normalized structure of class "classbound", containing the raw model
-#'   and extracted feature metadata.
+#' @return A `classbound` object (a list of class `"classbound"`) containing:
+#'   - `$fit`: the raw fitted model object returned by the classifier
+#'   - `$metadata`: a list with `$features` (names, types, ranges, imputation values)
+#'     and `$class_levels` (sorted character vector of class labels)
+#'   - `$boundary_data`: `NULL` until `boundary_compute()` is called
+#'
 #' @examples
 #' \donttest{
 #' library(palmerpenguins)
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-#' 
+#'
+#' # Formula interface (most classifiers)
 #' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
+#'
+#' # Matrix interface (randomForest)
+#' m_rf <- fit_model(peng_data, species ~ ., randomForest::randomForest,
+#'   interface = "matrix"
+#' )
+#'
+#' # Additional fitting arguments via fit_args
+#' m_rpart_cp <- fit_model(peng_data, species ~ ., rpart::rpart,
+#'   fit_args = list(control = rpart::rpart.control(cp = 0.001))
+#' )
 #' }
+#' @seealso [boundary_compute()], [predict_model()], [classbound()]
 #' @importFrom stats model.frame model.matrix model.response na.pass
 #' @export
 fit_model <- function(data, formula, classifier, ...) {
@@ -110,11 +154,11 @@ fit_model.character <- function(data, formula, classifier, interface = c("formul
       match.fun(classifier)
     }
   )
-  
+
   if (!is.function(fn)) {
     stop(sprintf("Could not resolve '%s' to a valid function.", classifier), call. = FALSE)
   }
-  
+
   fit_model.default(data, formula, fn, interface, fit_args, ...)
 }
 NA

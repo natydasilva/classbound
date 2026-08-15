@@ -63,7 +63,7 @@ test_that("preprocess_data rejects data frames with fewer than 2 rows", {
     preprocess_data(data.frame(x = numeric(0), y = numeric(0))),
     "must have at least two rows"
   )
-  
+
   # Test a single-row data.frame
   expect_error(
     preprocess_data(data.frame(x = 1, y = 2)),
@@ -76,12 +76,11 @@ test_that("preprocess_data rejects infinite values", {
     preprocess_data(data.frame(x = c(1, Inf, 3))),
     "Infinite values are not supported"
   )
-  
+
   expect_error(
     preprocess_data(data.frame(x = c(1, -Inf, 3))),
     "Infinite values are not supported"
   )
-
 })
 
 test_that("preprocess_data rejects duplicate column names", {

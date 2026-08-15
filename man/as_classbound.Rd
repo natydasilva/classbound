@@ -2,28 +2,62 @@
 % Please edit documentation in R/as_classbound.R
 \name{as_classbound}
 \alias{as_classbound}
-\title{Convert an existing fitted model into a classbound object}
+\title{Convert a fitted model into a classbound object}
 \usage{
 as_classbound(model, data, response = NULL, ...)
 }
 \arguments{
-\item{model}{A fitted model object.}
+\item{model}{A fitted model object. For \code{tidymodels} objects, must be a trained
+\code{workflow} or \code{model_fit} — not a model specification.}
 
-\item{data}{A data frame containing the training data used to fit the model.
-This is strictly used to extract feature metadata (names, types, and levels).
-It is not passed through \code{preprocess_data()}.}
+\item{data}{A data frame of the training data. Used only to extract feature metadata;
+the data is not passed through \code{preprocess_data()}. Must contain all features that
+the model was trained on.}
 
-\item{response}{A string specifying the name of the response column in \code{data}.
-If provided, this column is excluded from feature metadata, and its levels
-are recorded as the class levels.}
+\item{response}{Optional string naming the response column in \code{data}. If provided,
+this column is excluded from feature metadata and its levels are stored as class
+levels. If \code{NULL}, class levels will be \code{NULL} in the returned object.}
 
 \item{...}{Additional arguments passed to methods.}
 }
 \value{
-A \code{classbound} object.
+A \code{classbound} object ready for use with \code{boundary_compute()} and
+\code{plot_boundary()}.
 }
 \description{
-Wraps a pre-fitted model with the metadata required by the \code{classbound}
-visualization pipeline. This enables "bring your own model" workflows and supports
-native integration with frameworks like \code{tidymodels}.
+Wraps a pre-fitted model in a \code{classbound} object, adding the feature metadata
+(names, types, ranges, imputation values) required by \code{boundary_compute()} and
+\code{plot_boundary()}. This is the entry point for "bring your own model" (BYO) workflows,
+including native \code{tidymodels} workflows and \code{parsnip} model fits.
+}
+\details{
+Unlike \code{fit_model()}, \code{as_classbound()} does \strong{not} refit the model or call
+\code{preprocess_data()}. Feature metadata is extracted solely from the \code{data} argument,
+which should be the same data used to fit the model. If the model was fitted on
+scaled or transformed data, ensure \code{data} reflects that transformation.
+
+\code{as_classbound()} dispatches on the class of \code{model}:
+\itemize{
+\item \strong{Default}: wraps any fitted model object (e.g., \code{rpart}, \code{lda}).
+\item \strong{\code{workflow}}: requires the workflow to already be trained (via \code{fit()}). Use
+\code{boundary_workflow_set()} to train and wrap an entire workflow set at once.
+\item \strong{\code{model_fit}}: wraps a fitted \code{parsnip} model.
+}
+}
+\examples{
+\donttest{
+library(palmerpenguins)
+data(penguins)
+peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+
+# Wrap any pre-fitted model
+raw_model <- rpart::rpart(species ~ ., data = peng_data)
+cb_model <- as_classbound(raw_model, data = peng_data, response = "species")
+
+# Tidymodels: wrap a fitted workflow
+# (boundary_workflow_set() does this automatically for entire workflow sets)
+}
+}
+\seealso{
+\code{\link[=fit_model]{fit_model()}}, \code{\link[=boundary_workflow_set]{boundary_workflow_set()}}, \code{\link[=boundary_compute]{boundary_compute()}}
 }

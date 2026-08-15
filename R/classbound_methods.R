@@ -59,7 +59,7 @@ plot.classbound <- function(x, ...) {
 
 #' Plot a computed boundary
 #'
-#' @description An S3 plot method that delegates to `plot_boundary()` for 
+#' @description An S3 plot method that delegates to `plot_boundary()` for
 #' objects that have had boundaries computed via `boundary_compute()`.
 #'
 #' @param x A `classbound_boundary` object.

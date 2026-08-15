@@ -19,3 +19,4 @@ A list containing \code{class} (predicted labels) and \code{probs} (probabilitie
 \description{
 Adapter function to generate standardized predictions from a PPtreeViz model.
 }
+\keyword{internal}

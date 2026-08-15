@@ -1,54 +1,113 @@
-#' Compute 2D the classification decision boundary 
+#' Compute the classification decision boundary
 #'
-#' @description Computes the decision boundary for a fitted classifier over a specified feature space in 2D.
+#' @description
+#' Generates a 2D grid of predicted class labels (and optionally class probabilities)
+#' for a fitted `classbound` model. The resulting boundary data is stored in the returned
+#' object and consumed directly by `plot_boundary()`.
 #'
-#' @param model A fitted model object of class `classbound`.
-#' @param feature_range An optional named list defining the feature ranges (e.g., `list(V1 = c(4, 8), V2 = c(2, 5))`),
-#'   or a character vector of two feature names to automatically compute bounds from the training data.
-#'   If `NULL` and the model has exactly two numeric features, it will automatically use their ranges.
-#' @param resolution An integer specifying the grid resolution.
-#' @param predfun A custom function to generate predictions for non-standard models.
-#'   The function must accept at least two arguments: \code{model} (the fitted native model) 
-#'   and \code{newdata} (a data frame of new observations). It should return either a vector/factor 
-#'   of predicted classes, or a list containing \code{class} (predicted labels) and \code{probs} (a probability matrix).
-#' @param projection An optional list defining a high-dimensional projection.
-#'   Must contain `basis` (a numeric matrix defining the projection frame, which MUST be orthonormal).
-#'   Optionally contains `center` and `scale` (numeric vectors) to reverse visual normalization.
-#'   Projection is only supported for models trained exclusively on numeric features.
-#'   If provided, `feature_range` defines the limits of the 2D projected space, and the grid
-#'   is inversely projected back to the original feature space before prediction.
-#' @param reference An optional named list of fixed values to use for features not specified in `feature_range`.
-#'   If NULL, missing numeric features are imputed with their median, and missing categorical features with their mode.
-#' @param ... Additional computation parameters.
+#' @details
+#' ## 2D slice (two-feature visualization)
 #'
-#' @return A modified `classbound` model object containing the 2D grid points and predictions in `$boundary_data`.
+#' When `projection` is `NULL`, `boundary_compute()` generates a regular grid over the
+#' two features named in `feature_range`. If the model was trained on more than two
+#' features, all remaining numeric features are fixed at their training-set median and
+#' categorical features at their training-set mode — unless you supply explicit values
+#' via `reference`.
+#'
+#' This is a **2D slice** of the full multivariate decision boundary. Two observations
+#' that appear in the same region may still be separated in a dimension that is held
+#' fixed. Use this mode when you want to examine how two specific features interact,
+#' or when your model was trained on exactly two features.
+#'
+#' ## Projection (high-dimensional visualization)
+#'
+#' When `projection` is provided, the 2D grid is generated in the projected space and
+#' then **inverse-projected** back to the original feature space before prediction.
+#' This means the model uses all of its training features; only the visualization is
+#' collapsed to two dimensions.
+#'
+#' The projection `$basis` must be a numeric matrix with:
+#' - row count equal to the number of training features, row names matching feature names
+#' - exactly two columns (the projected axes)
+#' - orthonormal columns (`crossprod(basis)` must equal `diag(2)`)
+#'
+#' Suitable bases can be obtained from `prcomp()` or the `tourr` package.
+#'
+#' ## Multi-model comparison
+#'
+#' Pass a named list of `classbound` objects (all trained on the same features and class
+#' levels) to compute boundaries for multiple models at once. The result contains a
+#' `model` column, suitable for use with `plot_boundary(facet_col = "model")`.
+#'
+#' @param model A `classbound` model object returned by `fit_model()` or `as_classbound()`,
+#'   or a named list of `classbound` objects for multi-model comparison. All models in a
+#'   list must share the same training features and class levels.
+#' @param feature_range A named list of length 2 specifying the axis ranges, e.g.,
+#'   `list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25))`. Alternatively, a
+#'   character vector of exactly two feature names (ranges computed from training data).
+#'   If `NULL` and the model has exactly two numeric features, ranges are auto-detected.
+#'   When `projection` is provided, this defines the limits of the 2D projected space.
+#' @param resolution An integer >= 2 specifying the number of grid points per axis.
+#'   Higher values produce smoother boundaries. Default is 100; use 50 for faster
+#'   interactive exploration.
+#' @param predfun An optional custom prediction function for non-standard classifiers.
+#'   Must accept `(model, newdata, ...)` and return a vector/factor of predicted classes,
+#'   or a list with `$class` (factor) and `$probs` (probability matrix or `NULL`).
+#' @param projection An optional named list defining a high-dimensional projection.
+#'   Must contain `$basis` (a numeric matrix, rows = features, columns = 2 axes,
+#'   must be orthonormal). Optionally contains `$center` and `$scale` (numeric vectors
+#'   of length equal to the number of features) to reverse pre-projection standardization.
+#'   Only supported for models trained on numeric features.
+#' @param reference An optional named list of fixed reference values for features not
+#'   specified in `feature_range` (2D slice mode only). Names must match training feature
+#'   names. If `NULL`, numeric features are imputed at their median and categorical
+#'   features at their mode.
+#' @param ... Additional arguments passed to `predict_model()`.
+#'
+#' @return A modified `classbound` object with the additional class `"classbound_boundary"`.
+#'   The boundary grid is stored in `$boundary_data` (columns: `x`, `y`, `prediction`,
+#'   and per-class probability columns when available). For multi-model input, also
+#'   contains a `model` column.
+#'
 #' @examples
 #' \donttest{
-#' data(data69_1)
-#' data69_1$Y <- as.factor(data69_1$Y)
-#' model <- fit_model(data69_1, Y ~ V1 + V2, rpart::rpart)
-#' # Auto-compute ranges for the two numeric features
-#' model <- boundary_compute(model)
-#' 
-#' # Palmer penguins example with projection and resolution
 #' library(palmerpenguins)
 #' data(penguins)
-#' penguins <- na.omit(
-#'   penguins[, c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")]
+#' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
+#'
+#' # Fit and compute 2D boundary with auto-detected ranges
+#' m <- fit_model(peng_data, species ~ ., rpart::rpart)
+#' m <- boundary_compute(m, resolution = 50)
+#' head(m$boundary_data)
+#'
+#' # Explicit axis ranges
+#' m <- boundary_compute(m,
+#'   feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+#'   resolution = 100
 #' )
-#' m_peng <- fit_model(penguins, species ~ ., rpart::rpart)
-#' 
-#' # Create a simple orthonormal projection basis (e.g., PCA or manual)
-#' basis <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3, ncol = 3)[, 1:2]
-#' rownames(basis) <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
-#' 
-#' m_peng_proj <- boundary_compute(
-#'   m_peng, 
-#'   feature_range = list(PC1 = c(30, 60), PC2 = c(10, 25)), 
+#'
+#' # 3-feature model visualized as a 2D slice
+#' peng3d <- na.omit(penguins[, c(
+#'   "species", "bill_length_mm",
+#'   "bill_depth_mm", "flipper_length_mm"
+#' )])
+#' m3d <- fit_model(peng3d, species ~ ., rpart::rpart)
+#' m3d_slice <- boundary_compute(m3d,
+#'   feature_range = list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25)),
+#'   resolution = 50
+#' )
+#'
+#' # 3-feature model visualized via PCA projection
+#' feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
+#' pca <- prcomp(peng3d[, feat_cols], scale. = TRUE)
+#' basis <- pca$rotation[, 1:2]
+#' m3d_proj <- boundary_compute(m3d,
+#'   feature_range = list(PC1 = c(-4, 4), PC2 = c(-3, 3)),
 #'   resolution = 50,
-#'   projection = list(basis = basis)
+#'   projection = list(basis = basis, center = pca$center, scale = pca$scale)
 #' )
 #' }
+#' @seealso [fit_model()], [plot_boundary()], [boundary_workflow_set()]
 #' @export
 boundary_compute <- function(model, feature_range = NULL, resolution = 100, predfun = NULL, projection = NULL, reference = NULL, ...) {
   is_multi <- FALSE
@@ -77,7 +136,7 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
     avail_numeric <- avail_features[
       vapply(first_model$metadata$features$types, function(x) any(c("numeric", "integer", "double") %in% x), logical(1))
     ]
-    
+
     if (is.character(feature_range)) {
       if (length(feature_range) != 2) stop("If `feature_range` is a character vector, it must specify exactly 2 feature names.", call. = FALSE)
       target_features <- feature_range
@@ -88,7 +147,7 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
         stop("Cannot auto-compute `feature_range`: model does not have exactly 2 numeric features. Please provide `feature_range` explicitly.", call. = FALSE)
       }
     }
-    
+
     feature_range <- list()
     for (f in target_features) {
       rng <- first_model$metadata$features$range[[f]]
@@ -157,7 +216,6 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
     }
   }
 
-  missing_names <- setdiff(expected_names, var_names)
   invalid_names <- setdiff(var_names, expected_names)
 
   if (is.null(projection)) {

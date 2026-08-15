@@ -13,55 +13,55 @@ boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05
   if (!is.list(models) || length(models) == 0) {
     stop("Please provide a named list of one or more classbound models.", call. = FALSE)
   }
-  
+
   if (is.null(names(models))) {
     names(models) <- paste0("Model_", seq_along(models))
   }
-  
+
   # Ensure all models are trained on the same features
   first_model <- models[[1]]
   expected_names <- first_model$metadata$features$names
-  
+
   for (m in models) {
     if (!identical(m$metadata$features$names, expected_names)) {
       stop("All models must be trained on the exact same features.", call. = FALSE)
     }
   }
-  
+
   # Extract bounding box from data
   if (!all(expected_names %in% colnames(data))) {
     stop("The provided data does not contain all features expected by the models.", call. = FALSE)
   }
-  
+
   data_features <- data[, expected_names, drop = FALSE]
-  
+
   # Generate non-aligned grid (uniform random)
   sim_list <- lapply(data_features, function(col) {
     if (is.numeric(col)) {
       stats::runif(n_points, min = min(col, na.rm = TRUE), max = max(col, na.rm = TRUE))
     } else {
-      # For categorical, just sample from levels
+      # Sample from categorical levels
       factor(sample(levels(col), n_points, replace = TRUE), levels = levels(col))
     }
   })
-  
+
   sim_df <- as.data.frame(sim_list)
-  
+
   # Predict all models
   has_class <- requireNamespace("class", quietly = TRUE)
-  
+
   is_boundary_global <- rep(FALSE, n_points)
-  
+
   for (m_name in names(models)) {
     m <- models[[m_name]]
     preds <- predict_model(m, sim_df)
-    
+
     col_name <- paste0("Y_", m_name)
     sim_df[[col_name]] <- preds$class
-    
+
     # Calculate advantage
     adv <- rep(1, n_points)
-    
+
     if (!is.null(preds$probs) && ncol(preds$probs) >= 2) {
       # Model supports probabilities. Advantage = top1 - top2
       prob_mat <- as.matrix(preds$probs)
@@ -88,17 +88,17 @@ boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05
         }
       }
     }
-    
+
     # Identify boundary points (bottom X percentile of advantage)
     thresh_val <- stats::quantile(adv, probs = threshold, na.rm = TRUE)
     is_bnd <- adv <= thresh_val
     is_boundary_global <- is_boundary_global | is_bnd
   }
-  
+
   sim_df$is_boundary <- is_boundary_global
-  
+
   # Subset to boundary points only
   bnd_df <- sim_df[sim_df$is_boundary, , drop = FALSE]
-  
+
   return(bnd_df)
 }

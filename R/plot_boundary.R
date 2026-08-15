@@ -1,63 +1,132 @@
 #' Visualize the classification decision boundary
 #'
-#' @description Renders a 2D plot for boundary exploration.
-#'
-#' @importFrom rlang .data
+#' @description
+#' Renders a 2D ggplot of a classification decision boundary, optionally overlaying
+#' observed training data. Input must be a `classbound` object that has already been
+#' passed through `boundary_compute()`.
 #'
 #' @details
-#' If the `model` object contains a `projection` (e.g. from `tourr` or `prcomp`),
-#' `plot_boundary()` will automatically apply forward projection to any provided `obs_data`.
-#' It will mathematically map the high-dimensional points onto the 2D plane and calculate
-#' their orthogonal distances to the plane. Points exactly on the plane are rendered fully opaque
-#' (alpha = 1.0), while points further away gradually fade to greater transparency (alpha = 0.2).
+#' ## Probability surface (gradient)
 #'
-#' Any provided training observations (`obs_data`) are rendered with a white border
-#' to improve contrast against the underlying colored decision regions.
+#' When `show_gradient = TRUE`, decision regions are shaded by the predicted class
+#' probability: deep, saturated regions indicate high model confidence, while faded
+#' regions indicate uncertainty near the boundary. Probability shading is only possible
+#' when the underlying classifier returns class probabilities. Classifiers that return
+#' only class labels (e.g., standard SVMs or PPtree models) produce a flat boundary
+#' regardless of `show_gradient`.
 #'
-#' @param model A `classbound` model object returned by `boundary_compute()`.
-#'   Must contain boundary data in `$boundary_data`.
-#' @param obs_data Optional data frame of training observations to overlay.
-#' @param x_col Column name in `obs_data` for the x-axis feature. Also used as the x-axis label.
-#'   Required if `obs_data` is provided.
-#' @param y_col Column name in `obs_data` for the y-axis feature. Also used as the y-axis label.
-#'   Required if `obs_data` is provided.
-#' @param true_label Column name in `obs_data` representing the true class labels. Required if `obs_data` is provided.
-#' @param facet_col Optional string naming a column in `boundary` to facet the plot by.
-#'   Useful for comparing multiple models (e.g. from `boundary_workflow_set()`).
-#' @param type The type of visualization to generate. Supported: '2D' or 'disagreement'.
-#' @param show_gradient Logical. If \code{TRUE}, classification probabilities (if available)
-#'   will be mapped to the transparency (alpha) of the decision regions, creating a gradient
-#'   surface. Defaults to \code{FALSE} (renders a flat decision boundary).
-#' @param agree_color Color used for areas where all models agree (only for type='disagreement').
-#' @param disagree_color Color used for areas where models disagree (only for type='disagreement').
-#' @param obs_alpha Numeric transparency level for overlaid observation points (0.0 to 1.0).
-#' @param obs_size Numeric size for overlaid observation points.
-#' @param render Character string specifying the rendering method for the decision region. Options are \code{"raster"} (high performance, default) and \code{"tile"} (slower, but fully compatible with interactive graphics like Plotly).
-#' @param colors Optional named character vector mapping class names to colors (e.g. \code{c("Class 1" = "#F8766D", "Class 2" = "#00BA38")}). When provided, ensures exact color synchronization across multiple visualizations.
-#' @param highlight_outliers Logical. If \code{TRUE}, outliers are highlighted with distinct diamond shapes (shape 23).
-#' @param palette Optional string specifying a ColorBrewer palette (e.g. \code{"Dark2"}) to override the default colors.
-#' @param xlim Optional length-two numeric vector setting the x-axis limits.
-#' @param ylim Optional length-two numeric vector setting the y-axis limits.
-#' @param ... Additional visualization parameters.
+#' ## High-dimensional projections and depth fading
+#'
+#' When the `classbound` object contains a projection (from `boundary_compute(..., projection = ...)`),
+#' `plot_boundary()` automatically forward-projects any `obs_data` observations onto the
+#' 2D plane. It also computes each point's orthogonal distance from the projection plane
+#' and maps this distance to opacity: points lying exactly on the plane are fully opaque
+#' (`alpha = 1.0`), while points further away in the original feature space gradually
+#' fade toward `alpha = 0.2`. This depth-fading provides visual cues about how faithfully
+#' each point's position is captured by the current projection.
+#'
+#' ## Rendering backend and plotly compatibility
+#'
+#' The default `render = "raster"` uses `ggplot2::geom_raster()`, which is fast and
+#' produces high-quality static output. However, `geom_raster()` is not supported by
+#' `plotly::ggplotly()` and will produce a blank interactive plot. To convert a boundary
+#' plot to an interactive plotly figure, use `render = "tile"` instead:
+#'
+#' ```r
+#' p <- plot_boundary(model, render = "tile")
+#' plotly::ggplotly(p)
+#' ```
+#'
+#' ## Colors and palettes
+#'
+#' By default, `plot_boundary()` uses `classbound_palette()`, a curated 20-color palette
+#' with deterministic (alphabetical) class-to-color assignment, ensuring consistent colors
+#' across multiple plots. Supply a `palette` name (e.g., `"Dark2"`) to use an RColorBrewer
+#' palette, or supply `colors` as a named vector for explicit control. If an RColorBrewer
+#' palette cannot accommodate the number of classes, it falls back to `classbound_palette()`.
+#'
+#' @param model A `classbound` object returned by `boundary_compute()`. Must contain
+#'   boundary data in `$boundary_data`.
+#' @param obs_data An optional data frame of observations to overlay on the boundary plot.
+#'   Typically the training data. If provided, `x_col`, `y_col`, and `true_label` are
+#'   required.
+#' @param x_col Column name in `obs_data` for the x-axis feature. Used as the x-axis label.
+#'   Required when `obs_data` is provided and the model has no projection.
+#' @param y_col Column name in `obs_data` for the y-axis feature. Used as the y-axis label.
+#'   Required when `obs_data` is provided and the model has no projection.
+#' @param true_label Column name in `obs_data` containing the true class labels.
+#'   Required when `obs_data` is provided.
+#' @param facet_col Optional string naming a column in the boundary data to facet the
+#'   plot by. Set to `"model"` automatically when the input is a multi-model comparison
+#'   object. Also compatible with any column from `boundary_workflow_set()` output.
+#' @param type The visualization type. `"2D"` (default) renders the predicted class
+#'   regions. `"disagreement"` renders a binary map showing where models agree vs.
+#'   disagree; requires a multi-model input.
+#' @param show_gradient Logical. If `TRUE`, decision regions are shaded by the predicted
+#'   class probability (requires a classifier that provides probabilities). Defaults to
+#'   `FALSE`.
+#' @param agree_color Color for regions where all models agree (only for
+#'   `type = "disagreement"`).
+#' @param disagree_color Color for regions where models disagree (only for
+#'   `type = "disagreement"`).
+#' @param obs_alpha Numeric transparency for overlaid observation points (0.0–1.0).
+#'   When a projection is active, this is treated as the maximum opacity; actual alpha
+#'   varies by depth-fading.
+#' @param obs_size Numeric point size for overlaid observations.
+#' @param render Rendering method for decision regions: `"raster"` (default, fast, not
+#'   plotly-compatible) or `"tile"` (slower, compatible with `plotly::ggplotly()`).
+#' @param colors Optional named character vector mapping class labels to colors, e.g.
+#'   `c("Adelie" = "#E6194B", "Chinstrap" = "#3CB44B", "Gentoo" = "#4363D8")`. Overrides
+#'   both `palette` and the default `classbound_palette()`.
+#' @param highlight_outliers Logical. If `TRUE`, observations with `is_outlier == TRUE`
+#'   in `obs_data` are rendered as diamonds (shape 23) instead of circles.
+#' @param palette Optional RColorBrewer palette name (e.g., `"Dark2"`, `"Set1"`) to
+#'   override the default colors. Falls back to `classbound_palette()` if the palette
+#'   cannot support the number of classes.
+#' @param xlim Optional length-2 numeric vector to set x-axis limits.
+#' @param ylim Optional length-2 numeric vector to set y-axis limits.
+#' @param ... Additional arguments (currently unused).
 #'
 #' @return A `ggplot2` object.
+#'
 #' @examples
 #' \donttest{
 #' library(palmerpenguins)
 #' data(penguins)
 #' peng_data <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
-#' m_rpart <- fit_model(peng_data, species ~ ., rpart::rpart)
 #'
-#' # Auto-compute bounds and generate 2D grid
-#' m_rpart <- boundary_compute(m_rpart, resolution = 50)
+#' m <- fit_model(peng_data, species ~ ., rpart::rpart)
+#' m <- boundary_compute(m, resolution = 50)
 #'
-#' # Plot the decision boundary with observations overlaid
-#' plot_boundary(m_rpart,
-#'   obs_data = peng_data,
-#'   x_col = "bill_length_mm", y_col = "bill_depth_mm",
+#' # Basic boundary plot with observations
+#' plot_boundary(m,
+#'   obs_data   = peng_data,
+#'   x_col      = "bill_length_mm",
+#'   y_col      = "bill_depth_mm",
 #'   true_label = "species"
 #' )
+#'
+#' # Probability gradient (rpart supports probabilities)
+#' plot_boundary(m,
+#'   obs_data      = peng_data,
+#'   x_col         = "bill_length_mm",
+#'   y_col         = "bill_depth_mm",
+#'   true_label    = "species",
+#'   show_gradient = TRUE
+#' )
+#'
+#' # Plotly-compatible rendering
+#' p <- plot_boundary(m,
+#'   obs_data   = peng_data,
+#'   x_col      = "bill_length_mm",
+#'   y_col      = "bill_depth_mm",
+#'   true_label = "species",
+#'   render     = "tile"
+#' )
+#' # plotly::ggplotly(p)  # uncomment to convert to interactive
 #' }
+#' @seealso [boundary_compute()], [classbound()], [classbound_palette()]
+#' @importFrom rlang .data
 #' @export
 plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
                           true_label = NULL, facet_col = NULL, type = "2D",
@@ -152,7 +221,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       )
   } else {
     if (show_gradient) {
-      # Safely extract probability for the predicted class, leaving NA if the model doesn't support it
+      # Extract probability for the predicted class (NA if unsupported)
       boundary$probability <- NA_real_
       for (lvl in levels(boundary$prediction)) {
         if (lvl %in% colnames(boundary)) {
@@ -246,7 +315,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         y_val = z_mat[, 2],
         true_class = obs_data[[true_label]]
       )
-      
+
       if (highlight_outliers) {
         obs_df$is_outlier <- if ("is_outlier" %in% colnames(obs_data)) obs_data$is_outlier else FALSE
       } else {
@@ -300,7 +369,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
 
       obs_df <- obs_data[, c(x_col, y_col, true_label)]
       colnames(obs_df) <- c("x_val", "y_val", "true_class")
-      
+
       if (highlight_outliers) {
         obs_df$is_outlier <- if ("is_outlier" %in% colnames(obs_data)) obs_data$is_outlier else FALSE
       } else {
