@@ -28,7 +28,7 @@ and infinite values, and converts response labels to a factor.
 }
 \details{
 This function is called automatically by \code{fit_model()}. \strong{Do not call it manually
-before \code{fit_model()}} — doing so will result in feature metadata being extracted
+before \code{fit_model()}}, because doing so will result in feature metadata being extracted
 from the pre-processed data rather than the original data, which corrupts the
 imputation values used by \code{boundary_compute()} for 2D slicing.
 

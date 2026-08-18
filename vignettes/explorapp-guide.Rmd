@@ -19,7 +19,7 @@ classification decision boundaries. Launch it from the R console:
 ```{r launch, eval=FALSE}
 library(classbound)
 
-# Empty app — start with simulation or drawing
+# Empty app (start with simulation or drawing)
 explorapp()
 
 # Pre-loaded dataset
@@ -51,7 +51,7 @@ Generate synthetic data from one of two engines:
 **Multivariate Normal (MVN)**: You specify the number of classes, and the app
 generates class-specific mean and covariance sliders. Click **Generate Data** to
 draw a new dataset. A separate independent test set is also generated with
-approximately 30% of the training sample size — this is not a 70/30 split; it is
+exactly 30% of the training sample size. This is not a 70/30 split; it is
 an additional independently drawn evaluation sample using the same class parameters.
 
 **MixSim**: Generates more complex overlapping Gaussian mixture data. Specify the
@@ -66,10 +66,10 @@ slider for adding uniformly distributed contamination points.
 Draw your own classification dataset by clicking or brushing directly on the plot.
 Choose from two interaction modes:
 
-**Draw Point** — each click adds one observation at the clicked location. Dragging does
+**Draw Point**: Each click adds one observation at the clicked location. Dragging does
 not create a stroke; only the location where you release the mouse counts.
 
-**Draw Cluster** — dragging creates a cluster of observations along the drawn path.
+**Draw Cluster**: Dragging creates a cluster of observations along the drawn path.
 The **Point Density** and **Brush Size** controls determine how many points are added
 per path segment.
 
@@ -88,10 +88,10 @@ The **Model Configuration** panel lists all available classifiers. Select one or
 to compare simultaneously. Each classifier shows its own tuning parameters when selected.
 
 Supported classifiers include:
-- **rpart** (decision tree) — complexity parameter `cp`
-- **randomForest** — number of trees, `mtry`
-- **PPtreeViz** / **PPtreeExtclass** / **PPtreeExt_split** — projection pursuit trees
-- **ppforest2** — projection pursuit random forest
+- **rpart** (decision tree): complexity parameter `cp`
+- **randomForest**: number of trees, `mtry`
+- **PPtreeViz** / **PPtreeExtclass** / **PPtreeExt_split**: projection pursuit trees
+- **ppforest2**: projection pursuit random forest
 - **Tidymodels presets** (if the `parsnip` package is installed): Decision Tree, Random Forest, SVM, Neural Net, PP Forest
 
 **Grid Resolution** controls the density of the prediction grid: higher values produce

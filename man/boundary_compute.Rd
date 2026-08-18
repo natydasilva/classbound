@@ -63,7 +63,7 @@ object and consumed directly by \code{plot_boundary()}.
 When \code{projection} is \code{NULL}, \code{boundary_compute()} generates a regular grid over the
 two features named in \code{feature_range}. If the model was trained on more than two
 features, all remaining numeric features are fixed at their training-set median and
-categorical features at their training-set mode — unless you supply explicit values
+categorical features at their training-set mode, unless you supply explicit values
 via \code{reference}.
 
 This is a \strong{2D slice} of the full multivariate decision boundary. Two observations

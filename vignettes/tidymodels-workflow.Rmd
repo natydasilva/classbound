@@ -93,7 +93,7 @@ head(bounds$boundary_data[, 1:4])
 
 `plot_boundary()` automatically facets multi-model objects by model name.
 
-```{r plot, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE}
+```{r plot, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE, fig.width=14, fig.height=3, out.width="100%"}
 plot_boundary(
   bounds,
   obs_data   = penguins,
@@ -106,9 +106,9 @@ plot_boundary(
 ## Step 6: Disagreement map
 
 For two or more models, `type = "disagreement"` highlights where classifiers
-predict differently — useful for identifying regions of high model uncertainty.
+predict differently, which is useful for identifying regions of high model uncertainty.
 
-```{r disagree, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE}
+```{r disagree, eval=requireNamespace("parsnip", quietly = TRUE) && requireNamespace("workflowsets", quietly = TRUE), message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 plot_boundary(bounds,
   type = "disagreement",
   x_col = "bill_length_mm", y_col = "bill_depth_mm"

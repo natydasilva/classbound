@@ -8,7 +8,7 @@ as_classbound(model, data, response = NULL, ...)
 }
 \arguments{
 \item{model}{A fitted model object. For \code{tidymodels} objects, must be a trained
-\code{workflow} or \code{model_fit} — not a model specification.}
+\code{workflow} or \code{model_fit} (not a model specification).}
 
 \item{data}{A data frame of the training data. Used only to extract feature metadata;
 the data is not passed through \code{preprocess_data()}. Must contain all features that

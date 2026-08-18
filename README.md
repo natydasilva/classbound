@@ -188,7 +188,7 @@ plot_boundary(m3_proj,
 )
 ```
 
-<img src="man/figures/README-projection-1.png" alt="" width="70%" style="display: block; margin: auto;" />
+<img src="man/figures/README-visualisation-1.png" alt="" width="70%" style="display: block; margin: auto;" />
 
 See the
 [high-dimensional](https://natydasilva.github.io/classbound/articles/high-dimensional.html)
@@ -222,7 +222,7 @@ plot_boundary(bounds,
 )
 ```
 
-<img src="man/figures/README-tidymodels-1.png" alt="" width="70%" style="display: block; margin: auto;" />
+<img src="man/figures/README-tidymodels-1.png" alt="" width="100%" style="display: block; margin: auto;" />
 
 ------------------------------------------------------------------------
 

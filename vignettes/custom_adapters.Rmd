@@ -28,7 +28,7 @@ Officially supported classifiers (rpart, randomForest, PPtree, ppforest2)
     → handled by built-in S3 adapters with full probability support
 ```
 
-## 1. Standard classifiers — no extra work needed
+## 1. Standard classifiers (no extra work needed)
 
 If a classifier's `predict()` method returns a vector or factor of class labels directly,
 `classbound` handles it automatically. No configuration is needed.
@@ -41,11 +41,11 @@ penguins <- na.omit(palmerpenguins::penguins[
   c("species", "bill_length_mm", "bill_depth_mm")
 ])
 
-# e1071::svm returns a factor of class labels — works out of the box
+# e1071::svm returns a factor of class labels; works out of the box
 classbound(penguins, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
 ```
 
-## 2. Non-standard models — using `predfun`
+## 2. Non-standard models (using `predfun`)
 
 Some classifiers return a list, data frame, or other complex object from `predict()`.
 The default path will stop with an informative error message suggesting you provide
@@ -53,7 +53,7 @@ a `predfun`. The `predfun` receives the fitted model and new data, and must retu
 either a factor/vector of class labels, or a list with `$class` and `$probs`.
 
 ```{r predfun, eval=FALSE}
-# MASS::qda returns list($class, $posterior, $x) — extract $class
+# MASS::qda returns list($class, $posterior, $x), so extract $class
 classbound(
   penguins,
   species ~ bill_length_mm + bill_depth_mm,
@@ -61,7 +61,7 @@ classbound(
   predfun = function(model, newdata, ...) predict(model, newdata, ...)$class
 )
 
-# MASS::lda — same approach
+# MASS::lda (same approach)
 classbound(
   penguins,
   species ~ bill_length_mm + bill_depth_mm,
@@ -84,7 +84,7 @@ classbound(
 The `predfun` argument is available in `classbound()`, `fit_model()` (via `boundary_compute()`),
 and `predict_model()`.
 
-## 3. Officially supported classifiers — built-in adapters
+## 3. Officially supported classifiers (built-in adapters)
 
 `classbound` maintains a small set of built-in S3 adapters for classifiers whose
 APIs require model-specific handling to extract both class labels and probabilities:

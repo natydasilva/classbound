@@ -7,7 +7,7 @@
 #'
 #' @details
 #' This function is called automatically by `fit_model()`. **Do not call it manually
-#' before `fit_model()`** — doing so will result in feature metadata being extracted
+#' before `fit_model()`**, because doing so will result in feature metadata being extracted
 #' from the pre-processed data rather than the original data, which corrupts the
 #' imputation values used by `boundary_compute()` for 2D slicing.
 #'

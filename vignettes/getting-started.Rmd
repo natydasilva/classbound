@@ -39,7 +39,7 @@ devtools::install_github("natydasilva/classbound")
 
 The `classbound()` wrapper fits a model, computes the decision boundary, and plots it in a single call.
 
-```{r quickstart, message=FALSE, warning=FALSE}
+```{r quickstart, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 library(classbound)
 library(palmerpenguins)
 
@@ -59,7 +59,7 @@ The colored regions show the predicted class for each point in the feature space
 
 For more control, use the three-step pipeline:
 
-```{r pipeline, message=FALSE, warning=FALSE}
+```{r pipeline, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 # Step 1: Fit the model
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
 
@@ -87,10 +87,10 @@ plot_boundary(
 `classbound` works with any classifier whose `predict()` method returns a vector of class labels. Most classifiers work automatically:
 
 ```{r classifiers, eval=FALSE}
-# SVM (returns class labels natively — no extra work needed)
+# SVM (returns class labels natively; no extra work needed)
 classbound(penguins, species ~ bill_length_mm + bill_depth_mm, e1071::svm)
 
-# Random forest (matrix interface — randomForest expects x and y separately)
+# Random forest (matrix interface: randomForest expects x and y separately)
 classbound(penguins, species ~ bill_length_mm + bill_depth_mm,
   randomForest::randomForest,
   interface = "matrix"
@@ -100,7 +100,7 @@ classbound(penguins, species ~ bill_length_mm + bill_depth_mm,
 For classifiers whose `predict()` returns a list or other complex object, use the `predfun` argument to extract the class labels:
 
 ```{r predfun, eval=FALSE}
-# MASS::qda returns a list — extract $class manually
+# MASS::qda returns a list, so extract $class manually
 classbound(
   penguins,
   species ~ bill_length_mm + bill_depth_mm,
@@ -113,7 +113,7 @@ classbound(
 
 Classifiers that return class probabilities (e.g., `rpart`, `randomForest`) enable a gradient visualization where decision regions are shaded by model confidence:
 
-```{r gradient, message=FALSE, warning=FALSE}
+```{r gradient, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
 model <- boundary_compute(model, resolution = 80)
 
@@ -147,7 +147,7 @@ See the `vignette("explorapp-guide")` for a full walkthrough of the interactive 
 
 ## What's next?
 
-- **High-dimensional data**: `vignette("high-dimensional")` — 2D slice vs. projection  
-- **Multiple models**: `vignette("tidymodels-workflow")` — comparing classifiers with `boundary_workflow_set()`  
-- **Custom classifiers**: `vignette("custom_adapters")` — `predfun` and custom S3 adapters  
-- **tourr integration**: `vignette("tourr-workflow")` — animated projection tours  
+- **High-dimensional data**: `vignette("high-dimensional")` (2D slice vs. projection)  
+- **Multiple models**: `vignette("tidymodels-workflow")` (comparing classifiers with `boundary_workflow_set()`)  
+- **Custom classifiers**: `vignette("custom_adapters")` (`predfun` and custom S3 adapters)  
+- **tourr integration**: `vignette("tourr-workflow")` (animated projection tours)  

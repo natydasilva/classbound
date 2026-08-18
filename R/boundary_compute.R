@@ -11,7 +11,7 @@
 #' When `projection` is `NULL`, `boundary_compute()` generates a regular grid over the
 #' two features named in `feature_range`. If the model was trained on more than two
 #' features, all remaining numeric features are fixed at their training-set median and
-#' categorical features at their training-set mode — unless you supply explicit values
+#' categorical features at their training-set mode, unless you supply explicit values
 #' via `reference`.
 #'
 #' This is a **2D slice** of the full multivariate decision boundary. Two observations

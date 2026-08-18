@@ -49,7 +49,7 @@ install.packages("tourr")
 
 ## Step 1: Prepare data
 
-We use the `data69_1` dataset — 5000 observations with 21 numeric features and 3 classes.
+We use the `data69_1` dataset: 5000 observations with 21 numeric features and 3 classes.
 For this example we work with a subset of 300 observations and 5 features to keep
 computation fast.
 
@@ -104,7 +104,7 @@ message("tourr is not installed. Install it with: install.packages('tourr')")
 Each element of `tour_history` is a `p × 2` orthonormal basis matrix. Extract a frame,
 construct the projection list, compute the boundary for each model, and plot.
 
-```{r tour_frame, eval=tourr_available, message=FALSE, warning=FALSE}
+```{r tour_frame, eval=tourr_available, message=FALSE, warning=FALSE, fig.width=6, fig.height=5}
 if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
   # Use frame 3 as an example
   frame_idx <- 3
@@ -132,7 +132,7 @@ if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
     obs_data = d, true_label = "Y",
     x_col = "Proj1", y_col = "Proj2"
   ) +
-    ggplot2::ggtitle("rpart — Tour frame 3")
+    ggplot2::ggtitle("rpart: Tour frame 3")
 }
 ```
 
@@ -141,7 +141,7 @@ if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
 Because both models are visualized using the same projection, the regions are directly
 comparable.
 
-```{r compare_frame, eval=tourr_available, message=FALSE, warning=FALSE}
+```{r compare_frame, eval=tourr_available, message=FALSE, warning=FALSE, fig.width=10, fig.height=5, out.width="100%"}
 if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
   b_rf <- boundary_compute(m_rf,
     feature_range = ranges, resolution = 40,
@@ -151,7 +151,7 @@ if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
     obs_data = d, true_label = "Y",
     x_col = "Proj1", y_col = "Proj2"
   ) +
-    ggplot2::ggtitle("Random Forest — Tour frame 3")
+    ggplot2::ggtitle("Random Forest: Tour frame 3")
 }
 ```
 
@@ -163,7 +163,7 @@ display functions, or save individual frames and combine them with the `animatio
 or `gganimate` packages.
 
 ```{r animate_stub, eval=FALSE}
-# Pseudocode — adapt based on your animation workflow
+# Pseudocode (adapt based on your animation workflow)
 for (i in seq_len(dim(tour_history)[3])) {
   basis_i <- matrix(tour_history[, , i], nrow = length(feat_cols), ncol = 2)
   rownames(basis_i) <- feat_cols

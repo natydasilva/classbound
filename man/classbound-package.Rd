@@ -13,12 +13,12 @@ R classifiers, \code{tidymodels} workflows, and user-supplied models.
 \details{
 \subsection{Two main workflows}{
 
-\strong{Interactive workflow} — Launch \code{explorapp()} to start the built-in Shiny application.
+\strong{Interactive workflow}: Launch \code{explorapp()} to start the built-in Shiny application.
 From there, you can import your own data, simulate datasets, draw data by hand, choose
 classifiers, adjust parameters, compare decision boundaries side-by-side, inspect
 probability surfaces, inject outliers, and export the results.
 
-\strong{Programmatic workflow} — Use the modular API directly:
+\strong{Programmatic workflow}: Use the modular API directly:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{model <- fit_model(data, formula, classifier)
 model <- boundary_compute(model, feature_range, resolution = 100)

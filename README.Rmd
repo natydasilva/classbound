@@ -55,7 +55,7 @@ devtools::install_github("natydasilva/classbound")
 `classbound()` fits a model, computes its decision boundary, and plots the result in
 a single call.
 
-```{r quickstart, message=FALSE, warning=FALSE}
+```{r quickstart, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 library(classbound)
 library(palmerpenguins)
 
@@ -76,7 +76,7 @@ classbound(
 
 For full control, use the three-step pipeline:
 
-```{r pipeline, message=FALSE, warning=FALSE}
+```{r pipeline, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 # 1. Fit
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
 
@@ -150,7 +150,7 @@ When a model is trained on more than two features, `boundary_compute()` supports
 
 - **2D Slice**: two features are plotted; other features are fixed at their median/mode.
 
-```{r slice, message=FALSE, warning=FALSE}
+```{r slice, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
 penguins3 <- na.omit(palmerpenguins::penguins[
   ,
   c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm")
@@ -171,7 +171,7 @@ plot_boundary(m3_slice,
 
 - **Projection**: all features are combined into two projected axes (e.g., PCA).
 
-```{r projection, message=FALSE, warning=FALSE}
+```{r visualisation, message=FALSE, warning=FALSE, fig.width=6, fig.height=5}
 feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
 pca <- prcomp(penguins3[, feat_cols], scale. = TRUE)
 basis <- pca$rotation[, 1:2]
@@ -200,7 +200,7 @@ See the [high-dimensional](https://natydasilva.github.io/classbound/articles/hig
 
 ## Multi-model comparison with tidymodels
 
-```{r tidymodels, eval=requireNamespace("parsnip", quietly=TRUE) && requireNamespace("workflowsets", quietly=TRUE), message=FALSE, warning=FALSE}
+```{r tidymodels, eval=requireNamespace("parsnip", quietly=TRUE) && requireNamespace("workflowsets", quietly=TRUE), message=FALSE, warning=FALSE, fig.width=14, fig.height=3, out.width="100%"}
 library(parsnip)
 library(workflowsets)
 

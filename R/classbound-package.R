@@ -9,12 +9,12 @@
 #' @details
 #' ## Two main workflows
 #'
-#' **Interactive workflow** — Launch `explorapp()` to start the built-in Shiny application.
+#' **Interactive workflow**: Launch `explorapp()` to start the built-in Shiny application.
 #' From there, you can import your own data, simulate datasets, draw data by hand, choose
 #' classifiers, adjust parameters, compare decision boundaries side-by-side, inspect
 #' probability surfaces, inject outliers, and export the results.
 #'
-#' **Programmatic workflow** — Use the modular API directly:
+#' **Programmatic workflow**: Use the modular API directly:
 #'
 #' ```r
 #' model <- fit_model(data, formula, classifier)

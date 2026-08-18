@@ -213,7 +213,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         drop = FALSE
       ) +
       ggplot2::theme_minimal() +
-      ggplot2::theme(aspect.ratio = 1) +
       ggplot2::labs(
         x = if (!is.null(x_col)) x_col else default_x,
         y = if (!is.null(y_col)) y_col else default_y,
@@ -246,7 +245,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       p <- p +
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0.1, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
-        ggplot2::theme(aspect.ratio = 1) +
         color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
@@ -263,7 +261,6 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       }
       p <- p +
         ggplot2::theme_minimal() +
-        ggplot2::theme(aspect.ratio = 1) +
         color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
@@ -402,8 +399,10 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     if (!facet_col %in% colnames(boundary)) {
       stop(sprintf("facet_col '%s' not found in boundary data.", facet_col), call. = FALSE)
     }
-    p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)))
+    p <- p + 
+      ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col))) +
+      ggplot2::theme(panel.spacing.x = ggplot2::unit(2, "lines"))
   }
-  p <- p + ggplot2::coord_cartesian(xlim = xlim, ylim = ylim, expand = FALSE)
+  p <- p + ggplot2::coord_fixed(ratio = 1, xlim = xlim, ylim = ylim, expand = FALSE)
   p
 }

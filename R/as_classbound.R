@@ -19,7 +19,7 @@
 #' - **`model_fit`**: wraps a fitted `parsnip` model.
 #'
 #' @param model A fitted model object. For `tidymodels` objects, must be a trained
-#'   `workflow` or `model_fit` — not a model specification.
+#'   `workflow` or `model_fit` (not a model specification).
 #' @param data A data frame of the training data. Used only to extract feature metadata;
 #'   the data is not passed through `preprocess_data()`. Must contain all features that
 #'   the model was trained on.
