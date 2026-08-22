@@ -1,16 +1,16 @@
 Package: classbound
 Title: Visualization for Classification Decision Boundaries
-Version: 0.1.1
+Version: 1.0.0
 Authors@R: c(
-    person(given = "Natalia",
-           family = "da Silva",
-           role = c("aut", "cre"),
-           email = "natalia.dasilva@fcea.edu.uy",
-           comment = c(ORCID = "https://orcid.org/0000-0002-6031-7451")),
     person(given = "Vaibhav",
            family = "Manihar",
-           role = "aut",
+           role = c("aut", "cre"),
            email = "vaibhav.manihar@gmail.com"),
+    person(given = "Natalia",
+           family = "da Silva",
+           role = "aut",
+           email = "natalia.dasilva@fcea.edu.uy",
+           comment = c(ORCID = "https://orcid.org/0000-0002-6031-7451")),
     person(given = "Ignacio",
            family = "Alvarez-Castro",
            role = "aut",

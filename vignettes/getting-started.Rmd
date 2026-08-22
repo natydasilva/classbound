@@ -39,7 +39,7 @@ devtools::install_github("natydasilva/classbound")
 
 The `classbound()` wrapper fits a model, computes the decision boundary, and plots it in a single call.
 
-```{r quickstart, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
+```{r quickstart, message=FALSE, warning=FALSE}
 library(classbound)
 library(palmerpenguins)
 
@@ -48,8 +48,7 @@ penguins <- na.omit(penguins[, c("species", "bill_length_mm", "bill_depth_mm")])
 classbound(
   data       = penguins,
   formula    = species ~ bill_length_mm + bill_depth_mm,
-  classifier = rpart::rpart,
-  resolution = 80
+  classifier = rpart::rpart
 )
 ```
 
@@ -59,7 +58,7 @@ The colored regions show the predicted class for each point in the feature space
 
 For more control, use the three-step pipeline:
 
-```{r pipeline, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
+```{r pipeline, message=FALSE, warning=FALSE}
 # Step 1: Fit the model
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
 
@@ -113,9 +112,9 @@ classbound(
 
 Classifiers that return class probabilities (e.g., `rpart`, `randomForest`) enable a gradient visualization where decision regions are shaded by model confidence:
 
-```{r gradient, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
+```{r gradient, message=FALSE, warning=FALSE}
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
-model <- boundary_compute(model, resolution = 80)
+model <- boundary_compute(model)
 
 plot_boundary(
   model,

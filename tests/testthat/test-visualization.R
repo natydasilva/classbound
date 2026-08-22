@@ -85,3 +85,20 @@ test_that("plot.classbound_boundary S3 method delegates to plot_boundary", {
   # Verify the plot builds successfully without error
   expect_silent(suppressWarnings(ggplot2::ggplot_build(p)))
 })
+
+test_that("plot_boundary uses aspect.ratio=1 and not coord_fixed", {
+  boundary_data <- data.frame(
+    x = rep(1:10, 10),
+    y = rep(1:10, each = 10),
+    prediction = factor(sample(c("A", "B"), 100, replace = TRUE))
+  )
+  mock_model <- structure(list(boundary_data = boundary_data), class = "classbound")
+  p <- plot_boundary(mock_model)
+
+  # aspect.ratio is stored in the theme
+  expect_equal(p$theme$aspect.ratio, 1)
+
+  # coord should be CoordCartesian, not CoordFixed
+  expect_false(inherits(p$coordinates, "CoordFixed"))
+})
+

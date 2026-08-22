@@ -61,12 +61,12 @@ Native \code{tidymodels} integration is available via \code{boundary_workflow_se
 }
 }
 \author{
-\strong{Maintainer}: Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})
+\strong{Maintainer}: Vaibhav Manihar \email{vaibhav.manihar@gmail.com}
 
 Authors:
 \itemize{
-  \item Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})
   \item Vaibhav Manihar \email{vaibhav.manihar@gmail.com}
+  \item Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})
   \item Ignacio Alvarez-Castro \email{ignacio.lavarez@fcea.edu.uy} (\href{https://orcid.org/0000-0003-1633-2432}{ORCID})
 }
 

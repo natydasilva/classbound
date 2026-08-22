@@ -60,7 +60,7 @@ The slice shows how the classifier behaves at a particular cross-section of the
 feature space. Two observations that appear in the same region may be separated
 by the classifier in a dimension that is being held fixed.
 
-```{r slice, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
+```{r slice, message=FALSE, warning=FALSE}
 # Visualize bill_length_mm vs bill_depth_mm
 # flipper_length_mm is automatically fixed at its training-set median
 m3_slice <- boundary_compute(
@@ -81,7 +81,7 @@ plot_boundary(
 The warning message tells you which features were automatically imputed, and at what
 values. You can override this with the `reference` argument:
 
-```{r slice_reference, message=FALSE, warning=FALSE, fig.width=9, fig.height=3}
+```{r slice_reference, message=FALSE, warning=FALSE}
 # Fix flipper_length_mm at a specific value instead of the median
 m3_slice2 <- boundary_compute(
   m3,
@@ -112,7 +112,7 @@ them: each projected point summarizes information from all original features sim
 The basis must be an orthonormal matrix (columns are unit vectors, perpendicular to
 each other). PCA rotation matrices satisfy this by construction.
 
-```{r projection, message=FALSE, warning=FALSE, fig.width=6, fig.height=5}
+```{r projection, message=FALSE, warning=FALSE}
 feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")
 
 # Compute PCA on the three numeric features

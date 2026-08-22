@@ -202,7 +202,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
   )
 
   zoom_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) {
-    sprintf(" + ggplot2::coord_fixed(ratio = 1, xlim = c(%f, %f), ylim = c(%f, %f), expand = FALSE)", zoom_x[1], zoom_x[2], zoom_y[1], zoom_y[2])
+    sprintf(" + ggplot2::coord_cartesian(xlim = c(%f, %f), ylim = c(%f, %f), expand = FALSE)", zoom_x[1], zoom_x[2], zoom_y[1], zoom_y[2])
   } else {
     ""
   }

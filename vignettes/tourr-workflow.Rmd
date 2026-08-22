@@ -104,7 +104,7 @@ message("tourr is not installed. Install it with: install.packages('tourr')")
 Each element of `tour_history` is a `p × 2` orthonormal basis matrix. Extract a frame,
 construct the projection list, compute the boundary for each model, and plot.
 
-```{r tour_frame, eval=tourr_available, message=FALSE, warning=FALSE, fig.width=6, fig.height=5}
+```{r tour_frame, eval=tourr_available, message=FALSE, warning=FALSE}
 if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
   # Use frame 3 as an example
   frame_idx <- 3
@@ -141,7 +141,7 @@ if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
 Because both models are visualized using the same projection, the regions are directly
 comparable.
 
-```{r compare_frame, eval=tourr_available, message=FALSE, warning=FALSE, fig.width=10, fig.height=5, out.width="100%"}
+```{r compare_frame, eval=tourr_available, message=FALSE, warning=FALSE, fig.width=12, fig.height=6, out.width="100%"}
 if (requireNamespace("tourr", quietly = TRUE) && exists("tour_history")) {
   b_rf <- boundary_compute(m_rf,
     feature_range = ranges, resolution = 40,

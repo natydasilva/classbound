@@ -1696,8 +1696,35 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       if (input$data_mode != "Draw Data" || input$interaction_mode == "Navigate") {
         b <- input$plot_brush
         if (!is.null(b)) {
-          zoom_xlim(c(b$xmin, b$xmax))
-          zoom_ylim(c(b$ymin, b$ymax))
+          # Because the physical plot panel is forced to be square via aspect.ratio=1,
+          # we must expand the brushed region to match the data's aspect ratio to avoid distortion.
+          orig_w <- abs(b$domain$right - b$domain$left)
+          orig_h <- abs(b$domain$top - b$domain$bottom)
+
+          if (orig_w > 0 && orig_h > 0) {
+            b_w <- abs(b$xmax - b$xmin)
+            b_h <- abs(b$ymax - b$ymin)
+
+            ratio <- orig_w / orig_h
+            if (b_w / b_h > ratio) {
+              # Brush is too wide relative to domain, expand height proportionally
+              new_w <- b_w
+              new_h <- b_w / ratio
+            } else {
+              # Brush is too tall relative to domain, expand width proportionally
+              new_h <- b_h
+              new_w <- b_h * ratio
+            }
+
+            mid_x <- (b$xmin + b$xmax) / 2
+            mid_y <- (b$ymin + b$ymax) / 2
+
+            zoom_xlim(c(mid_x - new_w / 2, mid_x + new_w / 2))
+            zoom_ylim(c(mid_y - new_h / 2, mid_y + new_h / 2))
+          } else {
+            zoom_xlim(c(b$xmin, b$xmax))
+            zoom_ylim(c(b$ymin, b$ymax))
+          }
         }
       }
     })
@@ -2035,7 +2062,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       plot_outputs <- lapply(models, function(m) {
         safe_id <- gsub("[^a-zA-Z0-9_\\-]", "_", paste0("plot_", m))
         shiny::div(
-          # Aspect ratio wrapper to keep container roughly square to match 1:1 data scaling
+          # Aspect ratio wrapper to keep container roughly square to match ggplot2 aspect.ratio=1
           style = "width: 100%; max-width: 450px; aspect-ratio: 1.15 / 1; margin: 0 auto;",
           shiny::plotOutput(
             outputId = safe_id,
@@ -2345,7 +2372,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             p <- ggplot2::ggplot(dat) +
               ggplot2::labs(title = paste0(title, " (Waiting for data)"), x = x_name, y = y_name) +
               ggplot2::theme_minimal() +
-              ggplot2::theme(legend.position = "none")
+              ggplot2::theme(aspect.ratio = 1, legend.position = "none")
 
             if (nrow(dat) == 0) {
               p <- p + ggplot2::xlim(-4, 4) + ggplot2::ylim(-4, 4)
@@ -2357,7 +2384,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             }
 
             if (!is.null(zoom_xlim()) && !is.null(zoom_ylim())) {
-              p <- p + ggplot2::coord_fixed(ratio = 1, xlim = zoom_xlim(), ylim = zoom_ylim(), expand = FALSE)
+              p <- p + ggplot2::coord_cartesian(xlim = zoom_xlim(), ylim = zoom_ylim(), expand = FALSE)
             }
 
             return(p)
@@ -2369,7 +2396,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               ggplot2::ggplot() +
                 ggplot2::annotate("text", x = 0, y = 0, label = "Model failed to fit") +
                 ggplot2::labs(title = title) +
-                ggplot2::theme_minimal()
+                ggplot2::theme_minimal() +
+                ggplot2::theme(aspect.ratio = 1)
             )
           }
 
@@ -2438,7 +2466,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               ggplot2::ggplot() +
                 ggplot2::annotate("text", x = 0, y = 0, label = err_text) +
                 ggplot2::labs(title = title) +
-                ggplot2::theme_minimal()
+                ggplot2::theme_minimal() +
+                ggplot2::theme(aspect.ratio = 1)
             }
           )
         })
@@ -2937,7 +2966,7 @@ create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class
   # Render plot with explicit color palette to stay in sync with the UI legend
   p <- plot_boundary(cb_bound, obs_data = data, x_col = x_col_label, y_col = y_col_label, true_label = "Sim", show_gradient = show_probs, colors = class_colors, highlight_outliers = highlight_outliers, xlim = zoom_x, ylim = zoom_y) +
     ggplot2::ggtitle(title) +
-    ggplot2::theme(legend.position = "none")
+    ggplot2::theme(aspect.ratio = 1, legend.position = "none")
 
   p
 }

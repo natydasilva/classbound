@@ -55,8 +55,7 @@ penguins <- na.omit(palmerpenguins::penguins[
 classbound(
   data       = penguins,
   formula    = species ~ bill_length_mm + bill_depth_mm,
-  classifier = rpart::rpart,
-  resolution = 80
+  classifier = rpart::rpart
 )
 ```
 
@@ -71,7 +70,7 @@ For full control, use the three-step pipeline:
 model <- fit_model(penguins, species ~ bill_length_mm + bill_depth_mm, rpart::rpart)
 
 # 2. Compute boundary
-model <- boundary_compute(model, resolution = 80)
+model <- boundary_compute(model)
 
 # 3. Plot
 plot_boundary(
@@ -131,15 +130,17 @@ Use the core Classbound functions directly:
 fit_model()
 boundary_compute()
 plot_boundary()
+```
 
----
+------------------------------------------------------------------------
 
 ## High-dimensional data
 
-When a model is trained on more than two features, `boundary_compute()` supports:
+When a model is trained on more than two features, `boundary_compute()`
+supports:
 
-- **2D Slice**: two features are plotted; other features are fixed at their median/mode.
-
+- **2D Slice**: two features are plotted; other features are fixed at
+  their median/mode.
 
 ``` r
 penguins3 <- na.omit(palmerpenguins::penguins[

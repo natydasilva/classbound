@@ -213,6 +213,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         drop = FALSE
       ) +
       ggplot2::theme_minimal() +
+      ggplot2::theme(aspect.ratio = 1) +
       ggplot2::labs(
         x = if (!is.null(x_col)) x_col else default_x,
         y = if (!is.null(y_col)) y_col else default_y,
@@ -245,6 +246,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       p <- p +
         ggplot2::scale_alpha_continuous(limits = c(0, 1), range = c(0.1, 1), na.value = 0.3, guide = "none") +
         ggplot2::theme_minimal() +
+        ggplot2::theme(aspect.ratio = 1) +
         color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
@@ -261,6 +263,7 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
       }
       p <- p +
         ggplot2::theme_minimal() +
+        ggplot2::theme(aspect.ratio = 1) +
         color_scale +
         ggplot2::labs(
           x = if (!is.null(x_col)) x_col else default_x,
@@ -373,6 +376,21 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
         obs_df$is_outlier <- FALSE
       }
 
+      n_clipped <- sum(
+        obs_df$x_val < xlim[1] | obs_df$x_val > xlim[2] |
+          obs_df$y_val < ylim[1] | obs_df$y_val > ylim[2],
+        na.rm = TRUE
+      )
+      if (n_clipped > 0) {
+        warning(
+          sprintf(
+            "%d observation(s) fall outside the boundary range and will be clipped.",
+            n_clipped
+          ),
+          call. = FALSE
+        )
+      }
+
       p <- p +
         ggnewscale::new_scale_fill() +
         ggplot2::geom_point(
@@ -399,10 +417,10 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
     if (!facet_col %in% colnames(boundary)) {
       stop(sprintf("facet_col '%s' not found in boundary data.", facet_col), call. = FALSE)
     }
-    p <- p + 
+    p <- p +
       ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col))) +
       ggplot2::theme(panel.spacing.x = ggplot2::unit(2, "lines"))
   }
-  p <- p + ggplot2::coord_fixed(ratio = 1, xlim = xlim, ylim = ylim, expand = FALSE)
+  p <- p + ggplot2::coord_cartesian(xlim = xlim, ylim = ylim, expand = FALSE)
   p
 }
