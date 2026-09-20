@@ -20,6 +20,7 @@
 #' }
 #'
 explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
+  caller_env <- parent.frame()
   if (!requireNamespace("shiny", quietly = TRUE)) {
     stop("Package 'shiny' must be installed to use explorapp().", call. = FALSE)
   }
@@ -1989,7 +1990,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     output$workspace_import_ui <- shiny::renderUI({
       input$refresh_ws # Take dependency on refresh button
-      models <- find_workspace_models(.GlobalEnv)
+      models <- find_workspace_models(caller_env)
 
       shiny::tagList(
         if (length(models) > 0) {
@@ -2011,7 +2012,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
       tryCatch(
         {
-          obj <- get(obj_name, envir = .GlobalEnv)
+          obj <- get(obj_name, envir = caller_env)
           friendly_name <- paste0("Workspace: ", obj_name)
 
           is_new <- !(friendly_name %in% names(app_methods))

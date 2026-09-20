@@ -100,10 +100,10 @@ tidymodels_bridge <- function(data, response, models, feature_range = NULL, reso
 #'
 #' Scans an environment for objects that inherit from `workflow`, `model_fit`, or `model_spec`.
 #'
-#' @param env The environment to scan, defaults to `.GlobalEnv`.
+#' @param env The environment to scan.
 #' @return A character vector of object names.
 #' @noRd
-find_workspace_models <- function(env = .GlobalEnv) {
+find_workspace_models <- function(env) {
   objs <- ls(envir = env)
   if (length(objs) == 0) {
     return(character(0))

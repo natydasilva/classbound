@@ -13,6 +13,9 @@ predict_adapter(model, newdata, ...)
 
 \item{...}{Additional arguments.}
 }
+\value{
+A character vector of predicted class labels, one per row of \code{newdata}.
+}
 \description{
 This generic is exported for S3 dispatch but is not intended for direct use.
 Use \code{\link{predict.classbound}} or \code{\link{predict_model}} instead.

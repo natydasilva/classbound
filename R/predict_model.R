@@ -105,6 +105,8 @@ predict_model <- function(model, newdata, predict_args = list(), predfun = NULL,
 #' @param newdata A data frame of new observations.
 #' @param ... Additional arguments.
 #'
+#' @return A character vector of predicted class labels, one per row of \code{newdata}.
+#'
 #' @keywords internal
 #' @export
 predict_adapter <- function(model, newdata, ...) {
