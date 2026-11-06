@@ -29,6 +29,10 @@ The key principle is to generate **one shared projection sequence** and apply it
 models**. This ensures that when you compare boundaries side by side, each model is viewed
 through the exact same projection at the exact same frame.
 
+As in any projection view, the colored regions on a frame are the model's predictions on
+that frame's plane through the data center, while the observations are projected onto the
+plane (see `vignette("high-dimensional")`).
+
 ```{r tourr_check, eval=FALSE}
 # Install tourr if needed
 install.packages("tourr")

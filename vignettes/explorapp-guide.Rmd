@@ -118,8 +118,10 @@ features reveals different slices through the multi-dimensional boundary.
 ### Projection
 
 The **Projection** tab uses a PCA-derived basis to project the high-dimensional feature
-space into two axes. Unlike a slice, the projection combines information from all features
-simultaneously.
+space into two axes. Unlike a slice, the axes combine information from all features
+simultaneously. The colored regions show the model's predictions on the 2D plane
+through the center of the data spanned by these axes (a planar section of the
+decision boundary), while the training observations are projected onto that plane.
 
 When a projection is active, training observations are depth-faded: points closer to
 the projection plane appear more opaque, while points further away fade toward

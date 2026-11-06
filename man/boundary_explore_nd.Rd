@@ -16,8 +16,27 @@ boundary_explore_nd(models, data, n_points = 10000, threshold = 0.05)
 \item{threshold}{Numeric. A percentile threshold (0 to 1) for determining boundary proximity. Points below this advantage percentile are considered boundary-near. Default: 0.05.}
 }
 \value{
-A data frame containing the simulated coordinates, the predicted classes for each model (prefixed with \code{Y_}), and a logical \code{is_boundary} column indicating if the point is near the boundary for ANY of the provided models.
+A data frame containing only the simulated points that are near the boundary for at least one of the provided models. It has the simulated coordinates, the predicted classes for each model (prefixed with \code{Y_}), and a logical \code{is_boundary} column (always \code{TRUE} in the returned rows).
 }
 \description{
 Generates a high-dimensional uniform domain and identifies points near the decision boundaries of multiple models.
+}
+\details{
+This function follows the approach of the 'classifly' package (Wickham and Cook)
+and Wickham, Cook and Hofmann (2015). Points are simulated uniformly within the
+bounding box of the training data and classified by each model. For each point,
+the "advantage" is computed as the difference between the two largest class
+probabilities. Points whose advantage falls at or below the \code{threshold}
+quantile are treated as lying near a decision boundary. When a model does not
+return class probabilities, the advantage is approximated by the proportion of
+the 5 nearest simulated neighbors (on range-scaled numeric features) that share
+the point's predicted class.
+}
+\references{
+Wickham, H., Cook, D. and Hofmann, H. (2015). Visualizing statistical models:
+Removing the blindfold. \emph{Statistical Analysis and Data Mining: The ASA Data
+Science Journal}, 8(4), 203--225. \doi{10.1002/sam.11271}
+
+Wickham, H. and Cook, D. classifly: Explore Classification Models in High
+Dimensions. R package. \url{https://CRAN.R-project.org/package=classifly}
 }

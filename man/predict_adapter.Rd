@@ -14,7 +14,9 @@ predict_adapter(model, newdata, ...)
 \item{...}{Additional arguments.}
 }
 \value{
-A character vector of predicted class labels, one per row of \code{newdata}.
+A list with \code{class} (predicted class labels, one per row of
+\code{newdata}) and \code{probs} (a matrix of class probabilities, or
+\code{NULL} if the classifier does not provide them).
 }
 \description{
 This generic is exported for S3 dispatch but is not intended for direct use.

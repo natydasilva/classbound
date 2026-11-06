@@ -1,6 +1,6 @@
 Package: classbound
 Title: Visualization for Classification Decision Boundaries
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(
     person(given = "Vaibhav",
            family = "Manihar",
@@ -14,7 +14,7 @@ Authors@R: c(
     person(given = "Ignacio",
            family = "Alvarez-Castro",
            role = "aut",
-           email = "ignacio.lavarez@fcea.edu.uy",
+           email = "ignacio.alvarez@fcea.edu.uy",
            comment = c(ORCID = "https://orcid.org/0000-0003-1633-2432"))        
     )
 Description: Exploring, visualizing, and comparing classification decision boundaries.

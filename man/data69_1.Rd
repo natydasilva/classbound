@@ -5,9 +5,9 @@
 \alias{data69_1}
 \title{Waveform Dataset (UCI)}
 \format{
-A data frame with 5000 rows and 22 columns:
+A data frame (tibble) with 5000 rows and 22 columns:
 \describe{
-\item{Y}{Class label: a factor with 3 levels (\code{"1"}, \code{"2"}, \code{"3"})}
+\item{Y}{Class label: numeric, with values \code{0}, \code{1}, and \code{2}}
 \item{V1}{Numeric feature variable}
 \item{V2}{Numeric feature variable}
 \item{V3}{Numeric feature variable}
@@ -38,7 +38,7 @@ A data frame with 5000 rows and 22 columns:
 data(data69_1)
 }
 \description{
-A subset of the UCI Waveform Database Generator dataset (Version 1). Contains
+The UCI Waveform Database Generator dataset (Version 1). Contains all
 5000 observations with 21 numeric features and a 3-class response variable.
 All 21 features contribute to class membership, making this a useful dataset for
 demonstrating high-dimensional boundary visualization, including 2D slice and
@@ -46,8 +46,10 @@ projection-based approaches.
 }
 \details{
 Each observation is generated from one of three waveform classes. All features
-are numeric; the response variable \code{Y} is a factor with levels \code{"1"}, \code{"2"}, and
-\code{"3"}. Load the dataset with \code{data(data69_1)}.
+are numeric. The response variable \code{Y} is stored as a numeric column with values
+\code{0}, \code{1}, and \code{2}; convert it with \code{as.factor()} before fitting a classifier
+(for example \code{data69_1$Y <- as.factor(data69_1$Y)}). Load the dataset with
+\code{data(data69_1)}.
 
 This dataset is included primarily to demonstrate high-dimensional boundary
 visualization with tools like PCA projection and \code{tourr}. For introductory
@@ -57,7 +59,7 @@ accessible alternative.
 \examples{
 data(data69_1)
 dim(data69_1) # 5000 x 22
-levels(data69_1$Y) # "1" "2" "3"
+table(data69_1$Y) # classes 0, 1, 2
 head(data69_1[, 1:5])
 }
 \keyword{datasets}

@@ -30,8 +30,9 @@ or a character vector of feature names. If \code{NULL}, the ranges are automatic
 \item{...}{Additional arguments passed to \code{boundary_compute()}.}
 }
 \value{
-A data frame containing the combined boundary grid for all models, with a \code{model} column
-indicating the \code{wflow_id}.
+A multi-model \code{classbound} object (class \code{"classbound_boundary"}), as returned by
+\code{boundary_compute()} for a list of models. The combined grid is in \verb{$boundary_data}, with a
+\code{model} column indicating the \code{wflow_id}.
 }
 \description{
 A dedicated helper to automatically fit and extract classification boundaries

@@ -31,9 +31,11 @@
 #'
 #' - **2D Slice**: two features are selected for the axes; all other numeric features
 #'   are fixed at their median and categorical features at their mode.
-#' - **Projection**: a projection matrix maps the high-dimensional feature space to two
-#'   dimensions (e.g., PCA or a tour basis from the `tourr` package). The boundary grid
-#'   is generated in projection space and inverse-projected back for prediction.
+#' - **Projection**: a two-column orthonormal basis (e.g., PCA or a tour basis from the
+#'   `tourr` package) defines a plane through the data center. The boundary grid is
+#'   generated on this plane and inverse-projected back for prediction, so the regions
+#'   are a planar section of the decision boundary; observations are projected onto
+#'   the plane and faded by their distance from it.
 #'
 #' ## Supported classifiers
 #'

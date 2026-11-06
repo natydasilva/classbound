@@ -35,9 +35,11 @@ two visualization strategies:
 \itemize{
 \item \strong{2D Slice}: two features are selected for the axes; all other numeric features
 are fixed at their median and categorical features at their mode.
-\item \strong{Projection}: a projection matrix maps the high-dimensional feature space to two
-dimensions (e.g., PCA or a tour basis from the \code{tourr} package). The boundary grid
-is generated in projection space and inverse-projected back for prediction.
+\item \strong{Projection}: a two-column orthonormal basis (e.g., PCA or a tour basis from the
+\code{tourr} package) defines a plane through the data center. The boundary grid is
+generated on this plane and inverse-projected back for prediction, so the regions
+are a planar section of the decision boundary; observations are projected onto
+the plane and faded by their distance from it.
 }
 }
 
@@ -67,7 +69,7 @@ Authors:
 \itemize{
   \item Vaibhav Manihar \email{vaibhav.manihar@gmail.com}
   \item Natalia da Silva \email{natalia.dasilva@fcea.edu.uy} (\href{https://orcid.org/0000-0002-6031-7451}{ORCID})
-  \item Ignacio Alvarez-Castro \email{ignacio.lavarez@fcea.edu.uy} (\href{https://orcid.org/0000-0003-1633-2432}{ORCID})
+  \item Ignacio Alvarez-Castro \email{ignacio.alvarez@fcea.edu.uy} (\href{https://orcid.org/0000-0003-1633-2432}{ORCID})
 }
 
 }

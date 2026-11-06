@@ -34,8 +34,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     }
 
     feat_cols <- setdiff(colnames(data), target_col)
-    if (length(feat_cols) < 2) {
-      stop("Classbound requires at least 2 feature columns (excluding the target column) for 2D visualization.", call. = FALSE)
+    num_feats <- feat_cols[vapply(data[feat_cols], is.numeric, logical(1))]
+    if (length(num_feats) < 2) {
+      stop("Classbound requires at least 2 numeric feature columns (excluding the target column) for 2D visualization.", call. = FALSE)
     }
   }
 
@@ -159,7 +160,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     app_methods[[m_name]] <- list(
       fn = c_mod$fn,
       args = if (!is.null(c_mod$args)) c_mod$args else list(),
-      fit_args_fn = c_mod$fit_args
+      fit_args_fn = c_mod$fit_args,
+      supports_prob = isTRUE(c_mod$supports_prob)
     )
 
     if (!is.null(c_mod$ui)) {
@@ -498,7 +500,12 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               "selected_models",
               "Models to Compare",
               choices = names(app_methods),
-              selected = c("randomForest", "ppforest2")
+              # Preselect only models whose packages are installed (both are in Suggests).
+              selected = local({
+                defaults <- c("randomForest", "ppforest2")
+                installed <- vapply(defaults, function(p) nzchar(system.file(package = p)), logical(1))
+                if (any(installed)) defaults[installed] else "rpart"
+              })
             ),
             shiny::hr(),
             shiny::sliderInput("grid_resolution", "Grid Resolution", min = 50, max = 300, value = 100, step = 25),
@@ -648,7 +655,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
                   shiny::tags$p(shiny::tags$b("2D Slice"), ": when the model uses more than two features, you choose two for the axes. All other features are fixed at their training-set median.",
                     style = "font-size: 12px; margin: 6px 0;"
                   ),
-                  shiny::tags$p(shiny::tags$b("Projection"), ": Projects the data onto the first two principal components (PC1 and PC2) using PCA. Training points are overlaid with depth fading, where more transparent points are farther from the projection plane.",
+                  shiny::tags$p(shiny::tags$b("Projection"), ": Uses a 2D plane through the center of the data, initially spanned by the first two principal components (PC1 and PC2). The colored regions are the model's predictions on that plane (a planar section, not a projection of the full boundary). Training points are projected onto the plane and overlaid with depth fading, where more transparent points are farther from the plane.",
                     style = "font-size: 12px; margin: 6px 0;"
                   ),
                   shiny::actionLink("help_high_dimensional", "High-dimensional guide \u2192", style = "font-size: 12px;")
@@ -732,7 +739,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     initial_imp_classes <- c("Class 1", "Class 2", "Class 3")
 
     if (!is.null(data)) {
-      initial_imp_data <- stats::na.omit(data)
+      initial_imp_data <- as.data.frame(data)
       # Standardize target column to "Sim" for internal app logic
       colnames(initial_imp_data)[colnames(initial_imp_data) == target_col] <- "Sim"
 
@@ -740,6 +747,10 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       numeric_cols <- sapply(initial_imp_data, is.numeric)
       numeric_cols[which(colnames(initial_imp_data) == "Sim")] <- TRUE
       initial_imp_data <- initial_imp_data[, numeric_cols, drop = FALSE]
+
+      # Drop incomplete rows only after unused columns are removed, so that
+      # missing values in columns the app does not use do not discard observations.
+      initial_imp_data <- stats::na.omit(initial_imp_data)
 
       if (is.factor(initial_imp_data$Sim)) {
         initial_imp_classes <- levels(initial_imp_data$Sim)
@@ -1235,6 +1246,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       inj <- injected_outliers()
       if (is.null(inj)) inj <- data.frame()
       mode_states[["Draw Data"]]$outliers <- inj
+      undo_history(list())
 
       # Trigger mode switch.
       shiny::updateRadioButtons(shiny::getDefaultReactiveDomain(), "data_mode", selected = "Draw Data")
@@ -1279,6 +1291,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     shiny::observeEvent(input$confirm_sim_reset, {
       shiny::removeModal()
+      reset_projection()
       current_data(data.frame(Sim = character(), X1 = numeric(), X2 = numeric()))
       current_test_data(NULL)
       applied_sim_config(NULL)
@@ -1426,6 +1439,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         return()
       }
 
+      reset_projection()
       if (is.list(new_data) && !is.data.frame(new_data)) {
         current_data(new_data$train)
         current_test_data(new_data$test)
@@ -1493,6 +1507,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         return()
       }
 
+      reset_projection()
       if (is.list(new_data) && !is.data.frame(new_data)) {
         current_data(new_data$train)
         current_test_data(new_data$test)
@@ -1555,6 +1570,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
         new_classes <- c("Class 1", "Class 2", "Class 3")
         mode_states[["Draw Data"]]$classes <- new_classes
         class_choices(new_classes)
+        undo_history(list())
+        last_valid_draw_classes(3)
+        shiny::updateNumericInput(shiny::getDefaultReactiveDomain(), "draw_total_classes", value = 3)
 
         shiny::updateSelectInput(shiny::getDefaultReactiveDomain(), "draw_class", choices = new_classes, selected = "Class 1")
         zoom_xlim(NULL)
@@ -2021,7 +2039,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
           app_methods[[friendly_name]] <<- list(
             fn = obj,
             args = list(),
-            supports_prob = inherits(obj, "workflow") # Generally workflows support probability
+            supports_prob = inherits(obj, c("workflow", "model_fit")) # tidymodels objects generally support probabilities
           )
           predict_args[[friendly_name]] <<- function(...) list()
 
@@ -2087,6 +2105,15 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 
     current_basis <- shiny::reactiveVal(NULL)
     current_path <- shiny::reactiveVal(NULL)
+
+    # Discard the projection plane of the previous dataset so that it is
+    # recomputed (PCA) for the new data.
+    reset_projection <- function() {
+      current_basis(NULL)
+      current_path(NULL)
+      current_projection(NULL)
+      current_projection_info(NULL)
+    }
     current_projection <- shiny::reactiveVal(NULL)
     current_projection_info <- shiny::reactiveVal(NULL)
 
@@ -2190,7 +2217,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
     # Dynamic explanatory note for Projection
     output$proj_note_ui <- shiny::renderUI({
       shiny::p(
-        shiny::tags$em("Projection: Shows a 2D linear projection of the high-dimensional space. All features contribute simultaneously via a weighted linear combination."),
+        shiny::tags$em("Projection: The axes are linear combinations of all features. The colored regions show the model's predictions on this 2D plane through the data center (a planar section); points are projected onto the plane and fade with distance from it."),
         style = "color: #666; font-size: 12px; margin-top: 5px;"
       )
     })
@@ -2555,9 +2582,9 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       res_val <- if (!is.null(input$grid_resolution)) input$grid_resolution else 100
       tot_points <- res_val * res_val
       render_mode <- "raster"
-      proj_active <- !is.null(current_projection())
-
       dat <- combined_training_data()
+      proj_active <- !is.null(current_projection()) && !is.null(dat) && ncol(dat) > 3 &&
+        !isTRUE(input$hd_view_mode == "slice")
       range_str <- if (!is.null(dat) && nrow(dat) > 0) {
         feat_cols <- setdiff(colnames(dat), "Sim")
         if (length(feat_cols) > 0) {
@@ -2654,8 +2681,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
       content = function(file) {
         shiny::removeModal()
 
-        temp_dir <- tempdir()
-        export_dir <- file.path(temp_dir, paste0("export_", as.integer(Sys.time())))
+        export_dir <- tempfile("classbound_export_")
         dir.create(export_dir)
 
         dat <- combined_training_data()
@@ -2779,6 +2805,8 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
               predict_args = state$models[[m]]$predict_args,
               slice_x = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_x else NULL,
               slice_y = if (!is.null(dat) && ncol(dat) > 3 && isTRUE(input$hd_view_mode == "slice")) input$slice_y else NULL,
+              zoom_x = zoom_xlim(),
+              zoom_y = zoom_ylim(),
               file = file.path(grid_dir, paste0(safe_name, ".csv"))
             )
           }
@@ -2872,6 +2900,7 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
             show_probs = isTRUE(input$show_probs),
             zoom_x = zoom_xlim(),
             zoom_y = zoom_ylim(),
+            predict_args = lapply(state$models, function(x) x$predict_args),
             file = file.path(export_dir, "reproduce.R")
           )
         }
@@ -2884,6 +2913,48 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
   }
 
   shiny::shinyApp(ui = ui, server = server)
+}
+
+#' Axis ranges for the app's boundary grids
+#'
+#' The data range (or the range of the projected data) is padded by 6% on each
+#' side, with a minimum of 0.5, and widened to include the zoom window if one is
+#' set. Shared by the app plots, the grid export and the reproduce script so that
+#' all three use the same grid.
+#'
+#' @noRd
+app_grid_ranges <- function(data, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, slice_x = NULL, slice_y = NULL) {
+  if (!is.null(proj_matrix)) {
+    x_mat <- as.matrix(data[, rownames(proj_matrix)])
+    if (!is.null(proj_info$center)) x_mat <- sweep(x_mat, 2, proj_info$center, "-")
+    if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
+    z_mat <- x_mat %*% proj_matrix
+    v1 <- z_mat[, 1]
+    v2 <- z_mat[, 2]
+    axis_names <- c("PC1", "PC2")
+  } else {
+    feat_cols <- setdiff(colnames(data), "Sim")
+    # Use slice_x/slice_y if provided; otherwise default to first two features
+    x_name <- if (!is.null(slice_x) && slice_x %in% feat_cols) slice_x else feat_cols[1]
+    y_name <- if (!is.null(slice_y) && slice_y %in% feat_cols) slice_y else feat_cols[2]
+    v1 <- data[[x_name]]
+    v2 <- data[[y_name]]
+    axis_names <- c(x_name, y_name)
+  }
+
+  use_zoom <- !is.null(zoom_x) && !is.null(zoom_y)
+  pad_range <- function(v, zoom) {
+    r <- range(v)
+    pad <- max(diff(r) * 0.06, 0.5)
+    if (is.null(zoom)) r + c(-pad, pad) else c(min(r[1] - pad, min(zoom)), max(r[2] + pad, max(zoom)))
+  }
+
+  out <- list(
+    pad_range(v1, if (use_zoom) zoom_x else NULL),
+    pad_range(v2, if (use_zoom) zoom_y else NULL)
+  )
+  names(out) <- axis_names
+  out
 }
 
 #' Render a decision boundary plot for the Shiny app
@@ -2903,54 +2974,19 @@ explorapp <- function(data = NULL, target_col = NULL, custom_models = list()) {
 #' @return A ggplot object.
 #' @keywords internal
 create_boundary_plot <- function(cb_mod, data, title, class_levels = NULL, class_colors = NULL, proj_matrix = NULL, proj_info = NULL, zoom_x = NULL, zoom_y = NULL, show_probs = FALSE, resolution = 100, predict_args = list(), n_outliers = 0, highlight_outliers = TRUE, slice_x = NULL, slice_y = NULL) {
+  range_list <- app_grid_ranges(data,
+    proj_matrix = proj_matrix, proj_info = proj_info,
+    zoom_x = zoom_x, zoom_y = zoom_y, slice_x = slice_x, slice_y = slice_y
+  )
+
   if (!is.null(proj_matrix)) {
     proj_list <- list(basis = proj_matrix, center = proj_info$center, scale = proj_info$scale)
-    x_mat <- as.matrix(data[, rownames(proj_matrix)])
-    if (!is.null(proj_info$center)) x_mat <- sweep(x_mat, 2, proj_info$center, "-")
-    if (!is.null(proj_info$scale)) x_mat <- sweep(x_mat, 2, proj_info$scale, "/")
-    z_mat <- x_mat %*% proj_matrix
-
-    r1 <- range(z_mat[, 1])
-    r2 <- range(z_mat[, 2])
-    pad1 <- max(diff(r1) * 0.06, 0.5)
-    pad2 <- max(diff(r2) * 0.06, 0.5)
-
-    range_list <- list()
-    if (!is.null(zoom_x) && !is.null(zoom_y)) {
-      range_list[["PC1"]] <- c(min(r1[1] - pad1, min(zoom_x)), max(r1[2] + pad1, max(zoom_x)))
-      range_list[["PC2"]] <- c(min(r2[1] - pad2, min(zoom_y)), max(r2[2] + pad2, max(zoom_y)))
-    } else {
-      range_list[["PC1"]] <- r1 + c(-pad1, pad1)
-      range_list[["PC2"]] <- r2 + c(-pad2, pad2)
-    }
-
     cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, projection = proj_list, predict_args = predict_args)
-    x_col_label <- "PC1"
-    y_col_label <- "PC2"
   } else {
-    feat_cols <- setdiff(colnames(data), "Sim")
-    # Use slice_x/slice_y if provided; otherwise default to first two features
-    x_name <- if (!is.null(slice_x) && slice_x %in% feat_cols) slice_x else feat_cols[1]
-    y_name <- if (!is.null(slice_y) && slice_y %in% feat_cols) slice_y else feat_cols[2]
-
-    r1 <- range(data[[x_name]])
-    r2 <- range(data[[y_name]])
-    pad1 <- max(diff(r1) * 0.06, 0.5)
-    pad2 <- max(diff(r2) * 0.06, 0.5)
-
-    range_list <- list()
-    if (!is.null(zoom_x) && !is.null(zoom_y)) {
-      range_list[[x_name]] <- c(min(r1[1] - pad1, min(zoom_x)), max(r1[2] + pad1, max(zoom_x)))
-      range_list[[y_name]] <- c(min(r2[1] - pad2, min(zoom_y)), max(r2[2] + pad2, max(zoom_y)))
-    } else {
-      range_list[[x_name]] <- r1 + c(-pad1, pad1)
-      range_list[[y_name]] <- r2 + c(-pad2, pad2)
-    }
-
     cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = resolution, predict_args = predict_args)
-    x_col_label <- x_name
-    y_col_label <- y_name
   }
+  x_col_label <- names(range_list)[1]
+  y_col_label <- names(range_list)[2]
 
   # Lock factor levels if provided to prevent color shifting
   if (!is.null(class_levels)) {

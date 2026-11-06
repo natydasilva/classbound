@@ -27,7 +27,7 @@ decision boundary. The boundary exists in a higher-dimensional space.
 | Strategy | What it shows |
 |---|---|
 | **2D Slice** | Two selected features on the axes; all other features are fixed at reference values |
-| **Projection** | All features combined into two projected axes via a linear transformation |
+| **Projection** | Two axes that are linear combinations of all features; the regions are the model's predictions on that 2D plane through the data center |
 
 Neither is universally better. Which to choose depends on your question.
 
@@ -106,6 +106,12 @@ A projection collapses all features into two new axes by multiplying the feature
 matrix by a 2-column basis matrix. Rather than holding features fixed, it combines
 them: each projected point summarizes information from all original features simultaneously.
 
+The decision regions are computed differently from the points. The grid is built on the
+plane spanned by the two basis columns, passing through the data center, and each grid
+point is mapped back to the original feature space before prediction. The colored
+regions are therefore a planar section (a zero-thickness slice) of the full decision
+boundary along that plane, not a projection of it.
+
 > **Note on Explorapp vs Scripts:** In the `explorapp()` interactive UI, Projection mode uses PCA automatically. In the programmatic API (like the script below), you provide the projection matrix yourself, allowing you to use PCA, `tourr` projections, or any other projection method of your choice.
 
 
@@ -145,7 +151,9 @@ plot_boundary(
 
 Points are forward-projected onto the plane for overlay. Points that are far from the
 projection plane in the original 3D space are rendered with lower opacity (depth fading),
-giving a visual indication of how faithfully each point's position is captured.
+giving a visual indication of how faithfully each point's position is captured. A point
+far from the plane can appear inside a region that does not match the model's prediction
+for that point, because the region color describes the plane, not the point itself.
 
 ## When to use each strategy
 

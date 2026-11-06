@@ -17,7 +17,8 @@ boundary_compute(
 \arguments{
 \item{model}{A \code{classbound} model object returned by \code{fit_model()} or \code{as_classbound()},
 or a named list of \code{classbound} objects for multi-model comparison. All models in a
-list must share the same training features and class levels.}
+list must share the same training features and class levels. A multi-model result of an
+earlier \code{boundary_compute()} call can also be passed to recompute its boundaries.}
 
 \item{feature_range}{A named list of length 2 specifying the axis ranges, e.g.,
 \code{list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25))}. Alternatively, a
@@ -76,8 +77,15 @@ or when your model was trained on exactly two features.
 
 When \code{projection} is provided, the 2D grid is generated in the projected space and
 then \strong{inverse-projected} back to the original feature space before prediction.
-This means the model uses all of its training features; only the visualization is
-collapsed to two dimensions.
+The grid points therefore lie on a two-dimensional plane in the full feature space:
+the plane spanned by the two basis columns and passing through \code{center} (or the
+origin if \code{center} is \code{NULL}). The predicted regions are a \strong{planar section}
+(a zero-thickness slice) of the full decision boundary along that plane, not a
+projection of it. The model uses all of its training features, but the region
+colors are exact only for points on the plane. Observations drawn by
+\code{plot_boundary()} are projected orthogonally onto the plane, so an observation far
+from the plane may appear in a region that differs from the model's prediction for
+it; depth fading lowers the opacity of such points.
 
 The projection \verb{$basis} must be a numeric matrix with:
 \itemize{

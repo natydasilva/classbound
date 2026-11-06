@@ -2,12 +2,31 @@
 #'
 #' @description Generates a high-dimensional uniform domain and identifies points near the decision boundaries of multiple models.
 #'
+#' @details
+#' This function follows the approach of the 'classifly' package (Wickham and Cook)
+#' and Wickham, Cook and Hofmann (2015). Points are simulated uniformly within the
+#' bounding box of the training data and classified by each model. For each point,
+#' the "advantage" is computed as the difference between the two largest class
+#' probabilities. Points whose advantage falls at or below the `threshold`
+#' quantile are treated as lying near a decision boundary. When a model does not
+#' return class probabilities, the advantage is approximated by the proportion of
+#' the 5 nearest simulated neighbors (on range-scaled numeric features) that share
+#' the point's predicted class.
+#'
+#' @references
+#' Wickham, H., Cook, D. and Hofmann, H. (2015). Visualizing statistical models:
+#' Removing the blindfold. \emph{Statistical Analysis and Data Mining: The ASA Data
+#' Science Journal}, 8(4), 203--225. \doi{10.1002/sam.11271}
+#'
+#' Wickham, H. and Cook, D. classifly: Explore Classification Models in High
+#' Dimensions. R package. \url{https://CRAN.R-project.org/package=classifly}
+#'
 #' @param models A named list of fitted `classbound` model objects.
 #' @param data A data frame representing the original training data. The bounding box of this data determines the simulation domain.
 #' @param n_points Integer. Number of points to simulate in the high-dimensional space (default: 10000).
 #' @param threshold Numeric. A percentile threshold (0 to 1) for determining boundary proximity. Points below this advantage percentile are considered boundary-near. Default: 0.05.
 #'
-#' @return A data frame containing the simulated coordinates, the predicted classes for each model (prefixed with `Y_`), and a logical `is_boundary` column indicating if the point is near the boundary for ANY of the provided models.
+#' @return A data frame containing only the simulated points that are near the boundary for at least one of the provided models. It has the simulated coordinates, the predicted classes for each model (prefixed with `Y_`), and a logical `is_boundary` column (always `TRUE` in the returned rows).
 #' @export
 boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05) {
   if (!is.list(models) || length(models) == 0) {
@@ -37,6 +56,7 @@ boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05
 
   # Generate non-aligned grid (uniform random)
   sim_list <- lapply(data_features, function(col) {
+    if (is.character(col)) col <- factor(col)
     if (is.numeric(col)) {
       stats::runif(n_points, min = min(col, na.rm = TRUE), max = max(col, na.rm = TRUE))
     } else {
@@ -45,7 +65,8 @@ boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05
     }
   })
 
-  sim_df <- as.data.frame(sim_list)
+  # Keep the feature names exactly as the models expect them.
+  sim_df <- as.data.frame(sim_list, check.names = FALSE)
 
   # Predict all models
   has_class <- requireNamespace("class", quietly = TRUE)
@@ -78,6 +99,12 @@ boundary_explore_nd <- function(models, data, n_points = 10000, threshold = 0.05
         # Using KNN: for each point, check its k=10 neighbors. Advantage = proportion of neighbors with same class
         # class::knn internally standardizes or we should? class::knn expects numeric matrices
         numeric_sim <- sim_df[, vapply(sim_df, is.numeric, logical(1)), drop = FALSE]
+        # Rescale each feature to [0, 1] so that no single feature dominates the
+        # neighbor distances (class::knn does not standardize its inputs).
+        numeric_sim[] <- lapply(numeric_sim, function(col) {
+          rng <- range(col, na.rm = TRUE)
+          if (diff(rng) > 0) (col - rng[1]) / diff(rng) else col * 0
+        })
         if (ncol(numeric_sim) > 0) {
           # KNN is slow for 10000 points. We use a smaller K (e.g. 5)
           knn_res <- class::knn(train = numeric_sim, test = numeric_sim, cl = preds$class, k = 5, prob = TRUE)

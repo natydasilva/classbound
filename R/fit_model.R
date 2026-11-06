@@ -103,10 +103,11 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
   # Capture original class levels.
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
 
-  # Preprocess data.
-  processed <- preprocess_data(data, y)
-  data <- processed$data
+  # Preprocess only the variables used by the formula, and store the response as a
+  # factor so that the classifier fits a classification (not a regression) model.
+  processed <- preprocess_data(select_formula_vars(data, formula), y)
   y <- processed$labels
+  data <- factor_response(processed$data, formula, y)
 
   mf <- model.frame(formula, data = data)
   # Dispatch to model interface.
@@ -160,5 +161,29 @@ fit_model.character <- function(data, formula, classifier, interface = c("formul
   }
 
   fit_model.default(data, formula, fn, interface, fit_args, ...)
+}
+
+# Internal: keep only the columns used by `formula`, so that missing values or
+# other problems in unrelated columns do not prevent fitting.
+select_formula_vars <- function(data, formula) {
+  vars <- tryCatch(
+    all.vars(stats::terms(formula, data = data)),
+    error = function(e) NULL
+  )
+  vars <- intersect(vars, colnames(data))
+  if (length(vars) == 0) {
+    return(data)
+  }
+  data[, vars, drop = FALSE]
+}
+
+# Internal: replace the response column with the factor labels `y`, so that
+# numeric or character class labels are treated as classes by the classifier.
+factor_response <- function(data, formula, y) {
+  lhs <- formula[[2]]
+  if (!is.null(y) && is.name(lhs) && as.character(lhs) %in% colnames(data)) {
+    data[[as.character(lhs)]] <- y
+  }
+  data
 }
 NA

@@ -13,6 +13,7 @@ export_reproduce_script(
   show_probs = FALSE,
   zoom_x = NULL,
   zoom_y = NULL,
+  predict_args = NULL,
   file
 )
 }
@@ -20,6 +21,17 @@ export_reproduce_script(
 \item{model_names}{Character vector of model names included in the export.}
 
 \item{has_projection}{Logical, whether a projection.rds file was exported.}
+
+\item{slice_x, slice_y}{Optional feature names for the axes in 2D Slice mode.}
+
+\item{resolution}{Grid resolution (points per axis).}
+
+\item{show_probs}{Logical, whether to draw the probability surface.}
+
+\item{zoom_x, zoom_y}{Optional zoom window applied to the plots.}
+
+\item{predict_args}{Optional named list (one element per model) of the
+prediction arguments used in the app, such as the PPtree \code{Rule}.}
 
 \item{file}{The file path to write the script.}
 }

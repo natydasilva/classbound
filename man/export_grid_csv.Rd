@@ -13,6 +13,8 @@ export_grid_csv(
   predict_args = list(),
   slice_x = NULL,
   slice_y = NULL,
+  zoom_x = NULL,
+  zoom_y = NULL,
   file
 )
 }
@@ -28,6 +30,10 @@ export_grid_csv(
 \item{proj_info}{Optional list with center/scale for projection.}
 
 \item{predict_args}{Additional arguments passed to predict.}
+
+\item{slice_x, slice_y}{Optional feature names for the axes in 2D Slice mode.}
+
+\item{zoom_x, zoom_y}{Optional zoom window; the grid is widened to include it.}
 
 \item{file}{The file path to write the CSV.}
 }

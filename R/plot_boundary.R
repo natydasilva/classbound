@@ -154,7 +154,9 @@ plot_boundary <- function(model, obs_data = NULL, x_col = NULL, y_col = NULL,
   }
 
   levs <- if (is.factor(boundary$prediction)) levels(boundary$prediction) else unique(as.character(boundary$prediction))
-  if (type != "disagreement") {
+  # The class color scale is also needed for the observation overlay in
+  # disagreement plots.
+  if (type != "disagreement" || !is.null(obs_data)) {
     if (!is.null(colors)) {
       if (is.null(names(colors))) {
         stop("The 'colors' argument must be a named vector (e.g., c('Class 1' = 'red')).", call. = FALSE)

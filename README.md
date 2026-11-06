@@ -4,6 +4,7 @@
 # classbound
 
 <!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/classbound)](https://CRAN.R-project.org/package=classbound)
 
 [![R-CMD-check](https://github.com/natydasilva/classbound/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/natydasilva/classbound/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/natydasilva/classbound/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/natydasilva/classbound/actions/workflows/pkgdown.yaml)
@@ -29,6 +30,14 @@ models partition the feature space.
 ------------------------------------------------------------------------
 
 ## Installation
+
+Install the released version from CRAN:
+
+``` r
+install.packages("classbound")
+```
+
+Or the development version from GitHub:
 
 ``` r
 devtools::install_github("natydasilva/classbound")
@@ -163,8 +172,9 @@ plot_boundary(m3_slice,
 
 <img src="man/figures/README-slice-1.png" alt="" width="70%" style="display: block; margin: auto;" />
 
-- **Projection**: all features are combined into two projected axes
-  (e.g., PCA).
+- **Projection**: the axes are two linear combinations of all features
+  (e.g., PCA). The regions are the model's predictions on that plane
+  through the data center, and the observations are projected onto it.
 
 ``` r
 feat_cols <- c("bill_length_mm", "bill_depth_mm", "flipper_length_mm")

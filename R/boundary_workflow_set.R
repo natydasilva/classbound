@@ -13,8 +13,9 @@
 #' @param resolution An integer specifying the number of points along each axis (default = 100).
 #' @param ... Additional arguments passed to `boundary_compute()`.
 #'
-#' @return A data frame containing the combined boundary grid for all models, with a `model` column
-#'   indicating the `wflow_id`.
+#' @return A multi-model `classbound` object (class `"classbound_boundary"`), as returned by
+#'   `boundary_compute()` for a list of models. The combined grid is in `$boundary_data`, with a
+#'   `model` column indicating the `wflow_id`.
 #' @examples
 #' \donttest{
 #' library(palmerpenguins)

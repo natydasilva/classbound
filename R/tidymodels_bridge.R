@@ -93,6 +93,7 @@ tidymodels_bridge <- function(data, response, models, feature_range = NULL, reso
     data = data,
     response = response,
     feature_range = feature_range,
+    resolution = resolution
   )
 }
 
@@ -137,8 +138,8 @@ fit_model.model_spec <- function(data, formula, classifier, ...) {
   y <- stats::model.response(mf)
   orig_class_levels <- if (is.factor(y)) levels(y) else sort(unique(as.character(y)))
 
-  processed <- preprocess_data(data, y)
-  data <- processed$data
+  processed <- preprocess_data(select_formula_vars(data, formula), y)
+  data <- factor_response(processed$data, formula, processed$labels)
 
   model_fit <- parsnip::fit(classifier, formula, data = data)
 

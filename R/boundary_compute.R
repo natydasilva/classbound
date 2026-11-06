@@ -23,8 +23,15 @@
 #'
 #' When `projection` is provided, the 2D grid is generated in the projected space and
 #' then **inverse-projected** back to the original feature space before prediction.
-#' This means the model uses all of its training features; only the visualization is
-#' collapsed to two dimensions.
+#' The grid points therefore lie on a two-dimensional plane in the full feature space:
+#' the plane spanned by the two basis columns and passing through `center` (or the
+#' origin if `center` is `NULL`). The predicted regions are a **planar section**
+#' (a zero-thickness slice) of the full decision boundary along that plane, not a
+#' projection of it. The model uses all of its training features, but the region
+#' colors are exact only for points on the plane. Observations drawn by
+#' `plot_boundary()` are projected orthogonally onto the plane, so an observation far
+#' from the plane may appear in a region that differs from the model's prediction for
+#' it; depth fading lowers the opacity of such points.
 #'
 #' The projection `$basis` must be a numeric matrix with:
 #' - row count equal to the number of training features, row names matching feature names
@@ -41,7 +48,8 @@
 #'
 #' @param model A `classbound` model object returned by `fit_model()` or `as_classbound()`,
 #'   or a named list of `classbound` objects for multi-model comparison. All models in a
-#'   list must share the same training features and class levels.
+#'   list must share the same training features and class levels. A multi-model result of an
+#'   earlier `boundary_compute()` call can also be passed to recompute its boundaries.
 #' @param feature_range A named list of length 2 specifying the axis ranges, e.g.,
 #'   `list(bill_length_mm = c(30, 60), bill_depth_mm = c(10, 25))`. Alternatively, a
 #'   character vector of exactly two feature names (ranges computed from training data).
@@ -119,6 +127,16 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
     }
     is_multi <- TRUE
     model_list <- model
+  } else if (inherits(model, "classbound_multi")) {
+    # A previous multi-model result: rebuild the individual models so the
+    # boundaries can be recomputed (e.g., with a new range or resolution).
+    is_multi <- TRUE
+    model_list <- lapply(model$fits, function(f) {
+      structure(
+        list(fit = f, metadata = model$metadata, boundary_data = NULL),
+        class = "classbound"
+      )
+    })
   } else if (inherits(model, "classbound")) {
     model_list <- list(model)
   } else {
@@ -228,7 +246,7 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
     }
   } else {
     # Validate that all features are numeric
-    if (!all(first_model$metadata$features$type %in% c("numeric", "integer", "double"))) {
+    if (!all(first_model$metadata$features$types %in% c("numeric", "integer", "double"))) {
       stop("High-dimensional projection is only supported for models trained exclusively on numeric features.", call. = FALSE)
     }
 
@@ -389,7 +407,7 @@ boundary_compute <- function(model, feature_range = NULL, resolution = 100, pred
     first_model$boundary_data <- final_boundary
     first_model$projection <- projection
     first_model$boundary_features <- var_names
-    class(first_model) <- c("classbound_boundary", class(first_model))
+    class(first_model) <- unique(c("classbound_boundary", class(first_model)))
     first_model
   }
 }

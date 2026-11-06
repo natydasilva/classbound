@@ -105,7 +105,9 @@ predict_model <- function(model, newdata, predict_args = list(), predfun = NULL,
 #' @param newdata A data frame of new observations.
 #' @param ... Additional arguments.
 #'
-#' @return A character vector of predicted class labels, one per row of \code{newdata}.
+#' @return A list with \code{class} (predicted class labels, one per row of
+#'   \code{newdata}) and \code{probs} (a matrix of class probabilities, or
+#'   \code{NULL} if the classifier does not provide them).
 #'
 #' @keywords internal
 #' @export

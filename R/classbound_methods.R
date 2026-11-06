@@ -20,7 +20,7 @@ print.classbound <- function(x, ...) {
   }
 
   cat("-- Native Model --\n")
-  cat(utils::capture.output(x$fit, ...), sep = "\\n")
+  cat(utils::capture.output(print(x$fit, ...)), sep = "\n")
   invisible(x)
 }
 
