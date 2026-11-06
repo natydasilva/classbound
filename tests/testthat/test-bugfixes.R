@@ -178,3 +178,90 @@ test_that("grid export and reproduce script use the same grid as the app plots",
   expect_no_error(utils::capture.output(sys.source("reproduce.R", envir = env)))
   expect_equal(env$range_list[[1]], rng[[1]])
 })
+
+test_that("transformations in the formula work with the formula interface", {
+  m <- fit_model(iris, Species ~ log(Sepal.Length) + I(Sepal.Width^2), rpart::rpart)
+  # The features are the raw variables, so a grid can be passed back through the formula.
+  expect_equal(m$metadata$features$names, c("Sepal.Length", "Sepal.Width"))
+  b <- boundary_compute(m, resolution = 8)
+  expect_equal(nrow(b$boundary_data), 64)
+  expect_s3_class(plot_boundary(b), "ggplot")
+})
+
+test_that("formula transformations still work with the matrix interface", {
+  skip_if_not_installed("randomForest")
+  expect_no_error(
+    fit_model(iris, Species ~ log(Sepal.Length) + Sepal.Width, randomForest::randomForest,
+      interface = "matrix"
+    )
+  )
+})
+
+test_that("fit_model() requires at least two classes", {
+  one_class <- iris[iris$Species == "setosa", ]
+  expect_error(
+    fit_model(one_class, Species ~ Sepal.Length + Sepal.Width, rpart::rpart),
+    "at least two classes"
+  )
+})
+
+test_that("lda and qda are supported without a custom predfun", {
+  skip_if_not_installed("MASS")
+  for (clf in list(MASS::lda, MASS::qda)) {
+    m <- fit_model(iris, Species ~ Sepal.Length + Sepal.Width, clf)
+    b <- boundary_compute(m, resolution = 8)
+    expect_true(all(levels(iris$Species) %in% colnames(b$boundary_data)))
+    expect_equal(unname(rowSums(b$boundary_data[, levels(iris$Species)])), rep(1, 64), tolerance = 1e-8)
+  }
+})
+
+test_that("a projection basis without row names can be used with obs_data and classbound()", {
+  m <- fit_model(iris, Species ~ ., rpart::rpart)
+  pc <- stats::prcomp(iris[, 1:4], scale. = TRUE)
+  proj <- list(basis = unname(pc$rotation[, 1:2]), center = pc$center, scale = pc$scale)
+  b <- boundary_compute(m,
+    feature_range = list(PC1 = c(-4, 4), PC2 = c(-3, 3)), resolution = 8,
+    projection = proj
+  )
+  expect_no_error(plot_boundary(b, obs_data = iris, true_label = "Species"))
+  expect_no_error(classbound(iris, Species ~ ., rpart::rpart, projection = proj, resolution = 8))
+})
+
+test_that("classbound() works with transformations in the formula", {
+  expect_s3_class(
+    classbound(iris, Species ~ log(Sepal.Length) + Sepal.Width, rpart::rpart, resolution = 8),
+    "ggplot"
+  )
+})
+
+test_that("the export folder can be zipped and contains the files", {
+  skip_if_not_installed("zip")
+  dir <- tempfile()
+  dir.create(file.path(dir, "plots"), recursive = TRUE)
+  writeLines("a", file.path(dir, "data.csv"))
+  writeLines("b", file.path(dir, "plots", "p.png"))
+  z <- tempfile(fileext = ".zip")
+  zip_export_dir(z, dir)
+  expect_setequal(utils::unzip(z, list = TRUE)$Name, c("data.csv", "plots/p.png"))
+})
+
+test_that("flag_outliers() marks the appended rows", {
+  d <- data.frame(Sim = c("a", "b", "a", "b"), X1 = 1:4, X2 = 4:1)
+  expect_equal(flag_outliers(d, 2)$is_outlier, c(FALSE, FALSE, TRUE, TRUE))
+  expect_equal(flag_outliers(d, 0)$is_outlier, rep(FALSE, 4))
+  expect_equal(flag_outliers(d, 10)$is_outlier, rep(TRUE, 4))
+})
+
+test_that("the reproduce script keeps full precision of zoom limits and highlights outliers", {
+  f <- tempfile(fileext = ".R")
+  export_reproduce_script("tree",
+    resolution = 10, zoom_x = c(1.123456789012, 2.2), zoom_y = c(-0.000000123456, 1),
+    predict_args = list(tree = list()), file = f
+  )
+  script <- paste(readLines(f), collapse = "
+")
+  expect_match(script, "1.123456789012", fixed = TRUE)
+  expect_match(script, "-1.23456e-07", fixed = TRUE)
+  expect_match(script, 'highlight_outliers = "is_outlier" %in% colnames(dat)', fixed = TRUE)
+})
+

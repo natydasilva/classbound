@@ -50,9 +50,10 @@ classbound <- function(data,
   )
 
   # Extract feature ranges.
-  mf <- model.frame(formula, data = data)
   response_var <- all.vars(formula[[2]])
-  predictor_vars <- setdiff(colnames(mf), response_var)
+  # The features of the fitted model (the original variables for the formula interface,
+  # so transformations such as log(x) in the formula do not change the axes).
+  predictor_vars <- model$metadata$features$names
 
   if (is.null(projection)) {
     if (length(predictor_vars) != 2) {
@@ -60,14 +61,22 @@ classbound <- function(data,
     }
     feature_range <- list()
     for (v in predictor_vars) {
-      feature_range[[v]] <- range(mf[[v]], na.rm = TRUE)
+      rng <- model$metadata$features$range[[v]]
+      if (is.null(rng)) {
+        stop(sprintf("Feature '%s' is not numeric, so it cannot be used as a boundary axis.", v), call. = FALSE)
+      }
+      feature_range[[v]] <- rng
     }
     x_col_plot <- predictor_vars[1]
     y_col_plot <- predictor_vars[2]
   } else {
     pred_vars <- rownames(projection$basis)
     if (is.null(pred_vars)) {
-      stop("projection$basis must have rownames corresponding to the feature names.", call. = FALSE)
+      # Bases without row names (e.g., straight from tourr) follow the order of the predictors.
+      if (length(predictor_vars) != nrow(projection$basis)) {
+        stop("projection$basis must have rownames corresponding to the feature names.", call. = FALSE)
+      }
+      pred_vars <- predictor_vars
     }
     x_mat <- as.matrix(data[, pred_vars, drop = FALSE])
     if (!is.null(projection$center)) x_mat <- scale(x_mat, center = projection$center, scale = FALSE)

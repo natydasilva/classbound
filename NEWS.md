@@ -13,6 +13,16 @@
   for models without class probabilities, as classifly does; previously one
   large-scale feature could dominate and boundary points were close to random. It
   also keeps non-syntactic feature names and accepts character columns.
+* `fit_model()` evaluates transformations in the formula (such as `log(x)` or
+  `I(x^2)`) with the formula interface; previously the classifier failed with
+  "object not found". The features of the model are the original variables.
+* `fit_model()` now stops with a clear message when the response has fewer than
+  two classes, instead of failing inside the classifier.
+* `plot_boundary()` with `obs_data` and `classbound()` accept a projection basis
+  without row names (such as one taken directly from `tourr`), assuming the rows
+  follow the order of the training features, instead of failing.
+* `classbound()` takes the axes from the fitted model, so formulas containing
+  transformations work.
 * `print()` on a `classbound` object prints the fitted model on separate lines
   instead of a literal `\n`.
 * The internal `tidymodels_bridge()` now passes `resolution` on.
@@ -30,8 +40,22 @@
 * Exported grid predictions and the reproduce script now use the same plot range
   as the app, and the script passes on the prediction arguments (such as the
   PPtree rule). Each export uses its own temporary folder.
+* The export wizard creates its ZIP file with the 'zip' package when it is
+  installed, so exporting no longer needs a `zip` program (often missing on Windows).
+* The reproduce script writes zoom limits with full precision, and the exported
+  `data.csv` has an `is_outlier` column so the script redraws the outliers as
+  diamonds, as in the app.
+* A zero-size brush no longer causes a division by zero when zooming.
+* An empty or invalid Point Density value no longer stops the app while drawing.
+* Outliers belonging to a class that has been removed no longer cause ordinary
+  observations to be drawn as outliers.
 * Only installed models are preselected at start-up.
 * The information table reports the 2D Slice mode correctly.
+
+## New features
+
+* `lda` and `qda` models from 'MASS' are supported out of the box, with their
+  posterior probabilities available for the probability surface.
 
 ## Documentation
 
@@ -49,8 +73,9 @@
 
 ## Tests
 
-* Added regression tests for all of the fixes above, tests for `classbound()`,
-  and tests of the Shiny application's server logic with `shiny::testServer()`.
+* Added regression tests for all of the fixes above (the suite now has 96 tests),
+  tests for `classbound()`, and tests of the Shiny application's server logic
+  with `shiny::testServer()`.
 
 # classbound 1.0.0
 

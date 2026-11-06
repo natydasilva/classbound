@@ -107,12 +107,17 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
   # factor so that the classifier fits a classification (not a regression) model.
   processed <- preprocess_data(select_formula_vars(data, formula), y)
   y <- processed$labels
+  if (nlevels(y) < 2) {
+    stop("The response must have at least two classes to define a decision boundary.", call. = FALSE)
+  }
   data <- factor_response(processed$data, formula, y)
 
   mf <- model.frame(formula, data = data)
-  # Dispatch to model interface.
+  # Dispatch to model interface. The formula interface receives the (preprocessed)
+  # raw columns rather than the model frame, so that transformations in the formula
+  # such as `log(x)` or `I(x^2)` are evaluated by the classifier itself.
   if (interface == "formula") {
-    model_fit <- do.call(classifier, c(list(formula = formula, data = mf), fit_args))
+    model_fit <- do.call(classifier, c(list(formula = formula, data = data), fit_args))
   } else if (interface == "matrix") {
     x_matrix <- model.matrix(formula, data = mf)[, -1, drop = FALSE] # remove intercept
     model_fit <- do.call(classifier, c(list(x = x_matrix, y = y), fit_args))
@@ -121,8 +126,15 @@ fit_model.default <- function(data, formula, classifier, interface = c("formula"
   }
 
   # Extract feature metadata.
+  # With the formula interface the features are the raw variables the user supplies
+  # (`x`, not `log(x)`), so the grid built by boundary_compute() can be passed back
+  # through the formula.
   response_var <- all.vars(formula[[2]])
-  predictors_df <- mf[, setdiff(colnames(mf), response_var), drop = FALSE]
+  predictors_df <- if (interface == "formula") {
+    data[, setdiff(colnames(data), response_var), drop = FALSE]
+  } else {
+    mf[, setdiff(colnames(mf), response_var), drop = FALSE]
+  }
   feature_meta <- extract_feature_metadata(predictors_df)
 
   # Wrap as classbound object.

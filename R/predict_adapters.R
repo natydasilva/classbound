@@ -141,6 +141,32 @@ predict_adapter.pprf_classification <- function(model, newdata, ...) {
   )
 }
 
+#' Predict using a fitted MASS lda or qda model
+#'
+#' @description Adapter function to generate standardized predictions from a
+#' linear or quadratic discriminant analysis model fitted with `MASS::lda()` or
+#' `MASS::qda()`. The posterior probabilities are returned as `probs`.
+#'
+#' @param model A fitted `lda` or `qda` object.
+#' @param newdata A data frame of new observations to predict on.
+#' @param ... Additional arguments passed to `predict()`.
+#'
+#' @return A list containing `class` (predicted labels) and `probs` (posterior probabilities).
+#' @keywords internal
+#' @importFrom stats predict
+#' @export
+predict_adapter.lda <- function(model, newdata, ...) {
+  preds <- predict(model, newdata, ...)
+  list(class = preds$class, probs = preds$posterior)
+}
+
+#' @rdname predict_adapter.lda
+#' @export
+predict_adapter.qda <- function(model, newdata, ...) {
+  preds <- predict(model, newdata, ...)
+  list(class = preds$class, probs = preds$posterior)
+}
+
 #' @export
 predict_adapter.workflow <- function(model, newdata, ...) {
   if (!requireNamespace("workflows", quietly = TRUE)) {

@@ -201,15 +201,15 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
   )
 
   zoom_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) {
-    sprintf(" + ggplot2::coord_cartesian(xlim = c(%f, %f), ylim = c(%f, %f), expand = FALSE)", zoom_x[1], zoom_x[2], zoom_y[1], zoom_y[2])
+    sprintf(" + ggplot2::coord_cartesian(xlim = c(%.15g, %.15g), ylim = c(%.15g, %.15g), expand = FALSE)", zoom_x[1], zoom_x[2], zoom_y[1], zoom_y[2])
   } else {
     ""
   }
 
   # Grid ranges: same rule as the app (6% padding, at least 0.5, widened to
   # include the zoom window), so the regenerated plots match the app.
-  zoom_x_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) sprintf("c(%f, %f)", zoom_x[1], zoom_x[2]) else "NULL"
-  zoom_y_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) sprintf("c(%f, %f)", zoom_y[1], zoom_y[2]) else "NULL"
+  zoom_x_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) sprintf("c(%.15g, %.15g)", zoom_x[1], zoom_x[2]) else "NULL"
+  zoom_y_str <- if (!is.null(zoom_x) && !is.null(zoom_y)) sprintf("c(%.15g, %.15g)", zoom_y[1], zoom_y[2]) else "NULL"
   range_helper <- c(
     "# Axis ranges used by the app: data range padded by 6% (at least 0.5)",
     "pad_range <- function(v, zoom = NULL) {",
@@ -260,7 +260,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
       "  cat(\"\\nPlotting boundary for:\", model_name, \"\\n\")",
       "  cb_mod <- models[[model_name]]",
       sprintf("  cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = %d, projection = proj, predict_args = get_predict_args(model_name))", resolution),
-      sprintf("  p <- plot_boundary(cb_bound, obs_data = dat, x_col = \"PC1\", y_col = \"PC2\", true_label = \"Sim\", show_gradient = %s) +", ifelse(show_probs, "TRUE", "FALSE")),
+      sprintf("  p <- plot_boundary(cb_bound, obs_data = dat, x_col = \"PC1\", y_col = \"PC2\", true_label = \"Sim\", show_gradient = %s, highlight_outliers = \"is_outlier\" %%in%% colnames(dat)) +", ifelse(show_probs, "TRUE", "FALSE")),
       "    ggplot2::ggtitle(model_name)",
       if (zoom_str != "") sprintf("  p <- suppressMessages(p%s)", zoom_str) else "",
       "  print(p)",
@@ -274,7 +274,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
       range_helper,
       predict_block,
       "# Regenerate Boundary Plots",
-      "feat_cols <- setdiff(colnames(dat), \"Sim\")",
+      "feat_cols <- setdiff(colnames(dat), c(\"Sim\", \"is_outlier\"))",
       sprintf("x_name <- if (%s %%in%% feat_cols) %s else feat_cols[1]", slice_x_str, slice_x_str),
       sprintf("y_name <- if (%s %%in%% feat_cols) %s else feat_cols[2]", slice_y_str, slice_y_str),
       "range_list <- list()",
@@ -285,7 +285,7 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
       "  cat(\"\\nPlotting boundary for:\", model_name, \"\\n\")",
       "  cb_mod <- models[[model_name]]",
       sprintf("  cb_bound <- boundary_compute(cb_mod, feature_range = range_list, resolution = %d, predict_args = get_predict_args(model_name))", resolution),
-      sprintf("  p <- plot_boundary(cb_bound, obs_data = dat, x_col = x_name, y_col = y_name, true_label = \"Sim\", show_gradient = %s) +", ifelse(show_probs, "TRUE", "FALSE")),
+      sprintf("  p <- plot_boundary(cb_bound, obs_data = dat, x_col = x_name, y_col = y_name, true_label = \"Sim\", show_gradient = %s, highlight_outliers = \"is_outlier\" %%in%% colnames(dat)) +", ifelse(show_probs, "TRUE", "FALSE")),
       "    ggplot2::ggtitle(model_name)",
       if (zoom_str != "") sprintf("  p <- suppressMessages(p%s)", zoom_str) else "",
       "  print(p)",
@@ -306,4 +306,26 @@ export_reproduce_script <- function(model_names, has_projection = FALSE, slice_x
 
   writeLines(c(header, plot_block, footer), con = file)
   invisible(file)
+}
+
+# Internal: zip every file below `dir` into `zipfile`. The 'zip' package is used when
+# it is installed, because it needs no external program (utils::zip() needs a `zip`
+# executable, which is often missing on Windows without Rtools).
+zip_export_dir <- function(zipfile, dir) {
+  files <- list.files(dir, recursive = TRUE)
+  if (requireNamespace("zip", quietly = TRUE)) {
+    zip::zip(zipfile = zipfile, files = files, root = dir, mode = "mirror")
+  } else {
+    zip_cmd <- Sys.getenv("R_ZIPCMD", "zip")
+    if (!nzchar(Sys.which(zip_cmd))) {
+      stop(
+        "Creating the export needs the 'zip' package (install.packages(\"zip\")) or a 'zip' program on the PATH.",
+        call. = FALSE
+      )
+    }
+    owd <- setwd(dir)
+    on.exit(setwd(owd), add = TRUE)
+    utils::zip(zipfile = zipfile, files = files, extras = "-q")
+  }
+  invisible(zipfile)
 }
